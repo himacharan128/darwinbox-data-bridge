@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --no-banner || {
+    echo "pre-commit: gitleaks found a secret in staged changes." >&2; exit 1; }
+else
+  if git diff --cached -U0 \
+     | grep -nEq '(ABSK[A-Za-z0-9+/=]{20,}|AKIA[0-9A-Z]{16}|aws_secret_access_key[[:space:]]*=|-----BEGIN [A-Z ]*PRIVATE KEY-----)'; then
+    echo "pre-commit: possible secret in staged changes (regex fallback). Install gitleaks for full coverage." >&2
+    exit 1
+  fi
+fi

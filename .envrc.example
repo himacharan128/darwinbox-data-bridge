@@ -1,0 +1,10 @@
+# Copy to .envrc and adjust paths, then run: direnv allow
+# Contains NO secrets — paths and profile name only.
+export AWS_CONFIG_FILE=/absolute/path/to/your/aws/config
+export AWS_SHARED_CREDENTIALS_FILE=/absolute/path/to/your/aws/credentials
+export AWS_PROFILE=your-profile
+export AWS_REGION=ap-south-1
+export AWS_DEFAULT_REGION=ap-south-1
+
+# Runtime model credentials live OUTSIDE the repo tree.
+dotenv_if_exists ~/.darwinbox-agent/.env

@@ -1,0 +1,43 @@
+# --- secrets: nothing matching these may ever enter the tree ---
+.env
+.env.*
+!.env.example
+.envrc
+!.envrc.example
+Credentials/
+*.pem
+*.key
+*.p12
+secrets/
+
+# --- terraform ---
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# --- node ---
+node_modules/
+.next/
+dist/
+build/
+.turbo/
+
+# --- local ---
+.DS_Store
+*.log
+.coverage
+htmlcov/
+playwright-report/
+test-results/
+.artifacts/
