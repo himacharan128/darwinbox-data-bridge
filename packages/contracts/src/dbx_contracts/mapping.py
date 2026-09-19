@@ -19,6 +19,7 @@ class Signal(StrEnum):
     CONSTRAINT_FIT = "constraint_fit"  # share satisfying pattern / enum / range / length
     UNIQUE_FIT = "unique_fit"  # distinct ratio against a unique constraint
     MASK_FIT = "mask_fit"  # dominant pattern mask vs expected shape
+    REFERENCE_FIT = "reference_fit"  # share of values present in the referenced lookup
     LLM_VOTE = "llm_vote"  # the model's semantic judgement — capped
 
 
@@ -27,6 +28,7 @@ class Signal(StrEnum):
 #: typed, the values are the data. "mgr" is a poor name match for manager_employee_id
 #: yet every value satisfies its pattern, and the pattern is the better witness.
 DEFAULT_WEIGHTS: dict[Signal, float] = {
+    Signal.REFERENCE_FIT: 0.25,
     Signal.TYPE_FIT: 0.25,
     Signal.NAME_SIM: 0.20,
     Signal.CONSTRAINT_FIT: 0.20,

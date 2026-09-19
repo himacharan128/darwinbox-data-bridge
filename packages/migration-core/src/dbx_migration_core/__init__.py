@@ -9,6 +9,7 @@ from .matching import (
     conflicting_fields,
     match_records,
 )
+from .pipeline import Overrides, Pipeline, RunResult, apply_decision
 from .profiling import decidable_date_formats, normalize_tokens, pattern_mask, profile_column
 from .scoring import assert_llm_cannot_decide_alone, decide, rank_column, score_pair
 from .validation import check_uniqueness, validate_record
@@ -16,8 +17,12 @@ from .validation import check_uniqueness, validate_record
 __all__ = [
     "ColumnPlan",
     "MatchDecision",
+    "Overrides",
     "PairEvidence",
+    "Pipeline",
+    "RunResult",
     "UnsafeValue",
+    "apply_decision",
     "assert_llm_cannot_decide_alone",
     "candidate_pairs",
     "check_uniqueness",

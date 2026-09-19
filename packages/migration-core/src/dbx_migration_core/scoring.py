@@ -135,6 +135,28 @@ def mask_fit(profile: ColumnProfile, field: FieldSpec) -> float:
     return round((sample_ok / len(profile.sample)) * dominant.coverage, 4)
 
 
+def reference_fit(
+    profile: ColumnProfile, field: FieldSpec, lookups: dict[str, set[str]] | None
+) -> float | None:
+    """Share of the column's values that exist in the lookup this field references.
+
+    Strong, cheap, entirely measurable evidence that was being thrown away. A column
+    of department codes is not merely *shaped* like department_code — its values are
+    actually in the department table, and nothing else in the schema can say that.
+    Returns None when the field declares no reference or the lookup is not loaded.
+    """
+    ref = field.reference_target
+    if not ref or not lookups:
+        return None
+    universe = lookups.get(ref[0])
+    if not universe:
+        return None
+    values = [vc.value for vc in profile.top_values] or profile.sample
+    if not values:
+        return None
+    return round(sum(1 for v in values if v in universe) / len(values), 4)
+
+
 def vetoes_for(profile: ColumnProfile, field: FieldSpec) -> list[Veto]:
     out: list[Veto] = []
     if field.type is not FieldType.STRING and type_fit(profile, field) < TYPE_FIT_FLOOR:
@@ -147,7 +169,11 @@ def vetoes_for(profile: ColumnProfile, field: FieldSpec) -> list[Veto]:
 
 
 def score_pair(
-    profile: ColumnProfile, field: FieldSpec, *, llm_vote: float | None = None
+    profile: ColumnProfile,
+    field: FieldSpec,
+    *,
+    llm_vote: float | None = None,
+    lookups: dict[str, set[str]] | None = None,
 ) -> Evidence:
     """All six signals for one (column, field) pair."""
     signals: dict[Signal, float] = {Signal.NAME_SIM: name_similarity(profile.raw_name, field)}
@@ -161,6 +187,9 @@ def score_pair(
         signals[Signal.UNIQUE_FIT] = unique_fit(profile, field)
     if field.pattern:
         signals[Signal.MASK_FIT] = mask_fit(profile, field)
+    ref = reference_fit(profile, field, lookups)
+    if ref is not None:
+        signals[Signal.REFERENCE_FIT] = ref
     if llm_vote is not None:
         signals[Signal.LLM_VOTE] = max(0.0, min(1.0, llm_vote))
 
@@ -188,6 +217,7 @@ def rank_column(
     *,
     llm_votes: dict[str, float] | None = None,
     thresholds: Thresholds | None = None,
+    lookups: dict[str, set[str]] | None = None,
 ) -> ColumnMapping:
     """Score one source column against every target field and decide."""
     votes = llm_votes or {}
@@ -196,7 +226,7 @@ def rank_column(
     candidates = [
         Candidate(
             target_field=f.name,
-            evidence=score_pair(profile, f, llm_vote=votes.get(f.name)),
+            evidence=score_pair(profile, f, llm_vote=votes.get(f.name), lookups=lookups),
         )
         for f in schema.fields
     ]
