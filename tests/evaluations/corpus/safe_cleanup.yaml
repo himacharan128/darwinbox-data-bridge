@@ -1,0 +1,54 @@
+# Cases that MUST be handled automatically with no review case.
+# Escalating any of these is an over-escalation failure (hurts escalation precision).
+# MASTER_PLAN.md §2.6
+
+safe:
+  - id: SAFE-001
+    category: whitespace
+    where: {record: EMP-00002, fields: [first_name, last_name], raw: ["Diya  ", "  Patel"]}
+    expected: {first_name: Diya, last_name: Patel}
+
+  - id: SAFE-002
+    category: email_domain_casing
+    where: {record: EMP-00003, field: work_email, raw: "VIHAAN.REDDY@Acme-HR.Example"}
+    expected: "VIHAAN.REDDY@acme-hr.example"
+    note: Domain lowercased; local part preserved exactly. Local-part case is significant.
+
+  - id: SAFE-003
+    category: canonical_enum
+    where: {field: employment_type, raw_values: ["Full Time", "full-time", "FTE", "Intern"]}
+    expected: [FULL_TIME, FULL_TIME, FULL_TIME, INTERN]
+
+  - id: SAFE-004
+    category: exact_duplicate
+    where: {record: EMP-00010, file: run1/hrms_employees_export.csv}
+    expected: one_employee_not_two
+    note: Byte-identical row appears twice. Contributing source references are preserved.
+
+  - id: SAFE-005
+    category: null_marker
+    where: {record: EMP-00006, field: mobile_number, raw: "N/A"}
+    expected: null
+    note: mobile_number is optional, so a null is valid and must not escalate.
+
+  - id: SAFE-006
+    category: unambiguous_date
+    where: {file: run1/hrms_employees_export.csv, columns: [DOB, "Date of Joining"]}
+    expected: DD/MM/YYYY
+    note: >
+      Both columns contain values with day>12 (e.g. 14/03, 22/07, 30/08), which
+      establishes the format for the whole column — including otherwise-ambiguous
+      values like 12/12/1993 and 01/04/2015.
+    contrast_with: ESC-003
+
+  - id: SAFE-007
+    category: phone_punctuation
+    where: {field: mobile_number, raw_values: ["+91 98450 11001", "+91-98450-11002", "+919845011003"]}
+    expected: ["+919845011001", "+919845011002", "+919845011003"]
+    note: Punctuation and spacing only. See FBD-005 for what is NOT safe.
+
+  - id: SAFE-008
+    category: multi_format_dates_across_files
+    where: {columns: ["hrms.DOB (DD/MM/YYYY)", "payroll.birth_date (ISO)", "contractors.dob (ISO)"]}
+    expected: all_normalised_to_YYYY-MM-DD
+    note: Format is inferred per column, not globally.

@@ -1,0 +1,72 @@
+# Labelled record-identity decisions. Matching is fully deterministic (decision B4):
+# blocking keys + measured signals, no LLM involvement. That is what makes
+# "no known incorrect automatic employee merges" a property of code.
+#
+# Phase 2 target: ~40 decisions including adversarial near-misses.
+
+_blocking_keys:
+  - normalised employee_id (exact)
+  - normalised work_email (exact)
+  - normalised last_name + date_of_birth
+  - last 8 digits of normalised mobile_number
+
+cases:
+  - id: MATCH-001
+    pair: ["EMP-00001 @ hrms_employees_export.csv", "EMP-00001 @ payroll_staff.xlsx"]
+    expected: auto_merge
+    basis: identifier_exact
+    why: Same employee_id, no conflicting field. Complementary values combine.
+
+  - id: MATCH-002
+    pair: ["EMP-00004 @ hrms_employees_export.csv", "EMP-00004 @ payroll_staff.xlsx"]
+    expected: auto_merge_with_field_conflict
+    basis: identifier_exact
+    why: >
+      Identity is certain (same employee_id). designation conflicts
+      ("Regional Sales Head" vs "Director of Sales") and escalates as ESC-005.
+      Identity merging and field-conflict resolution are separate decisions.
+
+  - id: MATCH-003
+    pair: ["EMP-00010 row 10 @ hrms_employees_export.csv", "EMP-00010 row 11 @ hrms_employees_export.csv"]
+    expected: auto_dedupe
+    basis: byte_identical
+    why: Exact duplicate row. One employee, both source references retained.
+
+  - id: MATCH-004
+    pair: ["EMP-00001 @ hrms_employees_export.csv", "EMP-00020 @ contractors_2024.csv"]
+    expected: escalate
+    basis: name_and_dob_only_with_identifier_conflict
+    why: >
+      Identical name and date of birth, but different employee_id and no shared
+      email. Score lands in the review band; the identifier difference is a hard
+      signal against automatic merge.
+    see: ESC-004
+    forbidden: auto_merge
+
+  - id: MATCH-005
+    pair: ["EMP-00013 Advait Pillai @ payroll_staff.xlsx", "EMP-00026 Lakshmi Pillai @ hrms_employees_export.csv"]
+    expected: no_match
+    basis: surname_only
+    why: Shared surname is not evidence of identity. Must not even enter the review queue.
+
+  - id: MATCH-006
+    pair: ["EMP-00002 @ hrms_employees_export.csv", "EMP-00012 @ payroll_staff.xlsx"]
+    expected: no_match
+    basis: distinct_identifiers
+    why: Same department and manager, different people. Shared attributes are not identity.
+
+  - id: MATCH-007
+    pair: ["EMP-00008 @ hrms_employees_export.csv", "EMP-00028 @ hrms_employees_export.csv"]
+    expected: no_match
+    basis: distinct_identifiers
+    why: Manager/report relationship, not identity.
+
+  - id: MATCH-008
+    pair: ["EMP-00001 @ run1", "EMP-00001 @ run2/hrms_delta_export.csv"]
+    expected: no_cross_run_match
+    basis: run_isolation
+    why: >
+      Runs are independent processing scopes (decision 2). Run 2 does not match
+      against run 1's records. The collision is detected at DELIVERY against the
+      destination natural key, not during run-2 reconciliation.
+    see: ESC-010

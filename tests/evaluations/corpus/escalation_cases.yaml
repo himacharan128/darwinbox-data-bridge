@@ -1,0 +1,132 @@
+# Labelled escalation cases. Each class from MASTER_PLAN.md §2.4 has at least one
+# instance. `expected: escalate` means the agent MUST raise a review case; releasing
+# the record as valid, or silently guessing, is a failure.
+#
+# `phase` = the build phase at which the case becomes testable.
+
+cases:
+  - id: ESC-001
+    class: AMBIGUOUS_MAPPING
+    phase: 1
+    where: {file: run1/contractors_2024.csv, column: contact}
+    expected: escalate
+    why: >
+      Column holds 3 email values and 3 phone values. Plausible targets work_email
+      and mobile_number are both unfilled for this file and neither dominates on
+      type-parse rate. Header name matches neither. No alias disambiguates.
+    evidence_required: [type_parse_rates, name_similarity_both_candidates, investigator_attempts]
+
+  - id: ESC-002
+    class: UNMAPPED_REQUIRED
+    phase: 1
+    where: {target_field: status}
+    expected: escalate
+    why: >
+      Required target field `status` has no candidate source column in any file.
+      Field-level escalation raised once at mapping time, not once per record.
+      Correct resolution is a human-supplied constant or an explicit rejection.
+    evidence_required: [best_candidates_with_scores, reason_each_rejected]
+
+  - id: ESC-003
+    class: AMBIGUOUS_VALUE
+    phase: 1
+    where: {file: run1/payroll_staff.xlsx, column: joining_dt}
+    expected: escalate
+    why: >
+      Every value has day<=12 and month<=12 (01/04, 05/09, 02/03, 07/06, 11/08).
+      DD/MM and MM/DD both parse 100% and no value disambiguates, so the
+      column-level date rule (MASTER_PLAN §D3) cannot establish a format.
+    contrast_with: SAFE-006
+    evidence_required: [format_candidates, parse_rates, absence_of_disambiguator]
+
+  - id: ESC-004
+    class: UNCERTAIN_IDENTITY
+    phase: 1
+    where: {records: ["EMP-00001 (hrms_employees_export.csv)", "EMP-00020 (contractors_2024.csv)"]}
+    expected: escalate
+    why: >
+      Same first/last name and identical date of birth (1985-03-14), but different
+      employee_id and no shared email. Strong non-identifier evidence against a hard
+      identifier conflict. A re-hire as contractor and a namesake are both plausible.
+    forbidden: auto_merge
+    evidence_required: [matched_fields, conflicting_fields, both_source_locations]
+
+  - id: ESC-005
+    class: CONFLICTING_FACTS
+    phase: 1
+    where: {record: EMP-00004, field: designation}
+    expected: escalate
+    why: >
+      Identity is established by matching employee_id. hrms export says
+      "Regional Sales Head", payroll says "Director of Sales". No source authority
+      is configured for this run, and schema rules do not resolve it.
+    note: With per-file authority configured (decision B1), this resolves automatically.
+    evidence_required: [both_values, both_source_locations, authority_state]
+
+  - id: ESC-006
+    class: MISSING_REQUIRED
+    phase: 1
+    where: {record: EMP-00011, field: date_of_birth}
+    expected: escalate
+    why: Required field is empty in the only source that carries this employee. Not derivable.
+    forbidden: invent_value
+
+  - id: ESC-007
+    class: VALIDATION_UNRESOLVED
+    phase: 1
+    where: {record: EMP-00021, field: work_email, value: "kavya.nambiar@acme-hr"}
+    expected: escalate
+    why: >
+      Fails the email type check (no TLD). One safe correction is attempted
+      (trim + domain-case normalisation); revalidation still fails. Escalate on the
+      second validation result rather than looping.
+    evidence_required: [attempt_history, rule_violated]
+
+  - id: ESC-008
+    class: UNRESOLVED_REFERENCE
+    phase: 1
+    where: {record: EMP-00008, field: department_code, value: "TECH"}
+    expected: escalate
+    why: >
+      "TECH" is absent from the department lookup. Both ENG (Engineering) and
+      TECHOPS (Technology Operations) are plausible; neither is an exact or unique
+      normalised match.
+    evidence_required: [candidate_lookup_rows, why_no_unique_match]
+
+  - id: ESC-009
+    class: UNRESOLVED_REFERENCE
+    phase: 1
+    where: {record: EMP-00026, field: manager_employee_id, value: "EMP-00026"}
+    expected: escalate
+    why: Manager self-reference. Schema declares this invalid.
+    forbidden: auto_null_the_field
+
+  - id: ESC-010
+    class: CROSS_RUN_COLLISION
+    phase: 1
+    where: {run2_record: EMP-00001, prior_run: 1}
+    expected: escalate
+    why: >
+      EMP-00001 was delivered in run 1; run 2 carries the same natural key with a
+      changed designation (CTO vs VP Engineering). Per decision 2, runs are
+      processed independently but a destination natural-key collision is surfaced
+      rather than silently creating a duplicate employee.
+    evidence_required: [prior_run_id, prior_delivery_time, field_level_diff]
+
+  - id: ESC-011
+    class: DELIVERY_PERMANENT_FAILURE
+    phase: 1
+    where: {trigger: mock_target_failure_simulator, mode: permanent}
+    expected: escalate
+    why: Destination rejects the record permanently. Must not be auto-retried.
+    forbidden: auto_retry
+
+  - id: ESC-012
+    class: LOW_CONFIDENCE_EXTRACTION
+    phase: 4
+    where: {file: "run1/scanned_roster.pdf (authored in Phase 4)"}
+    expected: escalate
+    why: >
+      OCR character confidence below threshold AND the extracted value fails the
+      field's pattern. Review card shows the cropped scan region beside the value.
+    status: fixture_deferred_to_phase_4
