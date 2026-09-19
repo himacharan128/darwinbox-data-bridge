@@ -40,6 +40,10 @@ mock-target = { workspace = true }
 line-length = 100
 target-version = "py312"
 
+[tool.ruff.lint.per-file-ignores]
+# Calendar dates carry no timezone; attaching one would invent data.
+"packages/migration-core/src/dbx_migration_core/cleanup.py" = ["DTZ007"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests", "packages", "services"]
 addopts = "-q"

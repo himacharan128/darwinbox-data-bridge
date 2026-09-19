@@ -100,3 +100,17 @@ lookups:
   - name: location
     key: code
     fields: [code, name, city]
+
+# How to decide two source records describe the same person. Declared, not inferred:
+# a name-plus-birthday block finds the EMP-00001 / EMP-00020 namesake pair so it can be
+# reviewed, while never_merge_on keeps that pair from ever merging automatically.
+matching:
+  blocking_keys:
+    - [employee_id]
+    - [work_email]
+    - [last_name, date_of_birth]
+    - [mobile_number]
+  auto_merge: 0.92
+  review_floor: 0.72
+  never_merge_on:
+    - [first_name, last_name]

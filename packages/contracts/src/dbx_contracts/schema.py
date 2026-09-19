@@ -120,12 +120,27 @@ class LookupSpec(BaseModel):
         return self
 
 
+class MatchingSpec(BaseModel):
+    """How to decide two source records describe the same entity.
+
+    Blocking keys are declared, not inferred. Which fields identify a person is
+    domain knowledge the consultant has; guessing it in code would be exactly the
+    kind of assumption that produces a wrong merge. Defaults to every unique field.
+    """
+
+    blocking_keys: list[list[str]] = Field(default_factory=list)
+    auto_merge: float = 0.92
+    review_floor: float = 0.72
+    never_merge_on: list[list[str]] = Field(default_factory=list)
+
+
 class MigrationSchema(BaseModel):
     schema_version: int = 1
     entity: str
     description: str | None = None
     fields: list[FieldSpec]
     lookups: list[LookupSpec] = Field(default_factory=list)
+    matching: MatchingSpec = Field(default_factory=MatchingSpec)
 
     @model_validator(mode="after")
     def _check(self) -> Self:
@@ -145,6 +160,12 @@ class MigrationSchema(BaseModel):
                 if target == self.entity and key not in names:
                     raise ValueError(f"field {f.name!r}: self-reference key {key!r} is not a field")
         return self
+
+    @property
+    def blocking_keys(self) -> list[list[str]]:
+        if self.matching.blocking_keys:
+            return self.matching.blocking_keys
+        return [[f.name] for f in self.fields if f.unique]
 
     @property
     def by_name(self) -> dict[str, FieldSpec]:

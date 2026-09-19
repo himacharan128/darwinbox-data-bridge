@@ -27,7 +27,14 @@ from .records import (
     ValidationResult,
 )
 from .review import Action, CaseState, EscalationClass, HumanDecision, Option, ReviewCase
-from .schema import FieldSpec, FieldType, LookupSpec, MigrationSchema, to_strftime
+from .schema import (
+    FieldSpec,
+    FieldType,
+    LookupSpec,
+    MatchingSpec,
+    MigrationSchema,
+    to_strftime,
+)
 
 __all__ = [
     "DEFAULT_WEIGHTS",
@@ -49,6 +56,7 @@ __all__ = [
     "FieldType",
     "FileProfile",
     "HumanDecision",
+    "MatchingSpec",
     "LookupSpec",
     "MigrationSchema",
     "Option",
