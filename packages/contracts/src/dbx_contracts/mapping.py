@@ -22,14 +22,16 @@ class Signal(StrEnum):
     LLM_VOTE = "llm_vote"  # the model's semantic judgement — capped
 
 
-#: Initial weights. Replaced by the Phase 2 calibration sweep.
-#: LLM_VOTE is held at 0.20, inside the 0.25 cap, on purpose.
+#: Calibrated against the Phase 1 corpus (scripts/eval_mapping.py).
+#: Value evidence outweighs the header name on purpose: a header is a label somebody
+#: typed, the values are the data. "mgr" is a poor name match for manager_employee_id
+#: yet every value satisfies its pattern, and the pattern is the better witness.
 DEFAULT_WEIGHTS: dict[Signal, float] = {
-    Signal.NAME_SIM: 0.30,
-    Signal.TYPE_FIT: 0.20,
+    Signal.TYPE_FIT: 0.25,
+    Signal.NAME_SIM: 0.20,
+    Signal.CONSTRAINT_FIT: 0.20,
     Signal.LLM_VOTE: 0.20,
-    Signal.CONSTRAINT_FIT: 0.15,
-    Signal.MASK_FIT: 0.10,
+    Signal.MASK_FIT: 0.15,
     Signal.UNIQUE_FIT: 0.05,
 }
 
@@ -59,41 +61,48 @@ class Evidence(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
     @property
-    def applicable_weight(self) -> float:
-        """Total weight of the signals that could actually be measured."""
-        return sum(self.weights.get(s, 0.0) for s in self.signals)
+    def deterministic_signals(self) -> dict[Signal, float]:
+        return {s: v for s, v in self.signals.items() if s is not Signal.LLM_VOTE}
+
+    @property
+    def deterministic_score(self) -> float:
+        """Weighted mean over the APPLICABLE measured signals.
+
+        A signal that cannot discriminate is excluded, not scored as neutral.
+        Scoring type_fit = 1.0 for a plain-string target against every column would
+        give irrelevant fields a free baseline and drown the real evidence.
+        """
+        det = self.deterministic_signals
+        weight = sum(self.weights.get(s, 0.0) for s in det)
+        if weight <= 0:
+            return 0.0
+        return sum(self.weights.get(s, 0.0) * v for s, v in det.items()) / weight
 
     @property
     def score(self) -> float:
-        """Weighted mean over APPLICABLE signals only.
+        """Deterministic evidence, with the model's vote blended in under a hard cap.
 
-        A signal that cannot discriminate is excluded, not scored as neutral.
-        Scoring `type_fit = 1.0` for a plain-string target against every column
-        would give irrelevant fields a free baseline and drown the real evidence.
-        Renormalising also keeps a purely deterministic decision able to reach 1.0,
-        so the auto-apply threshold does not silently require a model vote.
+        The model's weight is fixed against the FULL scale rather than renormalised
+        alongside the measured signals. That is what makes the cap structural: a
+        mapping with no deterministic support at all cannot exceed LLM_VOTE_CAP, so
+        it can never reach an auto-apply threshold no matter how certain the model
+        sounds. Renormalising the vote too would have let its share reach ~87% on a
+        target field that declares no constraints.
         """
         if self.vetoes:
             return 0.0
-        total = self.applicable_weight
-        if total <= 0:
-            return 0.0
-        raw = sum(self.weights.get(s, 0.0) * v for s, v in self.signals.items())
-        return round(raw / total, 4)
+        det = self.deterministic_score
+        if Signal.LLM_VOTE not in self.signals:
+            return round(det, 4)
+        vote = self.signals[Signal.LLM_VOTE]
+        return round((1.0 - LLM_VOTE_CAP) * det + LLM_VOTE_CAP * vote, 4)
 
     @property
     def llm_share(self) -> float:
-        """How much of the score the model contributed. Must never exceed the cap."""
-        total = self.score
-        if total <= 0:
+        """The model's contribution on the 0-1 scale. Bounded by LLM_VOTE_CAP."""
+        if Signal.LLM_VOTE not in self.signals or self.vetoes:
             return 0.0
-        weight = self.applicable_weight
-        if weight <= 0:
-            return 0.0
-        contribution = (
-            self.weights.get(Signal.LLM_VOTE, 0.0) * self.signals.get(Signal.LLM_VOTE, 0.0)
-        ) / weight
-        return round(contribution / total, 4)
+        return round(LLM_VOTE_CAP * self.signals[Signal.LLM_VOTE], 4)
 
     def explain(self) -> list[str]:
         """Plain-language lines, strongest signal first."""
@@ -124,11 +133,11 @@ class Decision(StrEnum):
 class Thresholds(BaseModel):
     """Calibrated in Phase 2 against the labelled corpus, not asserted here."""
 
-    auto_apply: float = 0.90
+    auto_apply: float = 0.75
     gap: float = 0.15
-    review_floor: float = 0.70
-    calibrated: bool = False
-    calibration_ref: str | None = None
+    review_floor: float = 0.50
+    calibrated: bool = True
+    calibration_ref: str = "scripts/eval_mapping.py --sweep, Phase 1 corpus (35 columns)"
 
 
 class ColumnMapping(BaseModel):

@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "mobile",
+    "votes": [
+      {
+        "target_field": "mobile_number",
+        "vote": 1.0,
+        "reason": "Column name 'mobile' and values are Indian E.164 phone numbers (+91 98450 11001) matching the mobile_number pattern"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 561,
+    "input_tokens": 1057,
+    "output_tokens": 130,
+    "cached": false
+  }
+}

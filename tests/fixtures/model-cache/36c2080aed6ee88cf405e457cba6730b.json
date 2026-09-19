@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "contact",
+    "votes": [
+      {
+        "target_field": "work_email",
+        "vote": 1.0,
+        "reason": "Column name 'contact' contains email values like 'nikhil.verma@acme-hr.example' matching email pattern required for work_email."
+      },
+      {
+        "target_field": "mobile_number",
+        "vote": 1.0,
+        "reason": "Column also includes phone values like '+91 98450 11016' matching the Indian E.164 mobile pattern for mobile_number."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1542,
+    "input_tokens": 1215,
+    "output_tokens": 214,
+    "cached": false
+  }
+}

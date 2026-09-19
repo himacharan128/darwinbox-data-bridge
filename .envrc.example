@@ -8,3 +8,6 @@ export AWS_DEFAULT_REGION=ap-south-1
 
 # Runtime model credentials live OUTSIDE the repo tree.
 dotenv_if_exists ~/.darwinbox-agent/.env
+
+# The app authenticates to Bedrock with a scoped API key, not your AWS profile.
+export AWS_BEARER_TOKEN_BEDROCK="${OPENAI_API_KEY:-}"

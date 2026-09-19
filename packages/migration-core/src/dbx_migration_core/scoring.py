@@ -141,8 +141,8 @@ def vetoes_for(profile: ColumnProfile, field: FieldSpec) -> list[Veto]:
         out.append(Veto.TYPE_INCOMPATIBLE)
     if field.unique and profile.cardinality_ratio < UNIQUE_RATIO_FLOOR:
         out.append(Veto.UNIQUENESS_IMPOSSIBLE)
-    if field.max_length is not None and (profile.length_max or 0) > field.max_length:
-        out.append(Veto.TYPE_INCOMPATIBLE)
+    # max_length is deliberately NOT a veto. One over-long value must not disqualify
+    # a whole column; it is a per-record validation failure that escalates on its own.
     return out
 
 
@@ -230,12 +230,16 @@ def decide(mapping: ColumnMapping) -> ColumnMapping:
     return mapping
 
 
-def assert_llm_within_cap(evidence: Evidence) -> None:
-    """Guard: the model's contribution must never exceed the declared cap."""
+def assert_llm_cannot_decide_alone(evidence: Evidence) -> None:
+    """The guarantee, stated as code.
+
+    A candidate with no deterministic support must score at or below the cap, which
+    sits below any usable auto-apply threshold. This is what "a model's self-reported
+    confidence is not a sufficient basis for the boundary" means operationally.
+    """
     from dbx_contracts import LLM_VOTE_CAP
 
-    if evidence.llm_share > LLM_VOTE_CAP + 1e-9:
+    if evidence.deterministic_score <= 0.0 and evidence.score > LLM_VOTE_CAP + 1e-9:
         raise ValueError(
-            f"model vote contributed {evidence.llm_share:.2%} of the score, "
-            f"above the {LLM_VOTE_CAP:.0%} cap"
+            f"model vote alone produced {evidence.score:.2f}, above the {LLM_VOTE_CAP:.2f} cap"
         )

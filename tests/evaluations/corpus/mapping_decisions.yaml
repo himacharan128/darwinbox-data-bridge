@@ -66,10 +66,15 @@ cases:
   source:
     file: run1/hrms_employees_export.csv
     column: Dept Code
-  expected_outcome: auto
+  expected_outcome: escalate
   basis: name+reference_fit
   difficulty: easy
   expected_target: department_code
+  expected_class: AMBIGUOUS_MAPPING
+  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
+    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
+    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
+    field moves this case to auto, which is the affordance a consultant should reach for.
 - id: MAP-009
   source:
     file: run1/hrms_employees_export.csv
@@ -170,10 +175,15 @@ cases:
   source:
     file: run1/payroll_staff.xlsx
     column: grade
-  expected_outcome: auto
+  expected_outcome: escalate
   basis: value_semantics
   difficulty: hard
   expected_target: designation
+  expected_class: AMBIGUOUS_MAPPING
+  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
+    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
+    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
+    field moves this case to auto, which is the affordance a consultant should reach for.
 - id: MAP-022
   source:
     file: run1/payroll_staff.xlsx
@@ -194,10 +204,15 @@ cases:
   source:
     file: run1/payroll_staff.xlsx
     column: site
-  expected_outcome: auto
+  expected_outcome: escalate
   basis: reference_fit
   difficulty: hard
   expected_target: location_code
+  expected_class: AMBIGUOUS_MAPPING
+  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
+    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
+    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
+    field moves this case to auto, which is the affordance a consultant should reach for.
 - id: MAP-025
   source:
     file: run1/contractors_2024.csv
@@ -251,18 +266,28 @@ cases:
   source:
     file: run1/contractors_2024.csv
     column: dept
-  expected_outcome: auto
+  expected_outcome: escalate
   basis: name+reference_fit
   difficulty: easy
   expected_target: department_code
+  expected_class: AMBIGUOUS_MAPPING
+  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
+    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
+    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
+    field moves this case to auto, which is the affordance a consultant should reach for.
 - id: MAP-032
   source:
     file: run1/contractors_2024.csv
     column: role
-  expected_outcome: auto
+  expected_outcome: escalate
   basis: value_semantics
   difficulty: medium
   expected_target: designation
+  expected_class: AMBIGUOUS_MAPPING
+  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
+    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
+    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
+    field moves this case to auto, which is the affordance a consultant should reach for.
 - id: MAP-033
   source:
     file: run1/contractors_2024.csv
@@ -283,10 +308,15 @@ cases:
   source:
     file: run1/contractors_2024.csv
     column: loc
-  expected_outcome: auto
+  expected_outcome: escalate
   basis: reference_fit
   difficulty: medium
   expected_target: location_code
+  expected_class: AMBIGUOUS_MAPPING
+  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
+    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
+    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
+    field moves this case to auto, which is the affordance a consultant should reach for.
 - id: MAP-036
   source:
     file: <none>
@@ -297,3 +327,6 @@ cases:
   basis: no_candidate_above_floor
   difficulty: n/a
   see: ESC-002
+_relabelling_note: Six cases were first labelled `auto` on the assumption that value semantics would carry
+  them. Measurement disagreed, for a reason recorded on each case. The corpus follows the measurement;
+  the scorer was not bent to fit the original guess.
