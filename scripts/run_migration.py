@@ -16,10 +16,10 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from dbx_agent import build_provider, vote_on_column  # noqa: E402
-from dbx_contracts import MigrationSchema  # noqa: E402
-from dbx_extraction import read  # noqa: E402
-from dbx_migration_core import Pipeline  # noqa: E402
+from dbx_agent import build_provider, vote_on_column
+from dbx_contracts import MigrationSchema
+from dbx_extraction import read
+from dbx_migration_core import Pipeline
 
 FIX = ROOT / "tests" / "fixtures"
 EMPLOYEE_FILES = ["hrms_employees_export.csv", "payroll_staff.xlsx", "contractors_2024.csv"]
@@ -55,7 +55,7 @@ def main() -> int:
     votes = None
     if not args.no_llm:
         provider = build_provider(FIX / "model-cache")
-        votes = lambda profile, sch: vote_on_column(provider, profile, sch)[0]  # noqa: E731
+        votes = lambda profile, sch: vote_on_column(provider, profile, sch)[0]
 
     result = Pipeline(run_id="run-demo", schema=schema, votes=votes).run(sources, lookups)
 

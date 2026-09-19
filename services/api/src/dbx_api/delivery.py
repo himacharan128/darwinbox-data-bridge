@@ -58,12 +58,22 @@ def idempotency_key(run_id: str, natural_key: str, generation: int) -> str:
 
 
 class DestinationClient:
-    def __init__(self, base_url: str, timeout: float = 5.0) -> None:
+    def __init__(
+        self, base_url: str, timeout: float = 5.0, transport: httpx.BaseTransport | None = None
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        # Tests route to the destination app in-process; nothing else changes, so the
+        # integration test exercises the real client including its retry logic.
+        self.transport = transport
+
+    def _client(self) -> httpx.Client:
+        return httpx.Client(
+            base_url=self.base_url, timeout=self.timeout, transport=self.transport
+        )
 
     def register_schema(self, spec: dict[str, Any]) -> None:
-        with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+        with self._client() as client:
             client.post("/schemas", json=spec).raise_for_status()
 
     def reconcile(self, run_id: str, natural_key: str) -> dict[str, Any] | None:
@@ -73,7 +83,7 @@ class DestinationClient:
         between risking a duplicate and abandoning a record that may be fine.
         """
         try:
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+            with self._client() as client:
                 response = client.get(
                     "/records", params={"run_id": run_id, "natural_key": natural_key}
                 )
@@ -94,7 +104,7 @@ class DestinationClient:
         }
         headers = {"Idempotency-Key": idempotency_key(run_id, natural_key, generation)}
         try:
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+            with self._client() as client:
                 response = client.post("/records", json=body, headers=headers)
         except httpx.TimeoutException as exc:
             # Timed out: the write may or may not have landed.
@@ -152,7 +162,7 @@ class DestinationClient:
 
     def rollback(self, target_record_id: str) -> tuple[bool, Any]:
         try:
-            with httpx.Client(base_url=self.base_url, timeout=self.timeout) as client:
+            with self._client() as client:
                 response = client.post(f"/records/{target_record_id}/rollback")
                 response.raise_for_status()
                 return True, response.json()

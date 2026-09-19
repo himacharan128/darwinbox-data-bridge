@@ -342,7 +342,7 @@ def rollback(run_id: str) -> dict[str, Any]:
 def destination_state(run_id: str) -> dict[str, Any]:
     """What the destination actually holds. Read from the service, not from our guess."""
     try:
-        with __import__("httpx").Client(base_url=destination.base_url, timeout=5) as client:
+        with destination._client() as client:
             stored = client.get("/records", params={"run_id": run_id,
                                                     "include_rolled_back": True}).json()
     except Exception as exc:

@@ -7,7 +7,6 @@ so a reader that loses the row number makes the case unresolvable at a glance.
 from __future__ import annotations
 
 import csv
-import uuid
 from pathlib import Path
 
 from dbx_contracts import ExtractedRecord, SourceRef
@@ -31,6 +30,17 @@ def read(path: Path, *, display_name: str | None = None) -> list[ExtractedRecord
     return _read_xlsx(path, name)
 
 
+def record_id(file: str, sheet: str | None, row: int) -> str:
+    """Identity derived from the cell address, never random.
+
+    A uuid4 here makes every replay produce different ids, which quietly reorders
+    anything that tie-breaks on identity — record matching did, so a run's outcome
+    drifted between replays. Deriving it from the source address also means a record
+    keeps the same identity across a resume, which is what an audit trail needs.
+    """
+    return f"{file}#{sheet or ''}#{row}"
+
+
 def _clean_header(raw: object, index: int) -> str:
     text = "" if raw is None else str(raw).strip()
     return text or f"column_{index + 1}"
@@ -50,7 +60,7 @@ def _read_csv(path: Path, name: str, detected: Detected) -> list[ExtractedRecord
         values = {headers[i]: (row[i] if i < len(row) else None) for i in range(len(headers))}
         out.append(
             ExtractedRecord(
-                id=str(uuid.uuid4()),
+                id=record_id(name, None, line_no),
                 source=SourceRef(file=name, row=line_no),
                 values=values,
             )
@@ -83,7 +93,7 @@ def _read_xlsx(path: Path, name: str) -> list[ExtractedRecord]:
             }
             out.append(
                 ExtractedRecord(
-                    id=str(uuid.uuid4()),
+                    id=record_id(name, ws.title, line_no),
                     source=SourceRef(file=name, sheet=ws.title, row=line_no),
                     values=values,
                 )
