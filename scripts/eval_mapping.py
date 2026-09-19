@@ -22,11 +22,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from dbx_agent import build_provider, vote_on_column  # noqa: E402
-from dbx_contracts import Decision, MigrationSchema, SourceRef, Thresholds  # noqa: E402
-from dbx_extraction import read  # noqa: E402
-from dbx_migration_core.profiling import profile_column  # noqa: E402
-from dbx_migration_core.scoring import rank_column  # noqa: E402
+from dbx_agent import build_provider, vote_on_column
+from dbx_contracts import Decision, MigrationSchema, SourceRef, Thresholds
+from dbx_extraction import read
+from dbx_migration_core.profiling import profile_column
+from dbx_migration_core.scoring import rank_column
 
 FIXTURES = ROOT / "tests" / "fixtures"
 CORPUS = ROOT / "tests" / "evaluations" / "corpus"

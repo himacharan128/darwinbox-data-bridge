@@ -16,7 +16,7 @@ from dbx_contracts import LLM_VOTE_CAP, Evidence, Signal, Thresholds
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from eval_mapping import collect, evaluate, load_schema  # noqa: E402
+from eval_mapping import collect, evaluate, load_schema
 
 
 @pytest.fixture(scope="module")
