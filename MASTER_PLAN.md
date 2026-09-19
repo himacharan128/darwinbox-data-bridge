@@ -457,7 +457,7 @@ revise it after every phase. *If a phase doesn't change the write-up, question
 whether it earned its place.* The one-page cap is the only hard constraint the
 brief gives that unlimited time does not relax — use it as the scope governor.
 
-### Phase 0 — Fixtures, target schema, eval corpus skeleton `[S]`
+### Phase 0 — Fixtures, target schema, eval corpus skeleton `[S]` — ✅ COMPLETE
 Highest leverage work in the build. The demo is only as good as this.
 
 - `git init`; **`.gitignore` + gitleaks hook in commit #1**, before any key exists.
@@ -471,6 +471,10 @@ Highest leverage work in the build. The demo is only as good as this.
 - Labelled corpus skeleton per A9 targets.
 
 **Gate:** every §2.4 class has a labelled instance; schema is adversarial, not derived.
+**Result: PASSED.** 11/11 escalation classes labelled (ESC-012 `LOW_CONFIDENCE_EXTRACTION`
+carries its label; its scanned-PDF fixture is authored in Phase 4). 28 employees across
+three file shapes, 9 of 13 target fields with no alias, 25 integrity tests green.
+Commits: `931cdc7` secret guards → `329fb82` scaffold → `07ce9a3` fixtures → `142f8f9` corpus.
 
 ### Phase 1 — Vertical slice `[L]`
 Single process. Postgres. No queue, no OCR, no schema versioning, no mobile.
