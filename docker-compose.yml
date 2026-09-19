@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dbx
+      POSTGRES_PASSWORD: dbx
+      POSTGRES_DB: dbx
+    ports: ["5432:5432"]
+    volumes: ["dbx_pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbx"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  dbx_pgdata:
