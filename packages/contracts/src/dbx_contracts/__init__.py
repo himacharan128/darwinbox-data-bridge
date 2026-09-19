@@ -1,1 +1,69 @@
-"""contracts"""
+"""Shared contracts for the migration pipeline.
+
+Nothing in this package knows what a person, an employee or a department is. It
+defines a schema *language* and the vocabulary of evidence, escalation and audit.
+"""
+
+from .audit import Actor, AuditEvent
+from .mapping import (
+    DEFAULT_WEIGHTS,
+    LLM_VOTE_CAP,
+    Candidate,
+    ColumnMapping,
+    Decision,
+    Evidence,
+    Signal,
+    Thresholds,
+    Veto,
+)
+from .profile import ColumnProfile, FileProfile, PatternMask, TypeCandidate, ValueCount
+from .provenance import FieldProvenance, SourceRef, Transformation
+from .records import (
+    CanonicalRecord,
+    ExtractedRecord,
+    RecordState,
+    Severity,
+    ValidationIssue,
+    ValidationResult,
+)
+from .review import Action, CaseState, EscalationClass, HumanDecision, Option, ReviewCase
+from .schema import FieldSpec, FieldType, LookupSpec, MigrationSchema, to_strftime
+
+__all__ = [
+    "DEFAULT_WEIGHTS",
+    "LLM_VOTE_CAP",
+    "Action",
+    "Actor",
+    "AuditEvent",
+    "Candidate",
+    "CanonicalRecord",
+    "CaseState",
+    "ColumnMapping",
+    "ColumnProfile",
+    "Decision",
+    "EscalationClass",
+    "Evidence",
+    "ExtractedRecord",
+    "FieldProvenance",
+    "FieldSpec",
+    "FieldType",
+    "FileProfile",
+    "HumanDecision",
+    "LookupSpec",
+    "MigrationSchema",
+    "Option",
+    "PatternMask",
+    "RecordState",
+    "ReviewCase",
+    "Severity",
+    "Signal",
+    "SourceRef",
+    "Thresholds",
+    "Transformation",
+    "TypeCandidate",
+    "ValidationIssue",
+    "ValidationResult",
+    "ValueCount",
+    "Veto",
+    "to_strftime",
+]
