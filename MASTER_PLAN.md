@@ -476,13 +476,23 @@ carries its label; its scanned-PDF fixture is authored in Phase 4). 28 employees
 three file shapes, 9 of 13 target fields with no alias, 25 integrity tests green.
 Commits: `931cdc7` secret guards → `329fb82` scaffold → `07ce9a3` fixtures → `142f8f9` corpus.
 
-### Phase 1 — Vertical slice `[L]`
+### Phase 1 — Vertical slice `[L]` — ✅ COMPLETE
 Single process. Postgres. No queue, no OCR, no schema versioning, no mobile.
 CSV + XLSX only. Ingest → profile → map → clean → validate → escalate → resolve in
 UI → deliver to mock API → audit.
 
 **Gate:** acceptance checks for criteria 1–5 pass on Phase 0 fixtures.
-**Record the demo here.** Draft the write-up here.
+**Result: PASSED.** 27 of 35 columns map unaided; 28 employees reconciled from three
+file shapes; 18 typed escalations; one answer readies 13 records; delivery lands in
+the destination and is idempotent on resend; rollback returns them. 39 tests green
+with no credentials or network.
+
+Defects found and fixed during the phase, each recorded in its commit: escalation
+cascade (98 cases → 18), the missing `reference_fit` signal, the model-vote cap being
+checked rather than structural, an enum normalisation mismatch, `max_length` vetoing
+whole columns, non-deterministic record ids, and a module/attribute shadowing bug.
+
+**Still to record the demo and draft the write-up.**
 
 ### Phase 2 — Evidence scorer + evaluation harness `[M]` — *the differentiator*
 Full §2.2 scorer. Corpus labelled to A9 targets. Automated precision/recall/error-rate.
