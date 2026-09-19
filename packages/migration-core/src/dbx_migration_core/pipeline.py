@@ -399,7 +399,7 @@ class Pipeline:
                 else EscalationClass.VALIDATION_UNRESOLVED,
                 headline=f"{spec.name} could not be cleaned safely",
                 detail=unsafe.reason,
-                record_key=record.natural_key or record.id,
+                record_key=self._record_key_for(record) or record.id,
                 target_field=spec.name,
                 source_refs=[ref],
                 raw_values=[raw or ""],
@@ -414,6 +414,8 @@ class Pipeline:
             return
 
         record.values[spec.name] = value
+        if spec.name == self._identity_field() and value not in (None, ""):
+            record.natural_key = str(value)
         record.provenance[spec.name] = FieldProvenance(
             target_field=spec.name, source=ref, raw_value=raw, value=value,
             transformations=steps,
