@@ -1,0 +1,102 @@
+# Target schema for the demo / acceptance / evaluation corpus.
+#
+# This file is ONE INSTANCE, not the product's schema. The engine is schema-driven
+# and contains no hardcoded field names (enforced by tests/evaluations/test_no_hardcoded_fields.py).
+# At runtime the target schema is supplied by the user or proposed by the agent.
+#
+# Deliberately ADVERSARIAL to the source files: different names, stricter types,
+# enums the sources violate, a case-sensitive identifier, uniqueness constraints,
+# and one required field that no source column supplies.
+
+schema_version: 1
+entity: employee
+description: Canonical employee record for the destination HRMS.
+
+fields:
+  - name: employee_id
+    type: string
+    required: true
+    unique: true
+    pattern: '^EMP-[0-9]{5}$'
+    case_sensitive: true
+    aliases: [emp_id, staff_code]
+    description: Stable employee identifier. Never transform case or padding.
+
+  - name: first_name
+    type: string
+    required: true
+    max_length: 50
+    aliases: [fname, given_name]
+
+  - name: last_name
+    type: string
+    required: true
+    max_length: 50
+    aliases: [lname, surname]
+
+  # no aliases: must be mapped on evidence alone
+  - name: work_email
+    type: email
+    required: true
+    unique: true
+    description: Official work email address.
+
+  # no aliases: must be mapped on evidence alone
+  - name: mobile_number
+    type: string
+    required: false
+    pattern: '^\+91[0-9]{10}$'
+    description: E.164 India mobile. A bare 10-digit number must NOT be prefixed automatically.
+
+  - name: date_of_birth
+    type: date
+    required: true
+    format: 'YYYY-MM-DD'
+    aliases: [dob]
+
+  # no aliases: sources use joining_dt / doj / "Date of Joining"
+  - name: date_of_joining
+    type: date
+    required: true
+    format: 'YYYY-MM-DD'
+
+  - name: department_code
+    type: string
+    required: true
+    reference: department.code
+
+  - name: designation
+    type: string
+    required: true
+    max_length: 80
+
+  - name: employment_type
+    type: enum
+    required: true
+    allowed: [FULL_TIME, PART_TIME, CONTRACT, INTERN]
+
+  - name: manager_employee_id
+    type: string
+    required: false
+    pattern: '^EMP-[0-9]{5}$'
+    reference: employee.employee_id
+    description: Must not equal employee_id; reference cycles are invalid.
+
+  - name: location_code
+    type: string
+    required: true
+    reference: location.code
+
+  # No source file supplies this. Expected to raise UNMAPPED_REQUIRED at mapping time.
+  - name: status
+    type: enum
+    required: true
+    allowed: [ACTIVE, ON_LEAVE, EXITED]
+
+lookups:
+  - name: department
+    key: code
+    fields: [code, name]
+  - name: location
+    key: code
+    fields: [code, name, city]

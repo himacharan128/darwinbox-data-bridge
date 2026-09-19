@@ -1,0 +1,3 @@
+Emp ID,First Name,Last Name,Email,Mobile,DOB,Date of Joining,Dept Code,Designation,Employment Type,Manager ID,Location
+EMP-00001,Aarav,Sharma,aarav.sharma@acme-hr.example,+91 98450 11001,14/03/1985,01/04/2015,ENG,Chief Technology Officer,Full Time,,BLR-HQ
+EMP-00029,Ira,Bhatt,ira.bhatt@acme-hr.example,+91 98450 11029,11/05/1993,15/01/2024,ENG,Engineer II,Full Time,EMP-00026,BLR-HQ
