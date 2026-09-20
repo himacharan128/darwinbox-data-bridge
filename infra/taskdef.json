@@ -17,10 +17,16 @@
       "environment": [
         {
           "name": "MOCK_TARGET_DB",
-          "value": "/tmp/target/mock.db"
+          "value": "/state/target/mock.db"
         }
       ],
-      "mountPoints": [],
+      "mountPoints": [
+        {
+          "sourceVolume": "state",
+          "containerPath": "/state",
+          "readOnly": false
+        }
+      ],
       "volumesFrom": [],
       "logConfiguration": {
         "logDriver": "awslogs",
@@ -55,14 +61,20 @@
         },
         {
           "name": "DBX_DATA_DIR",
-          "value": "/tmp/data"
+          "value": "/state/api"
         },
         {
           "name": "MOCK_TARGET_URL",
           "value": "http://127.0.0.1:8081"
         }
       ],
-      "mountPoints": [],
+      "mountPoints": [
+        {
+          "sourceVolume": "state",
+          "containerPath": "/state",
+          "readOnly": false
+        }
+      ],
       "volumesFrom": [],
       "dependsOn": [
         {
@@ -85,7 +97,19 @@
   "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/dbx-ecs-task",
   "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/dbx-ecs-execution",
   "networkMode": "awsvpc",
-  "volumes": [],
+  "volumes": [
+    {
+      "name": "state",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "fs-09e1ca77fbd507806",
+        "transitEncryption": "ENABLED",
+        "authorizationConfig": {
+          "accessPointId": "fsap-0028000750938fb49",
+          "iam": "DISABLED"
+        }
+      }
+    }
+  ],
   "runtimePlatform": {
     "cpuArchitecture": "ARM64",
     "operatingSystemFamily": "LINUX"
