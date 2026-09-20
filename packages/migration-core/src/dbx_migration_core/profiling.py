@@ -217,3 +217,28 @@ def decidable_date_formats(values: list[str]) -> tuple[dict[str, float], dict[st
     """Public access to the parse/decidability pair, used by the cleanup rules."""
     clean = [v.strip() for v in values if not is_null_marker(v)]
     return _date_rates(clean)
+
+
+_MASK_PIECE = re.compile(r"([A#a_])(?:\{(\d+)\})?|(.)")
+_CLASSES = {"A": "[A-Z]", "a": "[a-z]", "#": "[0-9]", "_": r"\s"}
+
+
+def mask_to_pattern(mask: str) -> str | None:
+    """Turn a value shape back into a rule: 'A{3}-#{5}' becomes ^[A-Z]{3}-[0-9]{5}$.
+
+    A schema proposed from the data should carry what the data actually looks like.
+    Without it, mapping has only column names to go on, and a header like 'code'
+    matches 'location_code' as readily as the employee identifier it really is.
+    """
+    out: list[str] = []
+    for cls, count, literal in _MASK_PIECE.findall(mask):
+        if literal:
+            out.append(re.escape(literal))
+        elif cls:
+            piece = _CLASSES.get(cls)
+            if piece is None:
+                return None
+            out.append(piece + (f"{{{count}}}" if count else ""))
+    body = "".join(out)
+    # A shape with no structure is not a rule worth writing down.
+    return f"^{body}$" if body and any(c in mask for c in "A#a") else None

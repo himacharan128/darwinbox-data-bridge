@@ -10,7 +10,13 @@ from .matching import (
     match_records,
 )
 from .pipeline import Overrides, Pipeline, RunResult, apply_decision
-from .profiling import decidable_date_formats, normalize_tokens, pattern_mask, profile_column
+from .profiling import (
+    decidable_date_formats,
+    mask_to_pattern,
+    normalize_tokens,
+    pattern_mask,
+    profile_column,
+)
 from .scoring import assert_llm_cannot_decide_alone, decide, rank_column, score_pair
 from .validation import check_uniqueness, validate_record
 
@@ -31,6 +37,7 @@ __all__ = [
     "conflicting_fields",
     "decidable_date_formats",
     "decide",
+    "mask_to_pattern",
     "match_records",
     "normalize_tokens",
     "pattern_mask",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Fragment } from "react";
 import { api, ApiError, PHRASE, type RunState } from "./api";
 import Review from "./Review";
 import Wizard from "./Wizard";
@@ -248,47 +248,57 @@ function Destination({ runId }: { runId: string }) {
         <table className="responsive">
           <thead><tr><th>Employee</th><th>Status</th><th>Received</th><th /></tr></thead>
           <tbody>
-            {data.records.map((r: any) => (
-              <tr key={r.id}>
-                <td data-label="Employee" className="mono">{r.natural_key}</td>
-                <td data-label="Status">
-                  <span className={`pill ${r.state === "accepted" ? "ok" : ""}`}>
-                    <i className="dot" />{r.state === "accepted" ? "Stored" : "Undone"}
-                  </span>
-                </td>
-                <td data-label="Received" className="change">
-                  {r.received_at?.slice(11, 19) ?? "—"}
-                </td>
-                <td data-label="">
-                  <button className="ghost"
-                          onClick={() => setShow(show === r.id ? null : r.id)}>
-                    {show === r.id ? "Hide" : "What was sent"}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {data.records.map((r: any) => {
+              const open = show === r.id;
+              const payload = (r.payload ?? {}) as Record<string, unknown>;
+              return (
+                <Fragment key={r.id}>
+                  <tr className={open ? "open" : undefined}>
+                    <td data-label="Employee" className="mono">{r.natural_key}</td>
+                    <td data-label="Status">
+                      <span className={`pill ${r.state === "accepted" ? "ok" : ""}`}>
+                        <i className="dot" />{r.state === "accepted" ? "Stored" : "Undone"}
+                      </span>
+                    </td>
+                    <td data-label="Received" className="change">
+                      {r.received_at?.slice(11, 19) ?? "—"}
+                    </td>
+                    <td data-label="">
+                      <button className="ghost" aria-expanded={open}
+                              onClick={() => setShow(open ? null : r.id)}>
+                        {open ? "Hide" : "What was sent"}
+                      </button>
+                    </td>
+                  </tr>
+                  {open && (
+                    <tr className="detail-row">
+                      <td colSpan={4}>
+                        <div className="detail-body">
+                          <h3>The {Object.keys(payload).length} values stored for {r.natural_key}</h3>
+                          {Object.keys(payload).length === 0 ? (
+                            <p className="change">Nothing was recorded for this employee.</p>
+                          ) : (
+                            <dl className="kv">
+                              {Object.entries(payload).map(([k, v]) => (
+                                <Fragment key={k}>
+                                  <dt>{fieldLabel(k)}</dt>
+                                  <dd>{v === null || v === "" ? (
+                                    <span className="change">left blank</span>
+                                  ) : String(v)}</dd>
+                                </Fragment>
+                              ))}
+                            </dl>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
-
-      {show && (() => {
-        const row = data.records.find((r: any) => r.id === show);
-        if (!row) return null;
-        return (
-          <div style={{ marginTop: 16, padding: 16, background: "var(--raised)",
-                        border: "1px solid var(--line)", borderRadius: "var(--r-sm)" }}>
-            <h2 style={{ marginBottom: 12 }}>Sent for {row.natural_key}</h2>
-            <dl className="kv">
-              {Object.entries(row.payload as Record<string, unknown>).map(([k, v]) => (
-                <div key={k} style={{ display: "contents" }}>
-                  <dt>{fieldLabel(k)}</dt>
-                  <dd>{v === null || v === "" ? <span className="change">— not set —</span> : String(v)}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        );
-      })()}
     </div>
   );
 }

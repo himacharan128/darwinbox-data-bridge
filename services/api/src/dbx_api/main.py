@@ -23,6 +23,7 @@ from dbx_extraction import (
     read,
     sniff,
 )
+from dbx_migration_core import mask_to_pattern
 from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
@@ -31,7 +32,7 @@ from pydantic import BaseModel
 
 from .delivery import DestinationClient, Outcome
 from .jobs import jobs
-from .runtime import case_key, replay, source_profiles
+from .runtime import case_key, load_lookups, replay, source_profiles
 from .store import Store, now
 
 DATA = Path(os.environ.get("DBX_DATA_DIR", ".artifacts"))
@@ -384,21 +385,59 @@ def recommend(run_id: str) -> dict[str, Any]:
                 return True
         return False
 
+    #: Columns that are plumbing rather than facts about a person. The model is told
+    #: to skip them and mostly does not, so they are dropped here.
+    plumbing = re.compile(
+        r"(^|_)(row|record|seq)(_?(id|no|num|number))?$|checksum|hash|"
+        r"^(created|updated|modified|changed)_?(by|at|on|ts|time)?$|"
+        r"sync|etl|batch|source_system|legacy|version|is_deleted|deleted|"
+        r"remark|comment|note|bank|acct|account_(no|number)|audit"
+    )
+
+    lookups = load_lookups(json.loads(run["files_json"]))
+
+    kept, dropped = [], []
+    for field in proposal.fields:
+        (dropped if plumbing.search(field.name.casefold()) else kept).append(field)
+    if kept:
+        proposal.fields = kept
+
     marked = 0
     for field in proposal.fields:
+        key = re.sub(r"[^a-z0-9]+", "", field.name.casefold())
+        source = next(
+            (p for column, p in profiles_by_key.items()
+             if column == key or column.endswith(key) or key.endswith(column)),
+            None,
+        )
+        if source is None:
+            continue
+
+        # A field whose values all live in an uploaded lookup gets that rule, which is
+        # the single strongest signal mapping has.
+        for table, values in lookups.items():
+            sampled = [v.value for v in source.top_values] or source.sample
+            if sampled and sum(1 for v in sampled if v in values) / len(sampled) >= 0.9:
+                field.reference = f"{table}.code"
+                # The lookup file is the real universe. Keeping the model's list of
+                # values-it-happened-to-see would reject every code outside this batch.
+                field.allowed = []
+                break
+
         if field.unique or not field.required:
             continue
-        # A field that points into a lookup is shared by many records by design —
-        # a department code identifies a department, not the person in it.
-        # A value drawn from a lookup is shared by many records by design: a
-        # department code identifies a department, not the person in it.
-        if any(f.name == field.name and f.allowed for f in proposal.fields):
-            continue
+        if getattr(field, "reference", None):
+            continue      # a lookup value identifies the lookup row, not the person
         if _looks_like_a_lookup_value(field.name, profiles_by_key):
             continue
         if identifier_like(field.name, field.type):
             field.unique = True
             marked += 1
+            # Give it the shape its values actually have, so mapping has evidence
+            # beyond the column's name.
+            mask = source.dominant_mask()
+            if mask and mask.coverage >= 0.95 and field.type == "string":
+                field.pattern = mask_to_pattern(mask.mask)
 
     draft = {
         "schema_version": 1,
@@ -408,6 +447,8 @@ def recommend(run_id: str) -> dict[str, Any]:
             {k: v for k, v in {
                 "name": f.name, "type": f.type, "required": f.required,
                 "unique": f.unique, "allowed": f.allowed or None, "format": f.format,
+                "pattern": getattr(f, "pattern", None),
+                "reference": getattr(f, "reference", None),
                 "description": f.reason,
             }.items() if v not in (None, [], False) or k in ("required", "name", "type")}
             for f in proposal.fields
@@ -422,8 +463,8 @@ def recommend(run_id: str) -> dict[str, Any]:
         "actor": Actor.AGENT.value, "action": "schema.recommended",
         "summary": (
             f"Proposed a {len(schema.fields)}-field schema for {schema.entity}"
-            + (f"; marked {marked} field(s) unique because their values are all different"
-               if marked else "")
+            + (f"; left out {len(dropped)} system column(s)" if dropped else "")
+            + (f"; {marked} field(s) identify a person" if marked else "")
         ),
         "at": now(), "provider": call.provider, "model": call.model,
         "prompt_version": call.prompt_version, "latency_ms": call.latency_ms,

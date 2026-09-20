@@ -58,6 +58,9 @@ class ProposedField(BaseModel):
     unique: bool = False
     allowed: list[str] = Field(default_factory=list, description="for enum only")
     format: str | None = Field(default=None, description="for date only, e.g. YYYY-MM-DD")
+    #: Filled in from the data after the model answers, not asked of the model.
+    pattern: str | None = None
+    reference: str | None = None
     reason: str = Field(description="which source columns led to this, in one sentence")
 
 
