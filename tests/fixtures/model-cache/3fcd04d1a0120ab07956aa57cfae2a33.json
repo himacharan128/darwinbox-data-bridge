@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "dtProbationEnd",
+    "votes": [
+      {
+        "target_field": "probation_end_date",
+        "vote": 1.0,
+        "reason": "Column name dtProbationEnd and date values clearly indicate probation end date"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 718,
+    "input_tokens": 1391,
+    "output_tokens": 139,
+    "cached": false
+  }
+}

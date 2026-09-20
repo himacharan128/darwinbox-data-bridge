@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "intVersionNo",
+    "votes": [
+      {
+        "target_field": "version_number",
+        "vote": 1.0,
+        "reason": "Column name intVersionNo directly matches the target field version_number and contains integer version values"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 824,
+    "input_tokens": 1359,
+    "output_tokens": 120,
+    "cached": false
+  }
+}

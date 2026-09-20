@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "legal_last",
+    "votes": [
+      {
+        "target_field": "last_name",
+        "vote": 1.0,
+        "reason": "Column name 'legal_last' and sample values are typical surnames, matching last_name field"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 557,
+    "input_tokens": 1365,
+    "output_tokens": 124,
+    "cached": false
+  }
+}

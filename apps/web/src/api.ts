@@ -42,9 +42,27 @@ export type SchemaState = {
     created_at: string }[];
 };
 
+export type RunFiles = {
+  files: { name: string; kind: string; supported: boolean; note: string | null;
+    rows: number; columns: string[] }[];
+  total_rows: number;
+  total_columns: number;
+};
+
+export type Sample = { name: string; files: number; description: string };
+
 export const api = {
   runs: () => fetch("/api/runs").then(json),
   run: (id: string): Promise<RunState> => fetch(`/api/runs/${id}`).then(json),
+  samples: (): Promise<Sample[]> => fetch("/api/samples").then(json),
+  startFromSample: (name: string) =>
+    fetch("/api/runs/from-sample", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    }).then(json),
+  runFiles: (run: string): Promise<RunFiles> => fetch(`/api/runs/${run}/files`).then(json),
+  schemaStarter: (run: string): Promise<{ body: string }> =>
+    fetch(`/api/runs/${run}/schema/starter`).then(json),
   startFromFixtures: (folder = "run1") =>
     fetch("/api/runs/from-fixtures", {
       method: "POST", headers: { "content-type": "application/json" },
@@ -78,6 +96,7 @@ export const api = {
 
 /** Plain language, because the reader is an implementation consultant, not an engineer. */
 export const PHRASE: Record<string, string> = {
+  awaiting_schema: "Waiting for a target schema",
   awaiting_review: "Needs your decision",
   ready_to_send: "Ready to send",
   partially_delivered: "Partly sent",

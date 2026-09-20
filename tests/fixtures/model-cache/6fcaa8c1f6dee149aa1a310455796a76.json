@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "doj",
+    "votes": [
+      {
+        "target_field": "date_of_joining",
+        "vote": 1.0,
+        "reason": "Column name 'doj' commonly stands for Date of Joining and values are dates in YYYY-MM-DD format"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 742,
+    "input_tokens": 1453,
+    "output_tokens": 130,
+    "cached": false
+  }
+}

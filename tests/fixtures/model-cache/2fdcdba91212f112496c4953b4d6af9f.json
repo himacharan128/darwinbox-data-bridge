@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "supervisor_ref",
+    "votes": [
+      {
+        "target_field": "manager_id",
+        "vote": 1.0,
+        "reason": "Column name 'supervisor_ref' directly maps to manager reference and values look like employee IDs"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1048,
+    "input_tokens": 1339,
+    "output_tokens": 237,
+    "cached": false
+  }
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, PHRASE, type Case, type RunState, type SchemaState } from "./api";
+import Wizard from "./Wizard";
 
 const say = (k: string) => PHRASE[k] ?? k.replace(/_/g, " ").toLowerCase();
 
@@ -525,13 +526,12 @@ export default function App() {
     history.replaceState(null, "", `?run=${id}`);
   };
 
-  const start = async () => {
-    setBusy(true);
-    try {
-      const { run_id } = await api.startFromFixtures("run1");
-      open(run_id);
-      loadRuns();
-    } finally { setBusy(false); }
+  const [wizard, setWizard] = useState(false);
+
+  const startWizard = () => {
+    setWizard(true);
+    setRunId(null);
+    history.replaceState(null, "", location.pathname);
   };
 
   const act = async (fn: () => Promise<unknown>) => {
@@ -570,18 +570,34 @@ export default function App() {
             </button>
           ))}
         </div>
-        <button className="primary" onClick={() => void start()} disabled={busy}>
+        <button className="primary" onClick={startWizard} disabled={busy}>
           New migration
         </button>
       </header>
 
       {error && <div className="panel" style={{ color: "var(--bad)" }} role="alert">{error}</div>}
 
-      {!runId && (
+      {wizard && (
+        <Wizard resume={runId} onReady={(id) => { setWizard(false); open(id); loadRuns(); }} />
+      )}
+
+      {!wizard && !runId && (
         <div className="panel empty">
           <p style={{ fontSize: 17 }}>Start a migration to see the agent work.</p>
-          <p>It reads the client's exports, maps them to the target schema, cleans what it
-             safely can, and asks you only about what it genuinely cannot settle.</p>
+          <p>Upload the client's exports, agree a target schema, and the agent maps and
+             cleans what it safely can — asking only about what it genuinely cannot settle.</p>
+          <button className="primary" onClick={startWizard} style={{ marginTop: 12 }}>
+            Start a migration
+          </button>
+        </div>
+      )}
+
+      {state?.status === "awaiting_schema" && !wizard && (
+        <div className="panel empty">
+          <p style={{ fontSize: 17 }}>This run is waiting for a target schema.</p>
+          <p>Nothing is mapped or sent until one is approved.</p>
+          <button className="primary" style={{ marginTop: 12 }}
+                  onClick={() => setWizard(true)}>Choose a schema</button>
         </div>
       )}
 
@@ -589,7 +605,8 @@ export default function App() {
         <Working p={state.progress} />
       )}
 
-      {state && counts && state.status !== "processing" && (
+      {state && counts && !wizard
+        && state.status !== "processing" && state.status !== "awaiting_schema" && (
         <>
           <div className="stats">
             <Stat n={counts.records} label="employees found" />

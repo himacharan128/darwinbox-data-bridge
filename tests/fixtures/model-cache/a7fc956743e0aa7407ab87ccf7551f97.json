@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Emp ID",
+    "votes": [
+      {
+        "target_field": "employee_id",
+        "vote": 1.0,
+        "reason": "Column name 'Emp ID' and unique alphanumeric values like 'EMP-00040' indicate employee identifier"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 974,
+    "input_tokens": 1282,
+    "output_tokens": 122,
+    "cached": false
+  }
+}

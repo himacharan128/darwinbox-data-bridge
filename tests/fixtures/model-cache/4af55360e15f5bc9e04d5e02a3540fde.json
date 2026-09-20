@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "contact",
+    "votes": [
+      {
+        "target_field": "email",
+        "vote": 0.6,
+        "reason": "Column name 'contact' and sample values include email addresses, and type detection shows 50% email parse rate"
+      },
+      {
+        "target_field": "mobile_phone",
+        "vote": 0.6,
+        "reason": "Column also contains phone numbers (+91 ...), and type detection shows 50% phone parse rate"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1024,
+    "input_tokens": 1553,
+    "output_tokens": 198,
+    "cached": false
+  }
+}

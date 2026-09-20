@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "staff_code",
+    "votes": [
+      {
+        "target_field": "employee_id",
+        "vote": 1.0,
+        "reason": "Column name staff_code and values like EMP-00001 match unique employee identifiers"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 533,
+    "input_tokens": 1338,
+    "output_tokens": 123,
+    "cached": false
+  }
+}

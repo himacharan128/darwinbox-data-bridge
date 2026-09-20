@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "div_code",
+    "votes": [
+      {
+        "target_field": "department_code",
+        "vote": 1.0,
+        "reason": "Column name 'div_code' and sample values like 'ENG', 'SALES', 'HR' match department enum codes"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 848,
+    "input_tokens": 1353,
+    "output_tokens": 178,
+    "cached": false
+  }
+}

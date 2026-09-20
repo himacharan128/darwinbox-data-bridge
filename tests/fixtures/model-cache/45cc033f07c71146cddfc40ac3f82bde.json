@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "internal_notes",
+    "votes": [
+      {
+        "target_field": "remarks",
+        "vote": 1.0,
+        "reason": "Column contains free-form textual notes about employee status, matching the remarks field"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 932,
+    "input_tokens": 1349,
+    "output_tokens": 142,
+    "cached": false
+  }
+}

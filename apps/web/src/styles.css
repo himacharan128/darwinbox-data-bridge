@@ -145,3 +145,43 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+
+/* --------------------------------------------------------------- wizard --- */
+
+.steps {
+  display: flex; gap: 8px; list-style: none; padding: 0; margin: 0 0 18px;
+  flex-wrap: wrap; font-size: 13px;
+}
+.steps li {
+  padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--dim);
+}
+.steps li[aria-current="step"] {
+  color: var(--ink); border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
+}
+.steps li.done { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 40%, transparent); }
+.steps li.done::before { content: "✓ "; }
+
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 40px 20px; border: 2px dashed var(--line); border-radius: var(--radius);
+  background: var(--panel-2); cursor: pointer; text-align: center; transition: .15s;
+}
+.dropzone:hover, .dropzone.over { border-color: var(--accent); }
+.dropzone strong { font-size: 16px; }
+
+.samples { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.sample, .choice {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  text-align: left; padding: 14px; height: auto; min-height: 0;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.sample b, .choice b { font-size: 15px; }
+.choices { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.choice { padding: 18px; }
+.choice.primary-choice { border-color: var(--accent); }
+
+.app[data-layout="mobile"] .samples,
+.app[data-layout="mobile"] .choices { grid-template-columns: 1fr; }

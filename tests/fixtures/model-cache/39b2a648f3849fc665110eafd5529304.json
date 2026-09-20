@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "created_by",
+    "votes": [
+      {
+        "target_field": "created_by",
+        "vote": 1.0,
+        "reason": "Column name and values (e.g., 'svc_etl') clearly indicate the ETL user that created the record"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 722,
+    "input_tokens": 1225,
+    "output_tokens": 124,
+    "cached": false
+  }
+}

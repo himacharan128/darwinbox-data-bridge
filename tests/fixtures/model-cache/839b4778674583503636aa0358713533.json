@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "legacy_sys_id",
+    "votes": [
+      {
+        "target_field": "employee_id",
+        "vote": 1.0,
+        "reason": "Column name and values like 'LEG-88120' are unique identifiers matching employee_id pattern"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 725,
+    "input_tokens": 1339,
+    "output_tokens": 137,
+    "cached": false
+  }
+}

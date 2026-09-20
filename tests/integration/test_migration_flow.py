@@ -60,6 +60,17 @@ def stack(tmp_path, monkeypatch):
         thread.join(timeout=5)
 
 
+def start_run(client, folder: str = "run1", schema: str | None = None) -> str:
+    """Upload files and approve a schema — the two steps before anything is processed."""
+    run_id = client.post(
+        "/api/runs/from-fixtures", json={"folder": folder}
+    ).json()["run_id"]
+    body = schema or (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
+    version = client.post(f"/api/runs/{run_id}/schema", json={"body": body}).json()["version"]
+    client.post(f"/api/runs/{run_id}/schema/{version}/approve")
+    return run_id
+
+
 def _answer(client, run, needle, value, action="correct"):
     state = client.get(f"/api/runs/{run}?wait=true").json()
     case = next((c for c in state["cases"] if needle in c["headline"]), None)
@@ -73,7 +84,7 @@ def _answer(client, run, needle, value, action="correct"):
 @pytest.fixture
 def run(stack):
     client, _ = stack
-    return client, client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    return client, start_run(client)
 
 
 def test_agent_processes_without_asking_about_everything(run):

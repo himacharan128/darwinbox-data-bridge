@@ -14,7 +14,14 @@ from typing import Annotated, Any
 import yaml
 from dbx_agent import build_provider, recommend_schema
 from dbx_contracts import Action, Actor, MigrationSchema
-from dbx_extraction import confidence_for, crop, is_sidecar, read
+from dbx_extraction import (
+    UnsupportedInput,
+    confidence_for,
+    crop,
+    is_sidecar,
+    read,
+    sniff,
+)
 from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
@@ -89,9 +96,11 @@ def health() -> dict[str, Any]:
 async def create_run(
     files: Annotated[list[UploadFile], File()],
     label: Annotated[str | None, Form()] = None,
-) -> dict[str, str]:
-    schema = MigrationSchema.model_validate(yaml.safe_load(DEFAULT_SCHEMA.read_text()))
-    run_id = store.create_run(schema.model_dump_json(), [], label)
+) -> dict[str, Any]:
+    # A run starts with files and no schema. Processing cannot begin until a human
+    # has supplied or approved one — mapping against a schema nobody agreed to would
+    # make every downstream decision unaccountable.
+    run_id = store.create_run("", [], label)
 
     folder = UPLOADS / run_id
     folder.mkdir(parents=True, exist_ok=True)
@@ -103,28 +112,75 @@ async def create_run(
         saved.append(str(target))
 
     with store.connect() as conn:
-        conn.execute("UPDATE runs SET files_json = ? WHERE id = ?",
-                     (json.dumps(saved), run_id))
+        conn.execute("UPDATE runs SET files_json = ?, status = 'awaiting_schema'"
+                     " WHERE id = ?", (json.dumps(saved), run_id))
+    store.append_audit(run_id, [{
+        "actor": Actor.HUMAN.value, "action": "run.created",
+        "summary": f"Uploaded {len(saved)} file(s)", "at": now(),
+    }])
+    return {"run_id": run_id, "files": len(saved), "status": "awaiting_schema"}
 
-    destination.register_schema(_schema_for_destination(schema))
-    jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
-    return {"run_id": run_id}
+
+SAMPLE_BLURB = {
+    "01-clean": "Four employees, correct formats. Nothing should need your attention.",
+    "02-messy": "Seven files in five naming conventions, including a scanned page. The real one.",
+    "03-conflicts": "The same people in two systems that disagree, plus a namesake.",
+    "04-edge-cases": "Empty, malformed, disguised and oversized input. Should not crash.",
+    "05-adversarial": "A prompt injection, a SQL fragment, and a file of pure noise.",
+}
+
+
+@app.get("/api/samples")
+def list_samples() -> list[dict[str, Any]]:
+    """Sample sets bundled with the app, so a reviewer needs no files of their own."""
+    root = Path("samples")
+    if not root.is_dir():
+        return []
+    out = []
+    for folder in sorted(root.iterdir()):
+        if not folder.is_dir():
+            continue
+        usable = [
+            f for f in folder.iterdir()
+            if f.is_file() and not is_sidecar(f) and f.suffix.lower() in
+            (".csv", ".xlsx", ".json", ".yaml", ".yml", ".pdf")
+        ]
+        out.append({
+            "name": folder.name,
+            "files": len(usable),
+            "description": SAMPLE_BLURB.get(folder.name, ""),
+        })
+    return out
+
+
+@app.post("/api/runs/from-sample")
+def create_run_from_sample(name: Annotated[str, Body(embed=True)]) -> dict[str, Any]:
+    source = Path("samples") / name
+    if not source.is_dir():
+        raise HTTPException(404, f"no sample set named {name!r}")
+    return _stage_run(source, label=f"sample/{name}")
 
 
 @app.post("/api/runs/from-fixtures")
 def create_run_from_fixtures(
     folder: Annotated[str, Body(embed=True)] = "run1",
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Start a run from the bundled fixtures, so the demo needs no file picker."""
     source = Path("tests/fixtures") / folder
     if not source.is_dir():
         raise HTTPException(404, f"no fixture folder named {folder!r}")
-    schema = MigrationSchema.model_validate(yaml.safe_load(DEFAULT_SCHEMA.read_text()))
-    run_id = store.create_run(schema.model_dump_json(), [], f"fixtures/{folder}")
+    return _stage_run(source, label=f"fixtures/{folder}")
+
+
+def _stage_run(source: Path, *, label: str) -> dict[str, Any]:
+    """Copy a bundled folder into a new run. No schema, so nothing starts."""
+    run_id = store.create_run("", [], label)
     target = UPLOADS / run_id
     target.mkdir(parents=True, exist_ok=True)
     saved = []
     for path in sorted(source.iterdir()):
+        if not path.is_file():
+            continue
         if is_sidecar(path):
             # Copy it so OCR replays, but never offer it as employee data.
             shutil.copy(path, target / path.name)
@@ -133,11 +189,59 @@ def create_run_from_fixtures(
             shutil.copy(path, target / path.name)
             saved.append(str(target / path.name))
     with store.connect() as conn:
-        conn.execute("UPDATE runs SET files_json = ? WHERE id = ?",
-                     (json.dumps(saved), run_id))
-    destination.register_schema(_schema_for_destination(schema))
-    jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
-    return {"run_id": run_id}
+        conn.execute("UPDATE runs SET files_json = ?, status = 'awaiting_schema'"
+                     " WHERE id = ?", (json.dumps(saved), run_id))
+    store.append_audit(run_id, [{
+        "actor": Actor.HUMAN.value, "action": "run.created",
+        "summary": f"Loaded {len(saved)} file(s) from {label}", "at": now(),
+    }])
+    return {"run_id": run_id, "files": len(saved), "status": "awaiting_schema"}
+
+
+@app.get("/api/runs/{run_id}/files")
+def run_files(run_id: str) -> dict[str, Any]:
+    """What was uploaded and what was found in it, before any schema is chosen.
+
+    A consultant should see that their files were read — and which ones could not be —
+    before being asked to make decisions about them.
+    """
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(404, "no such run")
+
+    out = []
+    for raw in json.loads(run["files_json"]):
+        path = Path(raw)
+        detected = sniff(path)
+        entry: dict[str, Any] = {
+            "name": path.name,
+            "kind": detected.kind.value,
+            "supported": detected.supported,
+            "note": detected.note,
+            "rows": 0,
+            "columns": [],
+        }
+        if detected.supported:
+            try:
+                records = read(path)
+                entry["rows"] = len(records)
+                entry["columns"] = list(records[0].values) if records else []
+            except UnsupportedInput as exc:
+                entry["supported"] = False
+                entry["note"] = str(exc)
+        out.append(entry)
+    return {
+        "run_id": run_id,
+        "files": out,
+        "total_rows": sum(f["rows"] for f in out),
+        "total_columns": sum(len(f["columns"]) for f in out),
+    }
+
+
+@app.get("/api/runs/{run_id}/schema/starter")
+def schema_starter(run_id: str) -> dict[str, Any]:
+    """A worked example to edit, for someone who wants to write their own."""
+    return {"body": DEFAULT_SCHEMA.read_text()}
 
 
 class SchemaUpload(BaseModel):
@@ -176,7 +280,11 @@ def get_schema(run_id: str) -> dict[str, Any]:
     if run is None:
         raise HTTPException(404, "no such run")
     approved = store.approved_schema(run_id)
-    active = json.loads(approved["body"]) if approved else json.loads(run["schema_json"])
+    active = None
+    if approved:
+        active = json.loads(approved["body"])
+    elif run["schema_json"]:
+        active = json.loads(run["schema_json"])
     return {
         "active": active,
         "approved_version": approved["version"] if approved else None,
@@ -257,9 +365,14 @@ def approve_schema(run_id: str, version: int) -> dict[str, Any]:
         raise HTTPException(404, "no such schema version")
 
     delivered = len(store.accepted_keys(run_id))
+    first = store.approved_schema(run_id) is None
     store.approve_schema(run_id, version)
     with store.connect() as conn:
-        conn.execute("UPDATE runs SET schema_json = ? WHERE id = ?", (body, run_id))
+        conn.execute("UPDATE runs SET schema_json = ?, status = 'processing'"
+                     " WHERE id = ?", (body, run_id))
+    destination.register_schema(
+        _schema_for_destination(MigrationSchema.model_validate(json.loads(body)))
+    )
 
     store.append_audit(run_id, [{
         "actor": Actor.HUMAN.value, "action": "schema.approved",
@@ -272,7 +385,11 @@ def approve_schema(run_id: str, version: int) -> dict[str, Any]:
     }])
     jobs.invalidate(run_id)
     jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
-    return {"approved": version, "delivered_unchanged": delivered}
+    return {
+        "approved": version,
+        "started": first,
+        "delivered_unchanged": delivered,
+    }
 
 
 @app.get("/api/runs")
@@ -298,10 +415,25 @@ def _ensure_processing(run_id: str) -> Any | None:
     return None
 
 
+EMPTY_COUNTS = {"records": 0, "ready": 0, "delivered": 0, "blocked": 0,
+                "excluded": 0, "open_cases": 0}
+
+
 @app.get("/api/runs/{run_id}")
 def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, Any]:
-    if store.get_run(run_id) is None:
+    run = store.get_run(run_id)
+    if run is None:
         raise HTTPException(404, "no such run")
+
+    if store.approved_schema(run_id) is None:
+        # Nothing is mapped, cleaned or delivered until a schema is agreed.
+        return {
+            "run_id": run_id, "status": "awaiting_schema", "progress": None,
+            "counts": dict(EMPTY_COUNTS), "cases": [], "records": [], "mappings": [],
+            "activity": [{"actor": "system", "action": "awaiting_schema",
+                          "summary": "Waiting for a target schema to be approved",
+                          "reason": None, "before": None, "after": None}],
+        }
 
     result = _ensure_processing(run_id)
     if result is None and wait:

@@ -67,6 +67,17 @@ def env(tmp_path, monkeypatch):
         thread.join(timeout=5)
 
 
+def start_run(client, folder: str = "run1", schema: str | None = None) -> str:
+    """Upload files and approve a schema — the two steps before anything is processed."""
+    run_id = client.post(
+        "/api/runs/from-fixtures", json={"folder": folder}
+    ).json()["run_id"]
+    body = schema or (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
+    version = client.post(f"/api/runs/{run_id}/schema", json={"body": body}).json()["version"]
+    client.post(f"/api/runs/{run_id}/schema/{version}/approve")
+    return run_id
+
+
 def _answer(client, run, needle, value, action="correct"):
     state = client.get(f"/api/runs/{run}?wait=true").json()
     case = next((c for c in state["cases"] if needle in c["headline"]), None)
@@ -80,7 +91,7 @@ def _answer(client, run, needle, value, action="correct"):
 def test_a_restart_preserves_decisions_and_recomputes_the_same_queue(env):
     boot, _ = env
     client = boot()
-    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    run = start_run(client)
     _answer(client, run, "no column for status", "constant:ACTIVE")
     before = client.get(f"/api/runs/{run}?wait=true").json()["counts"]
 
@@ -93,7 +104,7 @@ def test_a_restart_preserves_decisions_and_recomputes_the_same_queue(env):
 def test_a_restart_mid_delivery_does_not_resend_what_landed(env):
     boot, target = env
     client = boot()
-    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    run = start_run(client)
     _answer(client, run, "no column for status", "constant:ACTIVE")
 
     first = client.post(f"/api/runs/{run}/deliver").json()
@@ -116,7 +127,7 @@ def test_an_uncertain_outcome_is_reconciled_rather_than_blindly_retried(env):
     """
     boot, target = env
     client = boot()
-    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    run = start_run(client)
     _answer(client, run, "no column for status", "constant:ACTIVE")
 
     target.post("/admin/failure-mode", json={"mode": "uncertain", "remaining": 1})
@@ -134,7 +145,7 @@ def test_an_uncertain_outcome_is_reconciled_rather_than_blindly_retried(env):
 def test_a_permanent_rejection_is_never_retried(env):
     boot, _ = env
     client = boot()
-    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    run = start_run(client)
     _answer(client, run, "no column for status", "constant:ACTIVE")
     client.post(f"/api/runs/{run}/deliver")
 
@@ -148,7 +159,7 @@ def test_a_permanent_rejection_is_never_retried(env):
 def test_retry_recovers_from_a_transient_failure_without_duplicating(env):
     boot, target = env
     client = boot()
-    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    run = start_run(client)
     _answer(client, run, "no column for status", "constant:ACTIVE")
 
     target.post("/admin/failure-mode", json={"mode": "transient", "remaining": 2})
@@ -170,7 +181,7 @@ def test_rolling_back_one_run_leaves_another_untouched(env):
     client = boot()
     runs = []
     for _ in range(2):
-        run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+        run = start_run(client)
         _answer(client, run, "no column for status", "constant:ACTIVE")
         client.post(f"/api/runs/{run}/deliver")
         runs.append(run)
@@ -189,11 +200,11 @@ def test_the_same_employee_in_two_runs_is_processed_independently(env):
     """Decision 2: runs are independent processing scopes."""
     boot, target = env
     client = boot()
-    first = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    first = start_run(client)
     _answer(client, first, "no column for status", "constant:ACTIVE")
     client.post(f"/api/runs/{first}/deliver")
 
-    second = client.post("/api/runs/from-fixtures", json={"folder": "run2"}).json()["run_id"]
+    second = start_run(client, folder="run2")
     state = client.get(f"/api/runs/{second}?wait=true").json()
     assert state["counts"]["records"] > 0, "run 2 must process on its own terms"
 

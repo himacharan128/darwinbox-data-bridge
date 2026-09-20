@@ -30,12 +30,28 @@ class Client:
         self.http = httpx.Client(base_url=base.rstrip("/"), timeout=300)
 
     def upload(self, folder: Path) -> str:
+        """Upload files only. Nothing is processed until a schema is approved."""
         files = [
             ("files", (p.name, p.read_bytes(), "application/octet-stream"))
             for p in sorted(folder.iterdir())
             if p.is_file() and not p.name.startswith(".") and not p.name.endswith(".md")
         ]
         return self.http.post("/api/runs", files=files).json()["run_id"]
+
+    def approve(self, run: str, body: str | None = None) -> int:
+        schema = body or (
+            ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml"
+        ).read_text()
+        version = self.http.post(
+            f"/api/runs/{run}/schema", json={"body": schema}
+        ).json()["version"]
+        self.http.post(f"/api/runs/{run}/schema/{version}/approve")
+        return version
+
+    def start(self, folder: Path) -> str:
+        run = self.upload(folder)
+        self.approve(run)
+        return run
 
     def state(self, run: str) -> dict:
         return self.http.get(f"/api/runs/{run}", params={"wait": "true"}).json()
@@ -62,8 +78,23 @@ def main() -> int:
     check("destination is reachable from the api", health.get("destination_reachable") is True)
     check("console html is served", "<div id=\"root\">" in c.http.get("/").text)
 
-    print("\n[2] happy path — clean data must not escalate")
+    print("\n[2] nothing runs until a schema is agreed")
     run = c.upload(SAMPLES / "01-clean")
+    waiting = c.state(run)
+    check("uploading alone processes nothing", waiting["status"] == "awaiting_schema",
+          waiting["status"])
+    check("and produces no records", waiting["counts"]["records"] == 0)
+    files = c.http.get(f"/api/runs/{run}/files").json()
+    check("but the files are reported back", files["total_rows"] > 0,
+          f"{len(files['files'])} files, {files['total_rows']} rows")
+    proposal = c.http.post(f"/api/runs/{run}/schema/recommend").json()
+    check("the agent can propose a schema", len(proposal["schema"]["fields"]) >= 8,
+          f"{len(proposal['schema']['fields'])} fields")
+    check("a proposal is not an approval",
+          c.state(run)["status"] == "awaiting_schema")
+    c.approve(run)
+
+    print("\n[2b] happy path — clean data must not escalate")
     s = c.state(run)
     check("all four employees found", s["counts"]["records"] == 4, str(s["counts"]))
     check("nothing escalated", s["counts"]["open_cases"] == 0)
@@ -88,7 +119,7 @@ def main() -> int:
     check("source records survive rollback", c.state(run)["counts"]["records"] == 4)
 
     print("\n[4] messy data — the boundary")
-    run = c.upload(SAMPLES / "02-messy")
+    run = c.start(SAMPLES / "02-messy")
     s = c.state(run)
     auto = [m for m in s["mappings"] if m["decision"] == "auto_apply"]
     check("reconciled across seven files", s["counts"]["records"] >= 35, str(s["counts"]["records"]))
@@ -119,7 +150,7 @@ def main() -> int:
     check("unknown case is 404", bad_case.status_code == 404)
 
     print("\n[7] edge cases must not crash it")
-    run = c.upload(SAMPLES / "04-edge-cases")
+    run = c.start(SAMPLES / "04-edge-cases")
     s = c.state(run)
     check("survives empty, malformed and disguised files", s["counts"]["records"] > 0,
           str(s["counts"]))
@@ -130,7 +161,7 @@ def main() -> int:
           any("date" in (x["field"] or "") for x in s["cases"]))
 
     print("\n[8] hostile input")
-    run = c.upload(SAMPLES / "05-adversarial")
+    run = c.start(SAMPLES / "05-adversarial")
     s = c.state(run)
     noise = [m for m in s["mappings"]
              if m["file"] == "noise_only.csv" and m["decision"] == "auto_apply"]

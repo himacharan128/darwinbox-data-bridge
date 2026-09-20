@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strSourceSystem",
+    "votes": [
+      {
+        "target_field": "source_system",
+        "vote": 1.0,
+        "reason": "Column name strSourceSystem and values like LEGACY_HRMS clearly identify the originating source system"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 662,
+    "input_tokens": 1230,
+    "output_tokens": 125,
+    "cached": false
+  }
+}

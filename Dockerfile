@@ -35,6 +35,7 @@ COPY packages packages
 COPY services services
 COPY scripts scripts
 COPY tests/fixtures tests/fixtures
+COPY samples samples
 COPY --from=web /build/apps/web/dist apps/web/dist
 RUN uv sync --frozen --no-dev
 

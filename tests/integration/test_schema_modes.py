@@ -65,9 +65,7 @@ def client(tmp_path, monkeypatch):
 
 @pytest.fixture
 def run(client):
-    rid = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
-    client.get(f"/api/runs/{rid}?wait=true")
-    return rid
+    return client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
 
 
 def test_mode_a_accepts_yaml_and_json_into_one_representation(client, run):
@@ -122,12 +120,43 @@ def test_approving_supersedes_the_previous_version(client, run):
     assert states[second.json()["version"]] == "approved"
 
 
+def test_nothing_is_processed_until_a_schema_is_approved(client, run):
+    """The gate. A migration against a schema nobody agreed to is unaccountable."""
+    state = client.get(f"/api/runs/{run}?wait=true").json()
+    assert state["status"] == "awaiting_schema"
+    assert state["counts"]["records"] == 0
+    assert state["cases"] == []
+
+    # A proposal is not an approval.
+    proposal = client.post(f"/api/runs/{run}/schema/recommend").json()
+    assert client.get(f"/api/runs/{run}").json()["status"] == "awaiting_schema"
+
+    result = client.post(f"/api/runs/{run}/schema/{proposal['version']}/approve").json()
+    assert result["started"] is True
+    after = client.get(f"/api/runs/{run}?wait=true").json()
+    assert after["status"] != "awaiting_schema"
+    assert after["counts"]["records"] > 0
+
+
+def test_uploaded_files_are_reported_before_any_schema_is_chosen(client, run):
+    """A consultant should see their files were read before making decisions."""
+    files = client.get(f"/api/runs/{run}/files").json()
+    assert files["total_rows"] > 0
+    assert files["total_columns"] > 50
+    assert all("name" in f and "kind" in f for f in files["files"])
+    assert any(f["kind"] == "pdf" for f in files["files"])
+
+
 def test_delivered_records_keep_the_version_they_were_sent_under(client, run):
     """The property that makes the audit trail truthful.
 
     A payload was shaped by a particular schema. Editing that schema afterwards must
     not make the history describe something that was never sent.
     """
+    version = client.post(
+        f"/api/runs/{run}/schema", json={"body": SCHEMA_YAML.read_text()}
+    ).json()["version"]
+    client.post(f"/api/runs/{run}/schema/{version}/approve")
     state = client.get(f"/api/runs/{run}?wait=true").json()
     case = next(c for c in state["cases"] if "no column for status" in c["headline"])
     client.post(

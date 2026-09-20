@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strDesignation",
+    "votes": [
+      {
+        "target_field": "job_title",
+        "vote": 1.0,
+        "reason": "Column name strDesignation and sample values like 'Senior Engineer' are typical job titles"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 569,
+    "input_tokens": 1347,
+    "output_tokens": 126,
+    "cached": false
+  }
+}

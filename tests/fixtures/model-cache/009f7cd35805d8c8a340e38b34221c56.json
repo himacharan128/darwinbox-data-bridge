@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Employment Type",
+    "votes": [
+      {
+        "target_field": "employment_type",
+        "vote": 1.0,
+        "reason": "Column name matches and values like 'Full Time', 'Intern' correspond to employment type enum"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 670,
+    "input_tokens": 1341,
+    "output_tokens": 123,
+    "cached": false
+  }
+}

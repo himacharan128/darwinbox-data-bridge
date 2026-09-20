@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "source_column": "strBankAcctNo",
+    "votes": []
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 634,
+    "input_tokens": 1304,
+    "output_tokens": 84,
+    "cached": false
+  }
+}
