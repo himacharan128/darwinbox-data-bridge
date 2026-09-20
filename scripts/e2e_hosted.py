@@ -96,27 +96,33 @@ def main() -> int:
 
     print("\n[2b] happy path — clean data must not escalate")
     s = c.state(run)
-    check("all four employees found", s["counts"]["records"] == 4, str(s["counts"]))
+    check("every employee found", s["counts"]["records"] >= 20, str(s["counts"]["records"]))
     check("nothing escalated", s["counts"]["open_cases"] == 0)
-    check("everything ready to send", s["counts"]["ready"] == 4)
-    check("status reflects that", s["status"] == "ready_to_send", s["status"])
+    check("rows read is reported beside them", s["counts"]["rows_read"] >= s["counts"]["records"])
 
-    print("\n[3] delivery, idempotency, rollback")
-    sent = c.http.post(f"/api/runs/{run}/deliver").json()
-    check("all four accepted", sent["sent"]["accepted"] == 4, str(sent["sent"]))
+    print("\n[3] delivery happens on its own, and can be undone")
+    check("everything was sent with no button pressed",
+          s["counts"]["delivered"] == s["counts"]["records"], str(s["counts"]["delivered"]))
     dest = c.http.get(f"/api/runs/{run}/destination").json()
-    check("destination actually holds them", len(dest["records"]) == 4)
+    check("destination actually holds them",
+          len(dest["records"]) == s["counts"]["delivered"])
     again = c.http.post(f"/api/runs/{run}/deliver").json()
     check("re-sending sends nothing", sum(again["sent"].values()) == 0, str(again["sent"]))
     rb = c.http.post(f"/api/runs/{run}/rollback").json()
-    check("rollback reports honestly", rb["succeeded"] == rb["attempted"] == 4 and not rb["partial"])
+    check("rollback reports honestly",
+          rb["succeeded"] == rb["attempted"] > 0 and not rb["partial"])
+    paused = c.state(run)
+    check("and pauses sending, so the undo sticks",
+          paused.get("delivery_paused") is True and paused["counts"]["delivered"] == 0)
     after = c.http.get(f"/api/runs/{run}/destination").json()["records"]
     # The destination view deliberately keeps tombstones so the UI can show what was
     # undone; what must be zero is the records still counted as accepted.
     check("nothing is accepted at the destination any more",
           sum(1 for r in after if r["state"] == "accepted") == 0,
           f"{len(after)} rows, states: {sorted({r['state'] for r in after})}")
-    check("source records survive rollback", c.state(run)["counts"]["records"] == 4)
+    check("source records survive rollback", c.state(run)["counts"]["records"] >= 20)
+    resumed = c.http.post(f"/api/runs/{run}/deliver").json()
+    check("resuming sends them again", sum(resumed["sent"].values()) > 0)
 
     print("\n[4] messy data — the boundary")
     run = c.start(SAMPLES / "02-messy")
@@ -128,12 +134,15 @@ def main() -> int:
     classes = {x["class"] for x in s["cases"]}
     check("several escalation kinds, not one", len(classes) >= 6, ", ".join(sorted(classes)))
 
-    print("\n[5] one answer releases many records")
-    before = c.state(run)["counts"]["ready"]
+    print("\n[5] one answer releases many records, which then send themselves")
+    before = c.state(run)["counts"]["delivered"]
     c.answer(run, "no column for status", "constant:ACTIVE")
-    after_ready = c.state(run)["counts"]["ready"]
-    check("a field-level answer unblocks in bulk", after_ready - before >= 10,
-          f"{before} -> {after_ready}")
+    state = c.state(run)
+    check("a field-level answer unblocks in bulk",
+          state["counts"]["delivered"] - before >= 8,
+          f"{before} -> {state['counts']['delivered']} delivered")
+    check("records waiting on a neighbour ride on its case",
+          any(x["children"] for x in state["cases"]))
 
     print("\n[6] negative — bad input is refused, not half-accepted")
     bad = c.http.post(f"/api/runs/{run}/schema", json={"body": "fields: [{{{"})

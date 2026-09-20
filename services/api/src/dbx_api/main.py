@@ -474,6 +474,7 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
     accepted = store.accepted_keys(run_id)
     decided = {d["case_key"] for d in store.decisions(run_id)}
 
+    children = {rid for c in result.cases for rid in c.child_records}
     records = []
     for record in result.records:
         key = record.natural_key or record.id
@@ -484,10 +485,9 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
             "sources": [r.label() for r in record.contributing],
             "issues": [i.message for i in record.validation.errors],
             "cases": record.open_cases,
-            "waiting_on_another": bool(record.open_cases) and not any(
-                c.record_key == (record.natural_key or record.id)
-                for c in result.cases if c.id in record.open_cases
-            ),
+            # Only records genuinely riding on a neighbour's case, not everything
+            # held by a file-level question.
+            "waiting_on_another": record.id in children,
             "provenance": {
                 name: {
                     "raw": p.raw_value, "value": str(p.value),

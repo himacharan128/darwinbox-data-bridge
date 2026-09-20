@@ -161,6 +161,14 @@ resolvable:
 `UNRESOLVED_REFERENCE` · `LOW_CONFIDENCE_EXTRACTION` · `CROSS_RUN_COLLISION` ·
 `DELIVERY_PERMANENT_FAILURE`
 
+`DELIVERY_PERMANENT_FAILURE` is shown apart from the rest, under **Failures**: the
+receiver refusing is not the agent asking, and it calls for a different action.
+
+A record blocked only because its manager or department points at a *blocked* record
+has nothing of its own to decide — the neighbour is the decision. It becomes a
+**child** of that case rather than a queue entry nobody can act on, counts toward
+"needs review" from the first screen, and is revalidated when the parent is answered.
+
 `LOW_CONFIDENCE_EXTRACTION` is deliberately **two-sided**: low OCR confidence alone is
 not enough (OCR is routinely unsure about text it got right) and a bad value alone is
 not enough (the file may contain one). Both together say the problem is in the reading —
@@ -190,6 +198,12 @@ editing it afterwards would make the history describe something never sent.
 The destination is a **real service reached over HTTP**, with its own database and no
 write path from the migration. A destination you can reach around is not one you have
 integrated with.
+
+Delivery **follows readiness**: a record that passes validation with nothing open
+against it goes on its own, as part of processing. A click before the fact only
+delayed work already judged safe. Rollback is the undo, and it **pauses** automatic
+sending — otherwise the next pass would resend immediately and the undo would mean
+nothing.
 
 **Three failure classes, three responses:**
 

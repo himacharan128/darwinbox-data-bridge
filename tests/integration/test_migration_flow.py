@@ -181,3 +181,67 @@ def test_destination_records_every_attempt_including_failures(stack, run):
     outcomes = {a["outcome"] for a in attempts}
     assert "transient_failed" in outcomes, "a failed attempt must be recorded, not hidden"
     assert "accepted" in outcomes, "and the retry must be recorded as succeeding"
+
+
+def test_a_record_is_not_sent_before_the_record_it_points_at(run):
+    """Delivery order, not validation.
+
+    A manager reference to a record that exists but is blocked passes validation — the
+    record is there. Sending the report first would still leave a reference the
+    destination cannot resolve.
+    """
+    client, rid = run
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+
+    waiting = [r for r in state["records"] if r.get("waiting_on_another")]
+    assert waiting, "at least one record should be held behind its manager"
+
+    delivered = {r["key"] for r in state["records"] if r["state"] == "delivered"}
+    by_key = {r["key"]: r for r in state["records"]}
+    for record in waiting:
+        assert record["key"] not in delivered
+        manager = record["values"].get("manager_employee_id")
+        if manager and manager in by_key:
+            assert by_key[manager]["state"] != "delivered", (
+                "a record is only held when the one it points at is not there yet"
+            )
+
+
+def test_a_held_record_rides_on_its_neighbours_case(run):
+    """It has nothing of its own to decide, so it must not become its own question."""
+    client, rid = run
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+
+    carrying = [c for c in state["cases"] if c["children"]]
+    assert carrying, "the blocking case should carry its dependents"
+
+    waiting = {r["key"] for r in state["records"] if r.get("waiting_on_another")}
+    own_cases = {c["record"] for c in state["cases"] if c["record"]}
+    assert not (waiting & own_cases), "a dependent must not also raise its own case"
+
+    for case in carrying:
+        assert case["blocks"] >= case["children"] + 1, (
+            "the effect shown to a reviewer includes what rides along"
+        )
+
+
+def test_resolving_the_parent_releases_what_was_riding_on_it(run):
+    """Answering one question sends the record and everything held behind it."""
+    client, rid = run
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    before = client.get(f"/api/runs/{rid}?wait=true").json()
+    held = {r["key"] for r in before["records"] if r.get("waiting_on_another")}
+    assert held
+
+    parent = next(c for c in before["cases"] if c["children"])
+    client.post(f"/api/runs/{rid}/cases/{parent['key']}/decide",
+                json={"action": "correct", "value": "FULL_TIME"})
+
+    after = client.get(f"/api/runs/{rid}?wait=true").json()
+    assert after["counts"]["delivered"] > before["counts"]["delivered"], (
+        "the parent and its dependents should go together"
+    )
+    still_held = {r["key"] for r in after["records"] if r.get("waiting_on_another")}
+    assert still_held < held or not still_held

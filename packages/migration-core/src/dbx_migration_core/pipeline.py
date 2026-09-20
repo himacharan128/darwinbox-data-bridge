@@ -648,13 +648,6 @@ class Pipeline:
 
         # A record is troubled if it has a problem of its own, or is already held by a
         # case raised earlier (an unclean value, an uncertain identity).
-        troubled = {
-            r.id for r in records if not findings[r.id].ok or r.open_cases
-        }
-        by_key = {
-            str(r.values.get(identity)): r for r in records if r.values.get(identity)
-        }
-
         for record in records:
             result = findings[record.id]
             if result.ok:
@@ -663,10 +656,6 @@ class Pipeline:
             # One bounded correction cycle, then stop. Repeating an identical failed
             # check is not a second attempt, it is a loop.
             record.validation_attempts = MAX_VALIDATION_ATTEMPTS
-
-            if self._adopt_as_child(record, result, by_key, troubled, identity):
-                record.state = RecordState.BLOCKED
-                continue
 
             for issue in result.errors:
                 if issue.rule == "required" and issue.target_field:
@@ -714,49 +703,6 @@ class Pipeline:
                 record.open_cases.append(case.id)
             record.state = RecordState.BLOCKED
 
-    def _adopt_as_child(
-        self,
-        record: CanonicalRecord,
-        result: ValidationResult,
-        by_key: dict[str, CanonicalRecord],
-        troubled: set[str],
-        identity: str,
-    ) -> bool:
-        """Hang a record off its neighbour's case when it has nothing of its own.
-
-        A report whose manager is blocked has no decision to offer — the manager is the
-        decision. Raising a case for it produces a queue entry nobody can act on, and
-        two answers where one will do. It still counts as needing review, so it is
-        visible from the first screen rather than appearing once the parent clears.
-        """
-        parents: set[str] = set()
-        for issue in result.errors:
-            if issue.rule != "reference:missing" or not issue.value:
-                return False
-            neighbour = by_key.get(issue.value)
-            if neighbour is None or neighbour.id not in troubled:
-                return False
-            parents.update(neighbour.open_cases)
-        if not parents:
-            return False
-
-        for case_id in parents:
-            case = next((c for c in self.result.cases if c.id == case_id), None)
-            if case is None:
-                continue
-            if record.id not in case.child_records:
-                case.child_records.append(record.id)
-            if case_id not in record.open_cases:
-                record.open_cases.append(case_id)
-        self._log(
-            "record.waiting_on_another",
-            f"{record.values.get(identity, record.id)} is waiting on "
-            f"{', '.join(sorted(parents))}",
-            record_id=record.id,
-            reason="its reference points at a record that is itself unresolved",
-        )
-        return bool(record.open_cases)
-
     def _attach(self, record: CanonicalRecord, case_id: str) -> None:
         """Block a record on an existing case rather than raising a duplicate."""
         case = next((c for c in self.result.cases if c.id == case_id), None)
@@ -766,6 +712,67 @@ class Pipeline:
             case.blocks_records.append(record.id)
         if case_id not in record.open_cases:
             record.open_cases.append(case_id)
+
+    def _hold_dependents(self) -> None:
+        """Hold a record whose reference points at one that is not going anywhere.
+
+        A manager reference to a record that exists but is blocked passes validation —
+        the record is there. It is delivery that cannot proceed: sending the report
+        before the manager leaves a reference dangling at the destination.
+
+        Such a record has nothing of its own to decide, so it rides along on whatever is
+        holding the record it depends on, rather than becoming a question nobody can
+        answer. Chains are followed until nothing changes.
+        """
+        identity = self._identity_field()
+        by_key = {
+            str(r.values.get(identity)): r
+            for r in self.result.records if r.values.get(identity)
+        }
+        self_refs = [
+            f for f in self.schema.fields
+            if (ref := f.reference_target) and ref[0] == self.schema.entity
+        ]
+        if not self_refs:
+            return
+
+        for _ in range(len(self.result.records)):
+            changed = False
+            for record in self.result.records:
+                if record.state is not RecordState.READY:
+                    continue
+                for spec in self_refs:
+                    value = record.values.get(spec.name)
+                    other = by_key.get(str(value)) if value else None
+                    if other is None or other.id == record.id:
+                        continue
+                    if other.state is RecordState.READY:
+                        continue
+                    for case_id in other.open_cases:
+                        case = next(
+                            (c for c in self.result.cases if c.id == case_id), None
+                        )
+                        if case and record.id not in case.child_records:
+                            case.child_records.append(record.id)
+                        if case_id not in record.open_cases:
+                            record.open_cases.append(case_id)
+                    if record.open_cases:
+                        record.state = RecordState.BLOCKED
+                        changed = True
+                        self._log(
+                            "record.waiting_on_another",
+                            f"{record.values.get(identity, record.id)} is waiting for "
+                            f"{value} to be resolved first",
+                            record_id=record.id,
+                            target_field=spec.name,
+                            reason=(
+                                "sending it now would leave a reference to a record "
+                                "the destination does not have"
+                            ),
+                        )
+                    break
+            if not changed:
+                break
 
     def _finalise(self) -> None:
         for record in self.result.records:
@@ -778,6 +785,7 @@ class Pipeline:
                 record.state = RecordState.BLOCKED
             else:
                 record.state = RecordState.READY
+        self._hold_dependents()
         ready = len(self.result.ready)
         self._log(
             "run.processed",
