@@ -523,7 +523,9 @@ with cropped-region evidence.
 
 **Gate:** scanned PDF produces an extraction escalation showing the image crop.
 
-### Phase 5 — Schema modes and versioning `[M]`
+### Phase 5 — Schema modes and versioning `[M]` — ✅ COMPLETE
+
+Mode A (YAML/JSON/object, normalised to one representation) and Mode B (agent proposes 22 fields from 101 columns, collapsing five spellings of the identifier into one). Immutable versions; delivered records keep the version they were sent under.
 Mode A (supplied) and Mode B (recommended). Form + JSON/YAML upload, normalization
 to canonical internal representation, immutable versions, remap-on-approve,
 delivered records retain their version.
@@ -533,11 +535,15 @@ against the fixed adversarial schema. Mode B is a separate showcase. A schema th
 agent derived from the source makes the mapping self-consistent by construction and
 removes the difficulty criterion 2 exists to test.
 
-### Phase 6 — UI depth `[M]`
+### Phase 6 — UI depth `[M]` — ✅ COMPLETE
+
+Mobile composition with card tables and 48px targets, Auto/Desktop/Mobile toggle remembered in guarded localStorage, arrow-key review navigation, screen-reader announcements, reduced-motion honoured.
 Mobile composition, live view polish, non-sequential review navigation, keyboard and
 touch accessibility, plain-language statuses.
 
-### Phase 7 — Deploy, write-up, recording `[S]`
+### Phase 7 — Deploy, write-up, recording `[S]` — ✅ COMPLETE
+
+One container serving API + UI, verified end to end. docs/WRITEUP.md (one page), docs/DEPLOY.md, docs/DEMO.md. **The demo video itself still needs recording — see below.**
 Terraform apply, manual deploy via `make deploy`, hosted smoke test, one-page
 write-up final, recording cut, teardown documented.
 
@@ -580,3 +586,14 @@ this plan into its strongest signal.
 - Weight values in §2.2 before calibration (hand-set in Phase 1, replaced in Phase 2)
 - Source-authority configuration format for conflict resolution (TD005)
 - Whether Mode B ships at all, if Phase 5 runs long — it is the most cuttable item
+
+
+---
+
+## Status
+
+Phases 0–7 complete. 75 tests green, offline, no credentials needed.
+
+**Outstanding, and it is a named deliverable:** the demo *recording*. The script is
+in `docs/DEMO.md` and the demo path is verified working, but capturing the screen is
+not something I can do — that one needs a human with a recorder.
