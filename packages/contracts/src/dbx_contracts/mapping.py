@@ -61,6 +61,10 @@ class Evidence(BaseModel):
     weights: dict[Signal, float] = Field(default_factory=lambda: dict(DEFAULT_WEIGHTS))
     vetoes: list[Veto] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    #: Why this matched, in sentences an operations person can read. The signal names
+    #: and their numbers are an implementation detail; nobody resolving a case should
+    #: have to know what "name_sim" is.
+    reasons: list[str] = Field(default_factory=list)
 
     @property
     def deterministic_signals(self) -> dict[Signal, float]:
@@ -107,13 +111,21 @@ class Evidence(BaseModel):
         return round(LLM_VOTE_CAP * self.signals[Signal.LLM_VOTE], 4)
 
     def explain(self) -> list[str]:
-        """Plain-language lines, strongest signal first."""
+        """Why this matched, strongest reason first, in plain sentences."""
+        if self.reasons or self.notes:
+            return [*self.reasons, *self.notes]
+        # Only reached by callers that scored without context; still no raw signal names.
+        return [f"{len(self.signals)} checks were made against the data"]
+
+    def technical(self) -> list[str]:
+        """The raw signals, for the audit trail and for debugging. Never shown first."""
         ordered = sorted(
-            self.signals.items(), key=lambda kv: self.weights.get(kv[0], 0.0) * kv[1], reverse=True
+            self.signals.items(),
+            key=lambda kv: self.weights.get(kv[0], 0.0) * kv[1],
+            reverse=True,
         )
         out = [f"{s.value}: {v:.2f}" for s, v in ordered if v > 0]
-        out.extend(f"VETO: {v.value}" for v in self.vetoes)
-        out.extend(self.notes)
+        out.extend(f"veto: {v.value}" for v in self.vetoes)
         return out
 
 

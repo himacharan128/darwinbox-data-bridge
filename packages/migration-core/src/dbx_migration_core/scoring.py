@@ -194,6 +194,7 @@ def score_pair(
         signals[Signal.LLM_VOTE] = max(0.0, min(1.0, llm_vote))
 
     evidence = Evidence(signals=signals, vetoes=vetoes_for(profile, field))
+    evidence.reasons = _reasons(profile, field, signals)
     if Veto.TYPE_INCOMPATIBLE in evidence.vetoes:
         if Signal.TYPE_FIT in signals:
             evidence.notes.append(
@@ -209,6 +210,69 @@ def score_pair(
             f"({profile.cardinality_ratio:.0%} distinct)"
         )
     return evidence
+
+
+def _reasons(
+    profile: ColumnProfile, field: FieldSpec, signals: dict[Signal, float]
+) -> list[str]:
+    """Turn the measurements into sentences.
+
+    A consultant resolving a case needs to know why the agent thinks two things go
+    together — not which weighted signal produced which decimal. Each line is a fact
+    about their data that they can check for themselves.
+    """
+    out: list[tuple[float, str]] = []
+
+    name = signals.get(Signal.NAME_SIM, 0.0)
+    if name >= 0.95:
+        out.append((name, f"The column is called almost exactly {field.name!r}"))
+    elif name >= 0.6:
+        out.append((name, f"The column name is close to {field.name!r}"))
+    elif name >= 0.3:
+        out.append((name, f"The column name is a little like {field.name!r}"))
+
+    ref = signals.get(Signal.REFERENCE_FIT)
+    if ref is not None and field.reference_target:
+        table = field.reference_target[0]
+        if ref >= 0.99:
+            out.append((ref + 1, f"Every value appears in the {table} list"))
+        elif ref > 0:
+            out.append((ref + 1, f"{ref:.0%} of values appear in the {table} list"))
+
+    fit = signals.get(Signal.TYPE_FIT)
+    if fit is not None and fit > 0:
+        what = {
+            "email": "a valid email address", "date": "a date", "datetime": "a date",
+            "integer": "a whole number", "number": "a number",
+            "boolean": "a yes or no", "enum": "one of the allowed values",
+        }.get(field.type.value, f"a valid {field.type.value}")
+        out.append((fit, ("Every value is " if fit >= 0.99 else f"{fit:.0%} of values are ") + what))
+
+    con = signals.get(Signal.CONSTRAINT_FIT)
+    if con is not None and con > 0 and field.allowed:
+        out.append((con, f"The values match the list: {', '.join(field.allowed[:4])}"))
+    elif con is not None and con > 0 and field.pattern:
+        out.append((con, "The values are in the required format"))
+
+    mask = signals.get(Signal.MASK_FIT)
+    dominant = profile.dominant_mask()
+    if mask is not None and mask > 0.5 and dominant:
+        example = profile.sample[0] if profile.sample else None
+        out.append((mask, f"The values all look alike{f', like {example!r}' if example else ''}"))
+
+    uniq = signals.get(Signal.UNIQUE_FIT)
+    if uniq is not None and field.unique:
+        if uniq >= 0.99:
+            out.append((uniq, "Every value is different, as this field requires"))
+        else:
+            out.append((uniq, f"Only {uniq:.0%} of values are different"))
+
+    vote = signals.get(Signal.LLM_VOTE)
+    if vote is not None and vote >= 0.5:
+        out.append((vote * 0.4, f"Reading the column, it looks like {field.name}"))
+
+    out.sort(key=lambda kv: -kv[0])
+    return [line for _, line in out[:4]]
 
 
 def rank_column(

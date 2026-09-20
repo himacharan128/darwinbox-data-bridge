@@ -1,12 +1,12 @@
 import { useState } from "react";
 
 /**
- * Editing a target schema without writing any.
+ * The target schema as a table you type into.
  *
- * The people who run migrations are implementation consultants, not engineers. Asking
- * them to hand-edit YAML puts a syntax error between them and their job, and a stray
- * indent reads as the tool being broken. So: a field list with plain-language controls,
- * and the raw document behind an "Advanced" toggle for anyone who wants it.
+ * The previous version repeated "Field name" and "Kind of value" above every row,
+ * which is a form pretending to be a list. A table says those things once in the
+ * header and gives the rest of the space back to the data. "More" opens the settings
+ * that most fields never need.
  */
 
 export type Field = {
@@ -26,19 +26,16 @@ export type Field = {
 
 export type Schema = { entity: string; description?: string | null; fields: Field[] };
 
-/** Plain words for things that are otherwise jargon. */
-const TYPES: { value: string; label: string; hint: string }[] = [
-  { value: "string", label: "Text", hint: "names, codes, free text" },
-  { value: "email", label: "Email address", hint: "checked for a valid address" },
-  { value: "date", label: "Date", hint: "normalised to one format" },
-  { value: "datetime", label: "Date and time", hint: "" },
-  { value: "integer", label: "Whole number", hint: "" },
-  { value: "number", label: "Decimal number", hint: "" },
-  { value: "boolean", label: "Yes / no", hint: "" },
-  { value: "enum", label: "One of a fixed list", hint: "you set the allowed values" },
+const TYPES = [
+  { value: "string", label: "Text" },
+  { value: "email", label: "Email address" },
+  { value: "date", label: "Date" },
+  { value: "datetime", label: "Date and time" },
+  { value: "integer", label: "Whole number" },
+  { value: "number", label: "Decimal number" },
+  { value: "boolean", label: "Yes / no" },
+  { value: "enum", label: "One of a fixed list" },
 ];
-
-const labelFor = (t: string) => TYPES.find((x) => x.value === t)?.label ?? t;
 
 export function blankField(n: number): Field {
   return { name: `field_${n}`, type: "string", required: false, unique: false };
@@ -46,193 +43,164 @@ export function blankField(n: number): Field {
 
 export default function SchemaEditor({
   schema, onChange, lookups,
-}: {
-  schema: Schema;
-  onChange: (s: Schema) => void;
-  lookups: string[];
-}) {
-  const [open, setOpen] = useState<string | null>(null);
+}: { schema: Schema; onChange: (s: Schema) => void; lookups: string[] }) {
+  const [open, setOpen] = useState<number | null>(null);
 
-  const patch = (i: number, change: Partial<Field>) => {
-    const fields = schema.fields.map((f, n) => (n === i ? { ...f, ...change } : f));
-    onChange({ ...schema, fields });
-  };
-  const remove = (i: number) =>
+  const patch = (i: number, change: Partial<Field>) =>
+    onChange({ ...schema, fields: schema.fields.map((f, n) => (n === i ? { ...f, ...change } : f)) });
+  const remove = (i: number) => {
     onChange({ ...schema, fields: schema.fields.filter((_, n) => n !== i) });
+    setOpen(null);
+  };
   const move = (i: number, by: number) => {
     const to = i + by;
     if (to < 0 || to >= schema.fields.length) return;
     const fields = [...schema.fields];
     [fields[i], fields[to]] = [fields[to], fields[i]];
     onChange({ ...schema, fields });
+    setOpen(null);
   };
 
   return (
-    <div className="editor">
-      <div className="field-row header-row">
-        <label>
-          <span className="lbl">Each row is one…</span>
-          <input type="text" value={schema.entity}
-                 onChange={(e) => onChange({ ...schema, entity: e.target.value })}
-                 aria-label="Entity name" placeholder="employee" />
-        </label>
-        <span className="change">
-          {schema.fields.length} field{schema.fields.length === 1 ? "" : "s"}
-        </span>
+    <>
+      <div className="tickline" style={{ marginBottom: 14, gap: 12 }}>
+        <label className="change" htmlFor="entity-name">Each row is one</label>
+        <input id="entity-name" type="text" value={schema.entity} style={{ maxWidth: 220 }}
+               onChange={(e) => onChange({ ...schema, entity: e.target.value })}
+               placeholder="employee" />
+        <span className="change">· {schema.fields.length} fields</span>
       </div>
 
-      {schema.fields.map((f, i) => {
-        const id = `${i}-${f.name}`;
-        const expanded = open === id;
-        return (
-          <div className={`field-row${expanded ? " expanded" : ""}`} key={id}>
-            <div className="field-main">
-              <label className="grow">
-                <span className="lbl">Field name</span>
-                <input type="text" value={f.name} className="mono"
-                       aria-label={`Name of field ${i + 1}`}
-                       onChange={(e) => patch(i, { name: e.target.value })} />
-              </label>
+      <div className="scroll">
+        <table className="schema-table">
+          <thead>
+            <tr>
+              <th style={{ minWidth: 190 }}>Field</th>
+              <th style={{ minWidth: 150 }}>Holds</th>
+              <th style={{ width: 90, textAlign: "center" }}>Required</th>
+              <th style={{ width: 90, textAlign: "center" }}>Unique</th>
+              <th style={{ width: 170 }} />
+            </tr>
+          </thead>
+          <tbody>
+            {schema.fields.map((f, i) => [
+              <tr key={`r${i}`}>
+                <td className="cell-input">
+                  <input type="text" value={f.name} className="mono"
+                         aria-label={`Name of field ${i + 1}`}
+                         onChange={(e) => patch(i, { name: e.target.value })} />
+                </td>
+                <td className="cell-input">
+                  <select value={f.type} aria-label={`What ${f.name} holds`}
+                          onChange={(e) => patch(i, {
+                            type: e.target.value,
+                            allowed: e.target.value === "enum" ? (f.allowed ?? []) : null,
+                          })}>
+                    {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </td>
+                <td className="tick">
+                  <input type="checkbox" checked={!!f.required}
+                         aria-label={`${f.name} must be filled in`}
+                         onChange={(e) => patch(i, { required: e.target.checked })} />
+                </td>
+                <td className="tick">
+                  <input type="checkbox" checked={!!f.unique}
+                         aria-label={`${f.name} must be unique`}
+                         onChange={(e) => patch(i, { unique: e.target.checked })} />
+                </td>
+                <td>
+                  <div className="row-actions">
+                    <button type="button" className="ghost" aria-label={`Move ${f.name} up`}
+                            onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
+                    <button type="button" className="ghost" aria-label={`Move ${f.name} down`}
+                            onClick={() => move(i, 1)}
+                            disabled={i === schema.fields.length - 1}>↓</button>
+                    <button type="button" className="ghost" aria-expanded={open === i}
+                            onClick={() => setOpen(open === i ? null : i)}>
+                      {open === i ? "Less" : "More"}
+                    </button>
+                    <button type="button" className="ghost" aria-label={`Remove ${f.name}`}
+                            style={{ color: "var(--bad)" }} onClick={() => remove(i)}>✕</button>
+                  </div>
+                </td>
+              </tr>,
+              open === i ? (
+                <tr className="detail-row" key={`d${i}`}>
+                  <td colSpan={5}>
+                    <p className="change" style={{ margin: "0 0 12px" }}>
+                      Optional. The more you fill in, the fewer questions you get asked later.
+                    </p>
+                    <div className="detail-grid">
+                      {f.type === "enum" && (
+                        <label style={{ gridColumn: "1 / -1" }}>
+                          <span className="lbl">The only values allowed</span>
+                          <input type="text" value={(f.allowed ?? []).join(", ")}
+                                 placeholder="ACTIVE, ON_LEAVE, EXITED"
+                                 aria-label={`Allowed values for ${f.name}`}
+                                 onChange={(e) => patch(i, {
+                                   allowed: e.target.value.split(",").map((v) => v.trim()).filter(Boolean),
+                                 })} />
+                        </label>
+                      )}
 
-              <label>
-                <span className="lbl">Kind of value</span>
-                <select value={f.type} aria-label={`Type of ${f.name}`}
-                        onChange={(e) => patch(i, {
-                          type: e.target.value,
-                          allowed: e.target.value === "enum" ? (f.allowed ?? []) : null,
-                        })}>
-                  {TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </label>
+                      <label>
+                        <span className="lbl">Other names for it</span>
+                        <input type="text" value={(f.aliases ?? []).join(", ")}
+                               placeholder="emp_id, staff_code"
+                               aria-label={`Other names for ${f.name}`}
+                               onChange={(e) => patch(i, {
+                                 aliases: e.target.value.split(",").map((v) => v.trim()).filter(Boolean),
+                               })} />
+                        <span className="hint">What the client's files call it.</span>
+                      </label>
 
-              <label className="tick">
-                <input type="checkbox" checked={!!f.required}
-                       onChange={(e) => patch(i, { required: e.target.checked })} />
-                <span>Must be filled in</span>
-              </label>
+                      {!!lookups.length && (
+                        <label>
+                          <span className="lbl">Must appear in</span>
+                          <select value={f.reference ?? ""}
+                                  aria-label={`List ${f.name} must appear in`}
+                                  onChange={(e) => patch(i, { reference: e.target.value || null })}>
+                            <option value="">— no list —</option>
+                            {lookups.map((l) => (
+                              <option key={l} value={`${l}.code`}>the {l} list</option>
+                            ))}
+                          </select>
+                          <span className="hint">One of your uploaded lookup files.</span>
+                        </label>
+                      )}
 
-              <label className="tick">
-                <input type="checkbox" checked={!!f.unique}
-                       onChange={(e) => patch(i, { unique: e.target.checked })} />
-                <span>Must be unique</span>
-              </label>
+                      <label>
+                        <span className="lbl">Must look like</span>
+                        <input type="text" value={f.pattern ?? ""} className="mono"
+                               placeholder="^EMP-[0-9]{5}$"
+                               aria-label={`Pattern for ${f.name}`}
+                               onChange={(e) => patch(i, { pattern: e.target.value || null })} />
+                        <span className="hint">A shape, e.g. EMP- then five digits.</span>
+                      </label>
 
-              <div className="row-actions">
-                <button type="button" className="icon" aria-label={`Move ${f.name} up`}
-                        onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
-                <button type="button" className="icon" aria-label={`Move ${f.name} down`}
-                        onClick={() => move(i, 1)}
-                        disabled={i === schema.fields.length - 1}>↓</button>
-                <button type="button" className="icon"
-                        aria-expanded={expanded}
-                        aria-label={`More options for ${f.name}`}
-                        onClick={() => setOpen(expanded ? null : id)}>
-                  {expanded ? "Less" : "More"}
-                </button>
-                <button type="button" className="icon danger"
-                        aria-label={`Remove ${f.name}`}
-                        onClick={() => remove(i)}>Remove</button>
-              </div>
-            </div>
+                      <label>
+                        <span className="lbl">Longest allowed</span>
+                        <input type="number" min={1} value={f.max_length ?? ""}
+                               aria-label={`Maximum length of ${f.name}`}
+                               onChange={(e) => patch(i, {
+                                 max_length: e.target.value ? Number(e.target.value) : null,
+                               })} />
+                      </label>
 
-            {f.type === "enum" && (
-              <label className="full">
-                <span className="lbl">
-                  Allowed values — the only things this field may contain
-                </span>
-                <input type="text" value={(f.allowed ?? []).join(", ")}
-                       placeholder="ACTIVE, ON_LEAVE, EXITED"
-                       aria-label={`Allowed values for ${f.name}`}
-                       onChange={(e) => patch(i, {
-                         allowed: e.target.value.split(",").map((v) => v.trim()).filter(Boolean),
-                       })} />
-              </label>
-            )}
-
-            {expanded && (
-              <div className="more">
-                <p className="change">
-                  Optional. The more you fill in here, the fewer questions you get asked
-                  later.
-                </p>
-
-                <label className="full">
-                  <span className="lbl">Must look like (optional)</span>
-                  <input type="text" value={f.pattern ?? ""} className="mono"
-                         placeholder="^EMP-[0-9]{5}$"
-                         aria-label={`Pattern for ${f.name}`}
-                         onChange={(e) => patch(i, { pattern: e.target.value || null })} />
-                  <span className="change">
-                    A pattern, like <span className="mono">^EMP-[0-9]{5}$</span> for
-                    codes such as EMP-00042. Anything that does not fit is queried, never
-                    quietly changed.
-                  </span>
-                </label>
-
-                {!!lookups.length && (
-                  <label className="full">
-                    <span className="lbl">Must exist in (optional)</span>
-                    <select value={f.reference ?? ""}
-                            aria-label={`Reference for ${f.name}`}
-                            onChange={(e) => patch(i, { reference: e.target.value || null })}>
-                      <option value="">— nothing —</option>
-                      {lookups.map((l) => (
-                        <option key={l} value={`${l}.code`}>{l} table</option>
-                      ))}
-                    </select>
-                    <span className="change">
-                      Check each value appears in one of your lookup files.
-                    </span>
-                  </label>
-                )}
-
-                <div className="pair">
-                  <label>
-                    <span className="lbl">Longest allowed (optional)</span>
-                    <input type="number" min={1} value={f.max_length ?? ""}
-                           aria-label={`Maximum length of ${f.name}`}
-                           onChange={(e) => patch(i, {
-                             max_length: e.target.value ? Number(e.target.value) : null,
-                           })} />
-                  </label>
-                  <label className="tick">
-                    <input type="checkbox" checked={!!f.case_sensitive}
-                           onChange={(e) => patch(i, { case_sensitive: e.target.checked })} />
-                    <span>Upper/lower case matters</span>
-                  </label>
-                </div>
-
-                <label className="full">
-                  <span className="lbl">Also known as (optional)</span>
-                  <input type="text" value={(f.aliases ?? []).join(", ")}
-                         placeholder="emp_id, staff_code, worker_number"
-                         aria-label={`Aliases for ${f.name}`}
-                         onChange={(e) => patch(i, {
-                           aliases: e.target.value.split(",").map((v) => v.trim()).filter(Boolean),
-                         })} />
-                  <span className="change">
-                    Other names the client's files use for this. Adding them here saves
-                    you being asked about it.
-                  </span>
-                </label>
-              </div>
-            )}
-
-            {!expanded && (
-              <p className="summary change">
-                {labelFor(f.type)}
-                {f.required ? " · required" : ""}
-                {f.unique ? " · unique" : ""}
-                {f.pattern ? " · must match a pattern" : ""}
-                {f.reference ? ` · must exist in ${f.reference.split(".")[0]}` : ""}
-                {f.allowed?.length ? ` · one of ${f.allowed.length} values` : ""}
-              </p>
-            )}
-          </div>
-        );
-      })}
+                      <label className="tickline" style={{ alignSelf: "end", paddingBottom: 8 }}>
+                        <input type="checkbox" checked={!!f.case_sensitive}
+                               onChange={(e) => patch(i, { case_sensitive: e.target.checked })} />
+                        <span>Upper and lower case matter</span>
+                      </label>
+                    </div>
+                  </td>
+                </tr>
+              ) : null,
+            ])}
+          </tbody>
+        </table>
+      </div>
 
       <button type="button" className="add-field"
               onClick={() => onChange({
@@ -240,6 +208,6 @@ export default function SchemaEditor({
               })}>
         + Add a field
       </button>
-    </div>
+    </>
   );
 }

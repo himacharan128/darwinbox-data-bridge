@@ -61,8 +61,11 @@ def _schema_for_destination(schema: MigrationSchema) -> dict[str, Any]:
     }
 
 
-def _case_payload(case: Any) -> dict[str, Any]:
+def _case_payload(case: Any, names: dict[str, str] | None = None) -> dict[str, Any]:
+    names = names or {}
     return {
+        # Who this is about, as a person rather than a key.
+        "who": names.get(case.record_key or "", ""),
         "key": case_key(case),
         "id": case.id,
         "class": case.klass.value,
@@ -475,6 +478,12 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
     decided = {d["case_key"] for d in store.decisions(run_id)}
 
     children = {rid for c in result.cases for rid in c.child_records}
+    names = {
+        (r.natural_key or r.id): " ".join(
+            str(r.values.get(f) or "") for f in ("first_name", "last_name")
+        ).strip()
+        for r in result.records
+    }
     records = []
     for record in result.records:
         key = record.natural_key or record.id
@@ -530,7 +539,7 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
             "ready": len([r for r in records if r["state"] == "ready"]),
             "blocked": len([r for r in records if r["state"] == "blocked"]),
         },
-        "cases": [_case_payload(c) for c in review],
+        "cases": [_case_payload(c, names) for c in review],
         "failures": [
             *({"record": k, "reason": v} for k, v in failed_keys.items()),
         ],

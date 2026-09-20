@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Dept Code",
+    "votes": [
+      {
+        "target_field": "dept_code",
+        "vote": 0.8,
+        "reason": "Column name matches and values are department identifiers, 5 distinct values matching allowed set except 'TECHOPS' vs 'OPS'"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1236,
+    "input_tokens": 1096,
+    "output_tokens": 159,
+    "cached": false
+  }
+}

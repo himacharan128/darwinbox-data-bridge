@@ -1,5 +1,5 @@
 export type Case = {
-  key: string; id: string; class: string; headline: string; detail: string;
+  key: string; id: string; class: string; headline: string; detail: string; who: string;
   record: string | null; field: string | null; sources: string[]; values: string[];
   evidence: Record<string, unknown>; rule: string | null; attempts: string[];
   actions: string[];
@@ -34,8 +34,26 @@ export type RunState = {
   activity: { actor: string; action: string; summary: string; reason: string | null; before: unknown; after: unknown }[];
 };
 
+/** Every failure carries something a person can act on, and its status. */
+export class ApiError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
 const json = async (r: Response) => {
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? r.statusText);
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    const detail = body?.detail;
+    throw new ApiError(
+      r.status,
+      typeof detail === "string" ? detail
+        : Array.isArray(detail) ? detail.map((d: any) => d?.msg ?? String(d)).join("; ")
+        : r.status === 404 ? "That migration is no longer available."
+        : r.status >= 500 ? "Something went wrong at our end. Nothing was changed."
+        : r.statusText || "The request was refused.",
+    );
+  }
   return r.json();
 };
 
@@ -118,7 +136,7 @@ export const PHRASE: Record<string, string> = {
   blocked: "Needs your decision",
   delivered: "Sent successfully",
   excluded: "Excluded by you",
-  AMBIGUOUS_MAPPING: "Which field is this?",
+  AMBIGUOUS_MAPPING: "Unclear column",
   UNMAPPED_REQUIRED: "Missing column",
   AMBIGUOUS_VALUE: "Unclear value",
   UNCERTAIN_IDENTITY: "Same person?",
