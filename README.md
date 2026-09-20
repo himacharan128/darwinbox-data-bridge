@@ -8,8 +8,11 @@ Built for the Darwinbox Forward Deployed Engineer take-home.
 
 ---
 
+### → **Live: http://dbx-console-alb-1789124705.ap-south-1.elb.amazonaws.com**
+
 **[One-page write-up](docs/WRITEUP.md)** · **[Why the line is there](docs/calibration.md)** ·
-**[Demo script](docs/DEMO.md)** · **[Deploying](docs/DEPLOY.md)**
+**[Demo script](docs/DEMO.md)** · **[Deploying](docs/DEPLOY.md)** ·
+**[Test samples](samples/README.md)**
 
 ## Run it
 

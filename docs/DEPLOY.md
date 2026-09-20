@@ -1,5 +1,17 @@
 # Running and deploying
 
+## The live one
+
+**http://dbx-console-alb-1789124705.ap-south-1.elb.amazonaws.com**
+
+Amazon ECS Fargate in ap-south-1, ARM64, behind an application load balancer. Two
+containers in one task sharing localhost: the console and the destination, so the
+destination is reachable only by the API — exactly as in the compose file.
+
+**There is no API key in the deployment.** The task assumes an IAM role allowed to
+invoke the two gpt-oss models and nothing else, so Bedrock is reached by role rather
+than by a secret that would have to be stored, rotated and eventually leaked.
+
 ## Locally, for development
 
 ```bash
@@ -116,3 +128,51 @@ uv pip install "python-doctr" torch torchvision
 ```
 
 Roughly 2 GB of wheels, which is why it is optional rather than a dependency.
+
+
+---
+
+## How the live one was built
+
+No Terraform. This is a one-off, and a dozen readable commands beat a state file
+nobody will apply twice. Everything is prefixed `dbx-` so teardown is unambiguous.
+
+1. **Registry and image.** ECR repo, then an **ARM64** build — Fargate runs ARM and
+   Apple Silicon builds it natively, so there is no slow cross-compile.
+2. **Two roles.** `dbx-ecs-execution` pulls the image and writes logs.
+   `dbx-ecs-task` may invoke exactly the two gpt-oss model ARNs and nothing else.
+3. **Cluster, log group, task definition** — see `infra/taskdef.json`.
+4. **Service behind an ALB**, health-checked on `/api/health`.
+
+### Redeploying
+
+```bash
+make deploy        # build, push, force a new deployment
+make e2e URL=http://<host>    # 31 end-to-end checks against it
+```
+
+### Cost
+
+Fargate 0.5 vCPU / 1 GB on ARM is roughly **$9/month**, the load balancer about
+**$16/month**, ECR and logs are pennies. Inference is a fraction of a cent per run.
+
+```bash
+aws ecs update-service --cluster dbx-data-bridge --service dbx-console --desired-count 0
+```
+
+scales to zero, though the balancer still bills. `make teardown` removes everything.
+
+### Two things worth knowing
+
+- **State is ephemeral.** Runs live on the task's own disk, so a restart loses run
+  history. Deliberate: EFS is more moving parts than a demo justifies, and any run can
+  be recreated from its files. For anything real, mount EFS or point `DATABASE_URL`
+  at RDS.
+- **The load balancer is what makes the URL stable.** Without one the task's public IP
+  changes on every restart, quietly breaking a link you have already shared.
+
+## Teardown
+
+```bash
+make teardown      # service, cluster, ALB, target group, security groups, ECR, roles, logs
+```

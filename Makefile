@@ -1,4 +1,4 @@
-.PHONY: help setup web db-up db-down fmt lint test eval sweep run demo samples stack stack-down
+.PHONY: help setup web db-up db-down fmt lint test eval sweep run demo samples e2e deploy teardown stack stack-down
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1 | sed 's/^/  make /'
@@ -33,6 +33,15 @@ samples:        ## run every sample set and report what each produced
 
 demo:           ## run one migration in the terminal
 	uv run python scripts/run_migration.py
+
+deploy:         ## build, push and roll out to ECS
+	./scripts/deploy.sh
+
+teardown:       ## remove every AWS resource this project created
+	./scripts/teardown.sh
+
+e2e:            ## end-to-end checks against a deployment (URL=... to target one)
+	uv run python scripts/e2e_hosted.py $${URL:-http://localhost:8080}
 
 stack:          ## build and run the whole stack in containers
 	docker compose up --build

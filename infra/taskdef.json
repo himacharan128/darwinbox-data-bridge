@@ -1,0 +1,98 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "mock-target",
+      "image": "ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/dbx-data-bridge:v1",
+      "cpu": 0,
+      "portMappings": [],
+      "essential": true,
+      "command": [
+        "uvicorn",
+        "dbx_mock_target:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8081"
+      ],
+      "environment": [
+        {
+          "name": "MOCK_TARGET_DB",
+          "value": "/tmp/target/mock.db"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/dbx-data-bridge",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "target"
+        }
+      },
+      "systemControls": []
+    },
+    {
+      "name": "api",
+      "image": "ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/dbx-data-bridge:v1",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "MODEL_ID",
+          "value": "openai.gpt-oss-120b-1:0"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "ap-south-1"
+        },
+        {
+          "name": "DBX_DATA_DIR",
+          "value": "/tmp/data"
+        },
+        {
+          "name": "MOCK_TARGET_URL",
+          "value": "http://127.0.0.1:8081"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "dependsOn": [
+        {
+          "containerName": "mock-target",
+          "condition": "START"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/dbx-data-bridge",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "api"
+        }
+      },
+      "systemControls": []
+    }
+  ],
+  "family": "dbx-data-bridge",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/dbx-ecs-task",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/dbx-ecs-execution",
+  "networkMode": "awsvpc",
+  "volumes": [],
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024"
+}
