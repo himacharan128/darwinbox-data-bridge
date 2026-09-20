@@ -78,10 +78,33 @@ class Overrides:
     values: dict[tuple[str, str], str] = dc_field(default_factory=dict)
     merge: dict[tuple[str, str], bool] = dc_field(default_factory=dict)
     excluded: set[str] = dc_field(default_factory=set)
+    #: Files this client trusts, most authoritative first. When two exports disagree
+    #: about the same person, the answer is almost never "it depends which record" -
+    #: it is "the HR system is right and payroll is stale". Said once, it settles
+    #: every disagreement of that shape in the run and every run after it.
+    authority: list[str] = dc_field(default_factory=list)
+
+    def prefer(self, left: str, right: str) -> str | None:
+        """Which of two files wins, or None if the client has not said.
+
+        A named file beats an unnamed one. "Believe the HR export" is a statement
+        about the HR export, not about the one other file it happened to disagree
+        with first, so ranking one file settles every disagreement it is part of.
+        """
+        rank = {name: i for i, name in enumerate(self.authority)}
+        a, b = rank.get(left), rank.get(right)
+        if a == b:
+            return None
+        if a is None:
+            return right
+        if b is None:
+            return left
+        return left if a < b else right
 
     def is_empty(self) -> bool:
         return not (
-            self.column_map or self.constants or self.values or self.merge or self.excluded
+            self.column_map or self.constants or self.values or self.merge
+            or self.excluded or self.authority
         )
 
 
@@ -663,6 +686,23 @@ class Pipeline:
         )
 
         for name, mine, theirs in conflicts:
+            mine_from = keep.contributing[0].file if keep.contributing else ""
+            theirs_from = other.contributing[0].file if other.contributing else ""
+            winner = self.overrides.prefer(mine_from, theirs_from)
+            if winner:
+                # The client has already said which export to believe. Asking again
+                # per field, per person, is the thing that makes a queue unusable.
+                chosen = mine if winner == mine_from else theirs
+                keep.values[name] = chosen
+                self._log(
+                    "merge.authority",
+                    f"{name} taken from {winner} as you set",
+                    actor=Actor.HUMAN, target_field=name,
+                    before=str(theirs if winner == mine_from else mine),
+                    after=str(chosen),
+                )
+                continue
+
             case = self._case(
                 EscalationClass.CONFLICTING_FACTS,
                 headline=f"Two sources disagree about {name}",
@@ -677,8 +717,20 @@ class Pipeline:
                 evidence={"values": {str(mine): keep.contributing[0].label(),
                                      str(theirs): other.contributing[0].label()}},
                 actions=[Action.CORRECT, Action.REJECT],
-                options=[Option(label=str(mine), value=str(mine)),
-                         Option(label=str(theirs), value=str(theirs))],
+                options=[
+                    Option(label=str(mine), value=str(mine),
+                           description=f"as {mine_from} has it"),
+                    Option(label=str(theirs), value=str(theirs),
+                           description=f"as {theirs_from} has it"),
+                    # The rule, rather than the answer. One of these ends every
+                    # disagreement between these two files at once.
+                    Option(label=f"Always believe {mine_from}",
+                           value=f"authority:{mine_from}",
+                           description="Settles every disagreement this file is part of"),
+                    Option(label=f"Always believe {theirs_from}",
+                           value=f"authority:{theirs_from}",
+                           description="Settles every disagreement this file is part of"),
+                ],
                 blocks_records=[keep.id],
             )
             keep.open_cases.append(case.id)
@@ -890,6 +942,14 @@ def apply_decision(
                 overrides.merge[(str(keys[0]), str(keys[1]))] = (
                     action is Action.APPROVE and value != "separate"
                 )
+
+        case EscalationClass.CONFLICTING_FACTS if value and value.startswith("authority:"):
+            winner = value.split(":", 1)[1]
+            # Most recently trusted goes to the front, so a later rule overrides an
+            # earlier one rather than silently losing to it.
+            if winner in overrides.authority:
+                overrides.authority.remove(winner)
+            overrides.authority.insert(0, winner)
 
         case _ if value and case.record_key and case.target_field:
             overrides.values[(case.record_key, case.target_field)] = value

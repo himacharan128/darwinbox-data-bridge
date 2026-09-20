@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "Lookup shows roster_export.pdf lists job_title as 'Financial Analyst' and scanned_roster.pdf lists it as 'Finaincial Analyst.' for employee EMP-00042"
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00042', field='job_title'",
+      "found": "the merged record has 'Financial Analyst'; it came from roster_export.pdf \u00b7 page 1 \u00b7 row 3 \u00b7 column 'Designation' as 'Financial Analyst'. This employee was built from: roster_export.pdf \u00b7 page 1 \u00b7 row 3, scanned_roster.pdf \u00b7 page 1 \u00b7 row 3"
+    },
+    {
+      "looked_at": "values in column: file='scanned_roster.pdf', column='Designation'",
+      "found": "3 of 3 rows filled, 3 distinct. Values: 'Staff Engin\u00e9er:' x1, 'Account Executive' x1, 'Finaincial Analyst.' x1"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 2733,
+    "input_tokens": 5362,
+    "output_tokens": 391,
+    "cached": false
+  }
+}

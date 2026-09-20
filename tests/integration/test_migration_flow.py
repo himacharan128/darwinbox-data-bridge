@@ -9,6 +9,7 @@ import socket
 import threading
 import time
 import warnings
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -359,3 +360,39 @@ def test_nothing_reaches_the_target_until_somebody_pushes(stack):
     after = client.get(f"/api/runs/{rid}?wait=true").json()
     assert after["counts"]["delivered"] > 0
     assert after["auto_send"] is False, "one push is one push, not a standing instruction"
+
+
+def test_one_authority_rule_settles_every_disagreement_between_two_files(run):
+    """A rule, not an answer. This is the delta the human supplies.
+
+    Two exports disagreeing about the same person is not a per-field judgement -
+    it is "the HR system is right and payroll is stale", said once.
+    """
+    client, rid = run
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+    conflicts = [c for c in state["cases"] if c["class"] == "CONFLICTING_FACTS"]
+    if len(conflicts) < 2:
+        pytest.skip("these fixtures do not produce enough disagreements")
+
+    # The rule a consultant reaches for is the one that covers the most cases -
+    # here, believing the real PDF over an OCR of the same roster.
+    offered = Counter(
+        o["value"] for c in conflicts for o in c["options"]
+        if (o["value"] or "").startswith("authority:")
+    )
+    best = offered.most_common(1)[0][0]
+    target = next(
+        c for c in conflicts if any(o["value"] == best for o in c["options"])
+    )
+
+    client.post(
+        f"/api/runs/{rid}/cases/{target['key']}/decide",
+        json={"action": "correct", "value": best},
+    )
+    after = client.get(f"/api/runs/{rid}?wait=true").json()
+    left = [c for c in after["cases"] if c["class"] == "CONFLICTING_FACTS"]
+
+    assert len(left) <= len(conflicts) // 2, (
+        f"one rule should settle most of the disagreements it covers, "
+        f"but {len(conflicts)} became {len(left)}"
+    )
