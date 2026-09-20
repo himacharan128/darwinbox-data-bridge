@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "The legacy_hrms_dump.csv file contains a column dtProbationEnd with values like 2020-08-17, but no mapping indicates whether it corresponds to date_of_joining or date_of_birth."
+  },
+  "steps": [
+    {
+      "looked_at": "columns in file: file='legacy_hrms_dump.csv'",
+      "found": "legacy_hrms_dump.csv has 22 columns: strEmployeeCode (e.g. EMP-00035, EMP-00036); strFirstNm (e.g. Anil, Fatima); strLastNm (e.g. Kumar, Sheikh); strEmailAddr (e.g. anil.kumar@acme-hr.example, fatima.sheikh@acme-hr.example); strMobileNo (e.g. +91 98450 11035, +91 98450 11036); dtDateOfBirth (e.g. 1991-09-23, 1994-03-11); dtDateOfJoin (e.g. 2020-02-17, 2022-06-06); strDeptCd (e.g. ENG, SALES); strD"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1872,
+    "input_tokens": 4255,
+    "output_tokens": 328,
+    "cached": false
+  }
+}

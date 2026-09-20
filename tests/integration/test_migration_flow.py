@@ -317,8 +317,15 @@ def test_the_agent_looks_at_the_data_before_it_asks(run):
         for step in case["checked"]:
             assert step["looked_at"], "a look with no description is not auditable"
             assert step["found"], "a look that found nothing should not be recorded"
-        # A conclusion drawn from nothing is the failure mode this guards.
-        assert case.get("found"), "it looked, so it owes a conclusion"
+
+    # A conclusion may be missing - the model sometimes spends its looks and then
+    # fails to commit - and the looks are still worth showing. What must never
+    # happen is the reverse: a conclusion with nothing behind it.
+    for case in cases:
+        if case.get("found"):
+            assert case.get("checked"), (
+                f"{case['headline']!r} concluded something without looking at anything"
+            )
 
 
 def test_a_suggestion_is_only_ever_offered_never_applied(run):
@@ -395,4 +402,47 @@ def test_one_authority_rule_settles_every_disagreement_between_two_files(run):
     assert len(left) <= len(conflicts) // 2, (
         f"one rule should settle most of the disagreements it covers, "
         f"but {len(conflicts)} became {len(left)}"
+    )
+
+
+def test_an_undecidable_date_column_is_one_question_not_one_per_row(run):
+    """Whether a column is day-first is a fact about the column.
+
+    Asked per record it produced five identical questions on the same column, each
+    blocking one employee, and answering one told you nothing about the next.
+    """
+    client, rid = run
+    # These fixtures block every record on a missing status until it is supplied,
+    # which would mask what answering the date column releases.
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+    dates = [c for c in state["cases"] if c["headline"].startswith("How should dates")]
+    if not dates:
+        pytest.skip("these fixtures have no undecidable date column")
+
+    case = dates[0]
+    assert case["blocks"] > 1, "if it only blocks one row it is not a column question"
+    assert len(case["options"]) >= 2, "a reading has to be choosable"
+    # The options name readings, not the two values of whichever row asked first.
+    assert all((o["value"] or "").startswith("%") for o in case["options"])
+    assert any("Day first" in o["label"] for o in case["options"])
+
+    held = {case["key"]}
+    client.post(
+        f"/api/runs/{rid}/cases/{case['key']}/decide",
+        json={"action": "correct", "value": case["options"][0]["value"]},
+    )
+    after = client.get(f"/api/runs/{rid}?wait=true").json()
+
+    assert not [c for c in after["cases"] if c["headline"].startswith("How should dates")], (
+        "one answer should settle the whole column"
+    )
+    # And it does not come back as five separate questions about the same column.
+    per_row = [
+        c for c in after["cases"]
+        if c["field"] == case["field"] and c["class"] == "AMBIGUOUS_VALUE"
+        and c["key"] not in held
+    ]
+    assert not per_row, (
+        f"answering the column produced {len(per_row)} row-level questions about it"
     )

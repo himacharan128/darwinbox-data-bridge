@@ -1,0 +1,22 @@
+{
+  "payload": null,
+  "steps": [
+    {
+      "looked_at": "values in column: column='Date of Joining', file='scanned_roster.pdf'",
+      "found": "no column 'Date of Joining' in 'scanned_roster.pdf'"
+    },
+    {
+      "looked_at": "values in column: column='Date of Joining.', file='scanned_roster.pdf'",
+      "found": "3 of 3 rows filled, 3 distinct. Values: '2019-08:12' x1, '2021-04-05' x1, '2020-06-29' x1"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 2755,
+    "input_tokens": 4774,
+    "output_tokens": 326,
+    "cached": false
+  }
+}

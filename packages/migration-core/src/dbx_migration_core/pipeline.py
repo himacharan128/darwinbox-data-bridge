@@ -78,6 +78,10 @@ class Overrides:
     values: dict[tuple[str, str], str] = dc_field(default_factory=dict)
     merge: dict[tuple[str, str], bool] = dc_field(default_factory=dict)
     excluded: set[str] = dc_field(default_factory=set)
+    #: How to read a column whose values are shaped so that nothing in the data
+    #: settles it - 01/04/2015 in a column where no day exceeds 12. That is one fact
+    #: about the column, so it is one question, and the answer applies to every row.
+    formats: dict[tuple[str, str], str] = dc_field(default_factory=dict)
     #: Files this client trusts, most authoritative first. When two exports disagree
     #: about the same person, the answer is almost never "it depends which record" -
     #: it is "the HR system is right and payroll is stale". Said once, it settles
@@ -104,7 +108,7 @@ class Overrides:
     def is_empty(self) -> bool:
         return not (
             self.column_map or self.constants or self.values or self.merge
-            or self.excluded or self.authority
+            or self.excluded or self.authority or self.formats
         )
 
 
@@ -214,6 +218,18 @@ class Pipeline:
         )
         return case
 
+    def _attach_to_case(self, case_id: str, record: CanonicalRecord, field: str) -> None:
+        """Ride on a question already asked rather than asking it again."""
+        case = next((c for c in self.result.cases if c.id == case_id), None)
+        if case is None:
+            return
+        if record.id not in case.blocks_records:
+            case.blocks_records.append(record.id)
+        record.state = RecordState.BLOCKED
+        if case_id not in record.open_cases:
+            record.open_cases.append(case_id)
+        self.value_case[(record.id, field)] = case_id
+
     # ---------------------------------------------------------------- stages
 
     def run(
@@ -244,6 +260,10 @@ class Pipeline:
         # its own. Without this, one ambiguous column produces a MISSING_REQUIRED
         # case per record and the queue becomes unusable.
         self.field_case: dict[tuple[str | None, str], str] = {}
+        #: One question per column for facts that are true of the column rather than
+        #: of a row. A date column nothing can disambiguate is one question about the
+        #: column, not one per employee who happens to have joined on the 4th.
+        self.format_case: dict[tuple[str, str], str] = {}
 
         for name, records in sources.items():
             if not records:
@@ -296,7 +316,15 @@ class Pipeline:
                 if mapping.decision is Decision.AUTO_APPLY and mapping.chosen_field:
                     applied[name][header] = mapping.chosen_field
                     spec = self.schema.by_name[mapping.chosen_field]
-                    self.plans[(name, header)] = plan_column(profile, spec)
+                    plan = plan_column(profile, spec)
+                    chosen = self.overrides.formats.get((name, header))
+                    if chosen and plan.date_ambiguous_between:
+                        # Answered once for the column; every row reads that way now.
+                        plan = ColumnPlan(
+                            date_format=chosen,
+                            notes=[f"{chosen} because you said so for this column"],
+                        )
+                    self.plans[(name, header)] = plan
                     self._log(
                         "mapping.auto_applied",
                         f"Mapped {header!r} to {mapping.chosen_field}",
@@ -557,6 +585,43 @@ class Pipeline:
                 f"Read at {read_confidence:.0%} confidence, and the value does not fit "
                 f"{spec.name}. {unsafe.reason}" if unreadable else unsafe.reason
             )
+            # A date column that nothing in the data can settle is one fact about the
+            # column. Asked per row it produced five identical questions on the messy
+            # sample; asked once it produces one, and the answer reads every row.
+            ambiguous_column = bool(
+                unsafe.alternatives and plan and plan.date_ambiguous_between and ref.column
+            )
+            if ambiguous_column:
+                key = (ref.file, ref.column or "")
+                existing = self.format_case.get(key)
+                if existing:
+                    self._attach_to_case(existing, record, spec.name)
+                    return
+                case = self._case(
+                    EscalationClass.AMBIGUOUS_VALUE,
+                    headline=f"How should dates in {ref.column!r} be read?",
+                    detail=(
+                        f"{raw!r} could be {' or '.join(unsafe.alternatives)}, and no "
+                        f"value anywhere in this column settles it — none has a day "
+                        f"above 12. Answer once and every row in the column is read "
+                        f"the same way."
+                    ),
+                    record_key=self._record_key_for(record) or record.id,
+                    target_field=spec.name,
+                    source_refs=[ref],
+                    raw_values=[raw or ""],
+                    actions=[Action.CORRECT, Action.REJECT],
+                    options=[
+                        Option(label=_format_label(fmt, raw or ""), value=fmt)
+                        for fmt in plan.date_ambiguous_between
+                    ],
+                    blocks_records=[record.id],
+                )
+                self.format_case[key] = case.id
+                record.open_cases.append(case.id)
+                self.value_case[(record.id, spec.name)] = case.id
+                return
+
             case = self._case(
                 klass,
                 headline=headline,
@@ -904,6 +969,20 @@ class Pipeline:
         )
 
 
+def _format_label(fmt: str, example: str) -> str:
+    """'%d/%m/%Y' plus '01/04/2015' reads as 'Day first — 1 April 2015'."""
+    import datetime as _dt
+
+    try:
+        # A calendar date, never an instant - no timezone applies to "4 April 2015".
+        shown = _dt.datetime.strptime(example, fmt).date().strftime("%-d %B %Y")  # noqa: DTZ007
+    except (ValueError, TypeError):
+        shown = fmt
+    lead = "Day first" if fmt.startswith("%d") else "Month first" if fmt.startswith("%m") \
+        else fmt
+    return f"{lead} — {example} is {shown}"
+
+
 def apply_decision(
     overrides: Overrides, case: ReviewCase, action: Action, value: str | None
 ) -> Overrides:
@@ -942,6 +1021,12 @@ def apply_decision(
                 overrides.merge[(str(keys[0]), str(keys[1]))] = (
                     action is Action.APPROVE and value != "separate"
                 )
+
+        case EscalationClass.AMBIGUOUS_VALUE if value and value.startswith("%"):
+            # A reading chosen for the column, not for the row that happened to ask.
+            ref = case.source_refs[0] if case.source_refs else None
+            if ref and ref.column:
+                overrides.formats[(ref.file, ref.column)] = value
 
         case EscalationClass.CONFLICTING_FACTS if value and value.startswith("authority:"):
             winner = value.split(":", 1)[1]
