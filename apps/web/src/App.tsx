@@ -83,6 +83,19 @@ function ReviewQueue({ state, onDone }: { state: RunState; onDone: () => void })
     setErr(null);
   }, [c?.key]);
 
+  // Left and right move between cases. Reviewing forty of these with a mouse is
+  // slower than it needs to be, and navigating still never submits anything.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (e.key === "ArrowLeft") setI((n) => Math.max(0, n - 1));
+      if (e.key === "ArrowRight") setI((n) => Math.min(cases.length - 1, n + 1));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cases.length]);
+
   if (!cases.length) {
     return (
       <div className="panel empty">
@@ -115,7 +128,8 @@ function ReviewQueue({ state, onDone }: { state: RunState; onDone: () => void })
                 aria-label="Previous case">← Previous</button>
         <button onClick={() => setI((n) => Math.min(cases.length - 1, n + 1))}
                 disabled={i >= cases.length - 1} aria-label="Next case">Next →</button>
-        <span className="count">Case {i + 1} of {cases.length}</span>
+        <span className="count" aria-live="polite">Case {i + 1} of {cases.length}</span>
+        <span className="sr-only">Use the left and right arrow keys to move between cases.</span>
         <span className="spacer" />
         <span className="pill warn"><i className="dot" />{say(c.class)}</span>
       </div>
@@ -236,10 +250,14 @@ function Records({ state }: { state: RunState }) {
               const tone = r.state === "delivered" ? "ok" : r.state === "blocked" ? "warn" : "";
               return (
                 <tr key={r.key}>
-                  <td className="mono">{r.key}</td>
-                  <td><span className={`pill ${tone}`}><i className="dot" />{say(r.state)}</span></td>
-                  <td>{[r.values.first_name, r.values.last_name].filter(Boolean).join(" ") || "—"}</td>
-                  <td>
+                  <td data-label="Record" className="mono">{r.key}</td>
+                  <td data-label="Status">
+                    <span className={`pill ${tone}`}><i className="dot" />{say(r.state)}</span>
+                  </td>
+                  <td data-label="Name">
+                    {[r.values.first_name, r.values.last_name].filter(Boolean).join(" ") || "—"}
+                  </td>
+                  <td data-label="What changed">
                     {changed.length ? (
                       <details>
                         <summary>{changed.length} field(s) cleaned</summary>
@@ -273,15 +291,15 @@ function Mappings({ state }: { state: RunState }) {
         <tbody>
           {state.mappings.map((m, i) => (
             <tr key={i}>
-              <td className="mono">{m.file}</td>
-              <td className="mono">{m.column}</td>
-              <td>
+              <td data-label="File" className="mono">{m.file}</td>
+              <td data-label="Column" className="mono">{m.column}</td>
+              <td data-label="Decision">
                 <span className={`pill ${m.decision === "auto_apply" ? "ok" : "warn"}`}>
                   <i className="dot" />{m.decision === "auto_apply" ? "Applied automatically" : say(m.decision)}
                 </span>
               </td>
-              <td className="mono">{m.field ?? "—"}</td>
-              <td className="change">{m.evidence.slice(0, 3).join(" · ")}</td>
+              <td data-label="Mapped to" className="mono">{m.field ?? "—"}</td>
+              <td data-label="Why" className="change">{m.evidence.slice(0, 3).join(" · ")}</td>
             </tr>
           ))}
         </tbody>
@@ -459,7 +477,38 @@ function Destination({ runId }: { runId: string }) {
   );
 }
 
+type Layout = "auto" | "desktop" | "mobile";
+
+function useLayout(): [Layout, Layout, (l: Layout) => void] {
+  const [choice, setChoice] = useState<Layout>(() => {
+    try {
+      return (localStorage.getItem("dbx.layout") as Layout) || "auto";
+    } catch {
+      return "auto";   // private windows and blocked storage must not break the page
+    }
+  });
+  const [narrow, setNarrow] = useState(
+    () => typeof matchMedia === "function" && matchMedia("(max-width: 820px)").matches,
+  );
+
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const q = matchMedia("(max-width: 820px)");
+    const on = () => setNarrow(q.matches);
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
+
+  const set = (l: Layout) => {
+    setChoice(l);
+    try { localStorage.setItem("dbx.layout", l); } catch { /* not worth failing over */ }
+  };
+  const effective: Layout = choice === "auto" ? (narrow ? "mobile" : "desktop") : choice;
+  return [choice, effective, set];
+}
+
 export default function App() {
+  const [choice, layout, setLayout] = useLayout();
   const [runId, setRunId] = useState<string | null>(
     () => new URLSearchParams(location.search).get("run"),
   );
@@ -498,7 +547,7 @@ export default function App() {
   }, [state]);
 
   return (
-    <div className="app">
+    <div className="app" data-layout={layout}>
       <header className="top">
         <h1>Data Bridge</h1>
         {state && <span className={`pill ${tone}`}><i className="dot" />{say(state.status)}</span>}
@@ -514,6 +563,13 @@ export default function App() {
             </option>
           ))}
         </select>
+        <div className="layout-toggle" role="group" aria-label="Layout">
+          {(["auto", "desktop", "mobile"] as Layout[]).map((l) => (
+            <button key={l} aria-pressed={choice === l} onClick={() => setLayout(l)}>
+              {l[0].toUpperCase() + l.slice(1)}
+            </button>
+          ))}
+        </div>
         <button className="primary" onClick={() => void start()} disabled={busy}>
           New migration
         </button>

@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 from dbx_agent import build_provider, vote_on_column
 from dbx_contracts import MigrationSchema
-from dbx_extraction import read
+from dbx_extraction import confidence_for, read
 from dbx_migration_core import Pipeline
 
 FIX = ROOT / "tests" / "fixtures"
