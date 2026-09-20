@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, Fragment } from "react";
+import { useCallback, useEffect, useRef, useState, Fragment } from "react";
 import { api, ApiError, PHRASE, type RunState } from "./api";
 import Review from "./Review";
 import Wizard from "./Wizard";
@@ -40,12 +40,19 @@ function useRun(runId: string | null) {
   const [state, setState] = useState<RunState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
+  // Which run the newest request was for. A reply about any other run is stale —
+  // without this, switching runs left the previous one's records and review queue
+  // on screen under the new run's name.
+  const wanted = useRef<string | null>(runId);
 
   const refresh = useCallback(async () => {
     if (!runId) { setState(null); setError(null); setGone(false); return; }
     try {
-      setState(await api.run(runId)); setError(null); setGone(false);
+      const data = await api.run(runId);
+      if (wanted.current !== runId || data.run_id !== runId) return;
+      setState(data); setError(null); setGone(false);
     } catch (e) {
+      if (wanted.current !== runId) return;
       const api404 = e instanceof ApiError && e.status === 404;
       setGone(api404);
       setState(null);
@@ -53,7 +60,15 @@ function useRun(runId: string | null) {
     }
   }, [runId]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    // Drop the old run's data before the new one arrives, so nothing is ever shown
+    // under the wrong heading.
+    wanted.current = runId;
+    setState(null);
+    setError(null);
+    setGone(false);
+    void refresh();
+  }, [runId, refresh]);
 
   const busy = state?.status === "processing";
   useEffect(() => {
@@ -221,6 +236,18 @@ function Mappings({ state }: { state: RunState }) {
       </div>
     </div>
   );
+}
+
+/** One short line saying where a run actually got to. */
+function runMeta(r: any): string {
+  const open = r.counts?.open_cases ?? 0;
+  if (r.status === "awaiting_schema") return "needs a schema";
+  if (r.status === "processing") return "working\u2026";
+  if (open) return `${open} need${open === 1 ? "s" : ""} you`;
+  if (r.delivered) return `${r.delivered} sent`;
+  if (r.counts?.excluded) return `${r.counts.excluded} excluded`;
+  if (r.counts?.records) return `${r.counts.records} ready to send`;
+  return PHRASE[r.status] ?? "not started";
 }
 
 /* -------------------------------------------------------------- destination */
@@ -443,9 +470,7 @@ export default function App() {
                   <button className={`runitem${r.id === runId && !wizard ? " on" : ""}`}
                           onClick={() => { open(r.id); setNavOpen(false); }}>
                     <span className="runitem-name">{label(r)}</span>
-                    <span className="runitem-meta">
-                      {r.delivered ? `${r.delivered} sent` : "not started"}
-                    </span>
+                    <span className="runitem-meta">{runMeta(r)}</span>
                   </button>
                 </li>
               ))}

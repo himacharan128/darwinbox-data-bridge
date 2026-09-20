@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Last Name",
+    "votes": [
+      {
+        "target_field": "last_name",
+        "vote": 1.0,
+        "reason": "Column name explicitly indicates family name, values are short strings like 'Hex' and 'Wide' typical of last names"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 745,
+    "input_tokens": 923,
+    "output_tokens": 124,
+    "cached": false
+  }
+}

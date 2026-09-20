@@ -32,14 +32,12 @@ no constraint became `escalate` — and that wrongly condemned exact matches lik
 
 ```
  T_auto  T_gap  auto ok  wrong  noise  over-esc  under-esc   agree
-   0.70   0.05       45      0      1        12          0    0.83
-   0.70   0.10       44      0      0        14          0    0.82   <- chosen
-   0.70   0.15       43      0      0        15          0    0.81
-   0.75   0.10       38      0      0        20          0    0.74
-   0.80   0.10       35      0      0        23          0    0.70
-   0.85   0.10       32      0      0        26          0    0.66
-   0.90   0.10       24      0      0        34          0    0.56
-   0.95   0.10       19      0      0        39          0    0.49
+   0.70   0.05       52      0      1         5          0    0.92
+   0.70   0.10       51      0      0         7          0    0.91   <- chosen
+   0.70   0.15       50      0      0         8          0    0.90
+   0.75   0.10       50      0      0         8          0    0.90
+   0.80   0.10       50      0      0         8          0    0.90
+   0.90   0.10       47      0      0        11          0    0.86
 ```
 
 Three things this shows that a chosen number could not:
@@ -57,18 +55,67 @@ against confidently mapping a checksum.
 safety and costs roughly three to five columns a consultant then has to confirm by
 hand. That is the trade being made, priced.
 
-## Chosen: `T_auto = 0.70`, `T_gap = 0.10`
+## Chosen: `T_auto = 0.70`, `T_gap = 0.10`, `T_decisive = 0.35`
 
-44 of 57 mappable columns applied unaided, zero wrong, zero noise mapped, zero
-genuine ambiguity silently resolved.
+**51 of 57** mappable columns applied unaided, zero wrong, zero noise mapped, zero
+genuine ambiguity silently resolved. Agreement with the corpus: 0.91.
 
-## The 14 over-escalations
+Two earlier versions of this boundary escalated far too much, for two separate and
+measurable reasons.
 
-Not a tuning failure. Almost all are abbreviated headers (`mgr`, `loc`, `dept`,
-`cell`, `office`) pointing at target fields that declare nothing measurable — no
-type beyond string, no pattern, no enum, no uniqueness. The only available evidence
-is header similarity plus the model's opinion, and the model is capped precisely so
-it cannot decide alone.
+### An abbreviated header scored as noise
+
+`dob` scored **0.10** against `date_of_birth` and **0.11** against
+`probation_end_date` — it matched the wrong field slightly better than the right
+one. Token overlap is empty for an initialism and character similarity on sorted
+letters is meaningless at three characters, so every abbreviated header (`doj`,
+`mgr`, `loc`, `dept`, `emp_id`) sat indistinguishable from a checksum.
+
+Two structural signals fix it without teaching the engine any domain vocabulary:
+an **initialism** (`dob` is the first letters of date-of-birth) and a **contraction**
+(`mgr` survives inside *manager* in order). Both ask about shape, never meaning.
+`dob → date_of_birth` went 0.10 → 0.90. Guard rails matter here: a two-letter
+initialism matched `id → is_deleted` at 0.90, so initialisms require three letters.
+
+### A clear winner with a modest score was still escalated
+
+`site → location_code` scored 0.68 with the runner-up half a scale behind at 0.17.
+The absolute score was below `T_auto`, so it went to a human — even though the data
+was not remotely ambiguous about which field it was. Synonyms behave this way by
+construction: the name carries no signal, so the score stays low while the
+separation is enormous.
+
+Hence a second path to auto-apply: **a winner `T_decisive` clear of the runner-up**,
+whatever its absolute score. Both paths still require separation. Neither lets the
+model carry a column on its own.
+
+| | auto ok | wrong | noise | under-esc |
+|---|---|---|---|---|
+| baseline | 44 | 0 | 0 | 0 |
+| + abbreviation signals | 45 | 0 | 0 | 0 |
+| + decisive margin | **51** | **0** | **0** | **0** |
+
+The margin is insensitive between 0.25 and 0.45 — identical results across that
+whole range — so 0.35 sits in the middle of a flat region rather than on a cliff.
+
+## Two things that would raise the rate, and demonstrably must not be done
+
+The remaining escalations are four near-ties and two pure synonyms. Both of the
+obvious ways to capture them break the guarantee, and the corpus catches both.
+
+**Raising the model's cap.** At a cap of 0.30 the auto-rate reaches 68% and a noise
+column is mapped. The cap is not decoration; it is load-bearing, and this is the
+measurement that says so.
+
+**Letting the model break near-ties.** Allowing the model to choose when
+deterministic evidence is equal reaches 73% — and maps `dtProbationEnd` to
+`date_of_joining` on a model vote of **1.00**. Confidently, completely wrong, and it
+would write probation-end dates into the joining-date field with no case raised.
+
+So 51 of 57 is not a tuning ceiling that more effort would lift. The last six need
+evidence that is not in the data yet. The principled route for the near-ties is a
+*deterministic* separator — a manager reference is a value drawn from the employee-id
+column but not unique, which is measurable — not a model guess.
 
 That is the correct outcome, and it comes with an affordance: **declaring an alias
 or a constraint on the target field moves the column to auto.** The consultant is

@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Status",
+    "votes": [
+      {
+        "target_field": "status",
+        "vote": 1.0,
+        "reason": "Column name 'Status' and sample value 'ACTIVE' directly match the target field status"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 563,
+    "input_tokens": 872,
+    "output_tokens": 132,
+    "cached": false
+  }
+}

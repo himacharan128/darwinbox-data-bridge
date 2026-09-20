@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "source_column": "etl_batch",
+    "votes": []
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 616,
+    "input_tokens": 880,
+    "output_tokens": 193,
+    "cached": false
+  }
+}

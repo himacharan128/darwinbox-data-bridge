@@ -150,6 +150,10 @@ class Thresholds(BaseModel):
     auto_apply: float = 0.70
     gap: float = 0.10
     review_floor: float = 0.50
+    #: A winner this far clear of the runner-up is unambiguous even when its absolute
+    #: score is modest — the case of a synonym or an abbreviation, where the name
+    #: carries no signal but the data points at exactly one field.
+    decisive_gap: float = 0.35
     calibrated: bool = True
     calibration_ref: str = "docs/calibration.md — 77 labelled decisions, 5 source files"
 

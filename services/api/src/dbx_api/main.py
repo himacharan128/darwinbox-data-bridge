@@ -5,6 +5,7 @@ is delivered when the destination says it holds it, never when a request was sen
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -533,6 +534,7 @@ def approve_schema(run_id: str, version: int) -> dict[str, Any]:
         "at": now(),
     }])
     jobs.invalidate(run_id)
+    store.clear_snapshot(run_id)
     jobs.start(run_id, lambda report: _process_run(run_id, report))
     return {
         "approved": version,
@@ -545,13 +547,51 @@ def approve_schema(run_id: str, version: int) -> dict[str, Any]:
 def list_runs() -> list[dict[str, Any]]:
     out = []
     for run in store.list_runs():
-        delivered = len(store.accepted_keys(run["id"]))
+        run_id = run["id"]
+        delivered = len(store.accepted_keys(run_id))
+        # The runs table records what a run was asked to do. The last computed view
+        # records where it actually got to, which is what a list should say.
+        status, counts = run["status"], None
+        if store.approved_schema(run_id) is None:
+            status = "awaiting_schema"
+        else:
+            stored = store.latest_snapshot(run_id)
+            if stored:
+                view = json.loads(stored)
+                status, counts = view.get("status", status), view.get("counts")
+            elif jobs.running(run_id):
+                status = "processing"
         out.append({
-            "id": run["id"], "created_at": run["created_at"], "label": run["label"],
-            "status": run["status"], "files": len(json.loads(run["files_json"])),
-            "delivered": delivered,
+            "id": run_id, "created_at": run["created_at"], "label": run["label"],
+            "status": status, "files": len(json.loads(run["files_json"])),
+            "delivered": delivered, "counts": counts,
         })
     return out
+
+
+def _fingerprint(run_id: str, run: Any) -> str:
+    """Everything a replay's answer depends on, reduced to one string.
+
+    If this is unchanged, replaying would produce the same view, so the stored
+    one is served instead. Files are identified by name and size rather than
+    content: they are write-once uploads under a run's own directory.
+    """
+    approved = store.approved_schema(run_id)
+    files = []
+    for raw in json.loads(run["files_json"]):
+        path = Path(raw)
+        files.append(f"{path.name}:{path.stat().st_size if path.exists() else '-'}")
+    parts = [
+        run_id,
+        str(approved["version"] if approved else None),
+        *sorted(files),
+        *sorted(f"{d['case_key']}={d['action']}={d['value']}"
+                for d in store.decisions(run_id)),
+        *sorted(f"{row['natural_key']}={row['outcome']}={row['generation']}"
+                for row in store.deliveries(run_id)),
+        f"paused={store.delivery_paused(run_id)}",
+    ]
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
 def _ensure_processing(run_id: str) -> Any | None:
@@ -593,6 +633,14 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
                           "summary": "Waiting for a target schema to be approved",
                           "reason": None, "before": None, "after": None}],
         }
+
+    # A run nobody has touched since it was last computed is served from store,
+    # so opening an old migration never re-runs it.
+    fingerprint = _fingerprint(run_id, run)
+    if not jobs.running(run_id):
+        stored = store.snapshot(run_id, fingerprint)
+        if stored is not None:
+            return json.loads(stored)
 
     result = _ensure_processing(run_id)
     if result is None and wait:
@@ -660,7 +708,7 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
     review = [c for c in open_cases if c not in failures]
     failed_keys = _failed_keys(run_id)
 
-    return {
+    payload = {
         "run_id": run_id,
         "status": _status(result, records, accepted),
         "progress": progress.as_dict(),
@@ -701,6 +749,8 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
             for e in reversed(store.audit(run_id, limit=80))
         ],
     }
+    store.save_snapshot(run_id, fingerprint, json.dumps(payload))
+    return payload
 
 
 def _failed_keys(run_id: str) -> dict[str, str]:
@@ -761,6 +811,7 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
     }])
 
     jobs.invalidate(run_id)
+    store.clear_snapshot(run_id)
     after, _ = replay(store, run_id)
     jobs.start(run_id, lambda report: _process_run(run_id, report))
     jobs.wait(run_id, timeout=180)
@@ -816,6 +867,7 @@ def deliver(run_id: str) -> dict[str, Any]:
 
     sent = _push(run_id, result, schema)
     jobs.invalidate(run_id)
+    store.clear_snapshot(run_id)
     return {"sent": sent}
 
 
@@ -894,6 +946,7 @@ def rollback(run_id: str) -> dict[str, Any]:
         "at": now(),
     }])
     jobs.invalidate(run_id)
+    store.clear_snapshot(run_id)
     return {
         "attempted": len(results), "succeeded": succeeded,
         "partial": succeeded != len(results), "records": results,

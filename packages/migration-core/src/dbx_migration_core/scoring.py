@@ -30,6 +30,12 @@ from dbx_contracts import (
 
 from .profiling import normalize_tokens
 
+#: Trailing words that name the *kind* of a field rather than the thing it holds.
+_QUALIFIERS = {"id", "code", "no", "num", "number", "key", "ref", "name", "type"}
+
+#: Words that carry no meaning in a field name, for reading initialisms.
+_CONNECTORS = {"of", "the", "a", "an", "and", "or", "in", "on", "at", "to", "for"}
+
 #: Below this, the column cannot hold the field's type at all.
 TYPE_FIT_FLOOR = 0.50
 #: A unique field cannot be fed by a column with this much repetition.
@@ -45,16 +51,76 @@ _TYPE_PROBE = {
 }
 
 
+def _is_contraction(short: str, word: str) -> bool:
+    """'mgr' reads as a contraction of 'manager': same start, letters kept in order.
+
+    Domain-free — it asks whether these letters survive inside that word in order,
+    never what either of them means.
+    """
+    if len(short) < 2 or len(short) >= len(word) or short[0] != word[0]:
+        return False
+    it = iter(word)
+    return all(ch in it for ch in short)
+
+
+def _abbreviation_fit(header_tokens: list[str], cand_tokens: list[str]) -> float:
+    """How well a short header reads as an abbreviation of a field name.
+
+    Two shapes, both structural: an initialism ('dob' for date-of-birth) and a
+    token-wise contraction ('emp_id' for employee_id).
+    """
+    if not header_tokens or not cand_tokens:
+        return 0.0
+
+    # An initialism: one run-together header against the field's initials. Also tried
+    # without connector words, since 'doj' and 'dj' are both written for date_of_joining.
+    # Two letters is not an initialism, it is a coincidence: 'id' reads as the
+    # initials of is_deleted.
+    if len(header_tokens) == 1 and len(cand_tokens) > 1 and len(header_tokens[0]) >= 3:
+        letters = header_tokens[0]
+        meaningful = [t for t in cand_tokens if t not in _CONNECTORS] or cand_tokens
+        for tokens in (cand_tokens, meaningful):
+            if letters == "".join(t[0] for t in tokens):
+                return 0.9
+
+    # A field named for a thing plus a qualifier — manager_id, location_code — can be
+    # written as just the abbreviated thing. Weaker evidence than a full match, since
+    # the qualifier went unsaid.
+    if len(header_tokens) == 1 and len(cand_tokens) > 1 and cand_tokens[-1] in _QUALIFIERS:
+        head = header_tokens[0]
+        if _is_contraction(head, cand_tokens[0]) or (
+            cand_tokens[0].startswith(head) and len(head) >= 3
+        ):
+            return 0.72
+
+    # Token-wise: every part of the header abbreviates the matching part of the field.
+    if len(header_tokens) != len(cand_tokens):
+        return 0.0
+    scores = []
+    for h, c in zip(header_tokens, cand_tokens, strict=True):
+        if h == c:
+            scores.append(1.0)
+        elif c.startswith(h) and len(h) >= 2:
+            scores.append(0.9)
+        elif _is_contraction(h, c):
+            scores.append(0.8)
+        else:
+            return 0.0
+    return round(0.85 * (sum(scores) / len(scores)), 4)
+
+
 def name_similarity(header: str, field: FieldSpec) -> float:
     """Best match of the header against the field name and any declared aliases.
 
     Blends token overlap with character similarity so 'Date of Joining' scores well
     against date_of_joining, and 'emp_cd' still scores something against employee_id.
     """
-    header_tokens = set(normalize_tokens(header))
+    header_order = normalize_tokens(header)
+    header_tokens = set(header_order)
     best = 0.0
     for candidate in field.match_names():
-        cand_tokens = set(normalize_tokens(candidate))
+        cand_order = normalize_tokens(candidate)
+        cand_tokens = set(cand_order)
         if not header_tokens or not cand_tokens:
             continue
         overlap = len(header_tokens & cand_tokens)
@@ -65,7 +131,11 @@ def name_similarity(header: str, field: FieldSpec) -> float:
         ratio = SequenceMatcher(
             None, "".join(sorted(header_tokens)), "".join(sorted(cand_tokens))
         ).ratio()
-        best = max(best, 0.65 * max(jaccard, 0.9 * containment) + 0.35 * ratio)
+        blended = 0.65 * max(jaccard, 0.9 * containment) + 0.35 * ratio
+        # An abbreviated header carries no token overlap and no useful character
+        # order, so the blend above reads it as noise. 'dob' scored higher against
+        # probation_end_date than against date_of_birth before this.
+        best = max(best, blended, _abbreviation_fit(header_order, cand_order))
     return round(best, 4)
 
 
@@ -309,13 +379,20 @@ def decide(mapping: ColumnMapping) -> ColumnMapping:
 
     Auto-apply needs a high score *and* clear separation from the runner-up. A column
     that fits two fields almost equally well is exactly the case a human should see.
+
+    There is a second way in: a winner far clear of everything else. 'site' scores only
+    0.68 for location_code because the word is nothing like it, but the runner-up is
+    half a scale behind, so the data is not ambiguous about which field it is. Both
+    paths still require separation; neither lets the model carry a column on its own.
     """
     t = mapping.thresholds
     best = mapping.best
     if best is None or best.score < t.review_floor:
         mapping.decision = Decision.UNMAPPED
         mapping.chosen_field = None
-    elif best.score >= t.auto_apply and mapping.gap >= t.gap:
+    elif (best.score >= t.auto_apply and mapping.gap >= t.gap) or (
+        mapping.gap >= t.decisive_gap
+    ):
         mapping.decision = Decision.AUTO_APPLY
         mapping.chosen_field = best.target_field
     else:

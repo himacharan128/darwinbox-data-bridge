@@ -82,6 +82,16 @@ CREATE TABLE IF NOT EXISTS audit (
     body      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_audit_run ON audit(run_id, at);
+
+-- The answer a replay produced, kept against a fingerprint of everything that
+-- could change it. A run nobody has touched is served from here rather than
+-- recomputed, so opening an old migration does not redo its work.
+CREATE TABLE IF NOT EXISTS snapshots (
+    run_id      TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+    fingerprint TEXT NOT NULL,
+    payload     TEXT NOT NULL,
+    at          TEXT NOT NULL
+);
 """
 
 
@@ -140,6 +150,37 @@ class Store:
     def set_status(self, run_id: str, status: str) -> None:
         with self.connect() as conn:
             conn.execute("UPDATE runs SET status = ? WHERE id = ?", (status, run_id))
+
+    def save_snapshot(self, run_id: str, fingerprint: str, payload: str) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT INTO snapshots (run_id, fingerprint, payload, at) "
+                "VALUES (?, ?, ?, ?) ON CONFLICT(run_id) DO UPDATE SET "
+                "fingerprint = excluded.fingerprint, payload = excluded.payload, "
+                "at = excluded.at",
+                (run_id, fingerprint, payload, now()),
+            )
+
+    def snapshot(self, run_id: str, fingerprint: str) -> str | None:
+        """The stored answer, but only if nothing that feeds it has changed."""
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT payload FROM snapshots WHERE run_id = ? AND fingerprint = ?",
+                (run_id, fingerprint),
+            ).fetchone()
+        return row["payload"] if row else None
+
+    def latest_snapshot(self, run_id: str) -> str | None:
+        """The last computed view, fingerprint aside — good enough to label a list."""
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT payload FROM snapshots WHERE run_id = ?", (run_id,)
+            ).fetchone()
+        return row["payload"] if row else None
+
+    def clear_snapshot(self, run_id: str) -> None:
+        with self.connect() as conn:
+            conn.execute("DELETE FROM snapshots WHERE run_id = ?", (run_id,))
 
     def delete_run(self, run_id: str) -> None:
         with self.connect() as conn:

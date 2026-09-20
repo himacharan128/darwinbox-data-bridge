@@ -245,3 +245,42 @@ def test_resolving_the_parent_releases_what_was_riding_on_it(run):
     )
     still_held = {r["key"] for r in after["records"] if r.get("waiting_on_another")}
     assert still_held < held or not still_held
+
+
+def test_opening_an_untouched_run_does_not_reprocess_it(run):
+    """A finished migration is served from store, not recomputed.
+
+    The replay cache lives in process memory, so a restart used to mean every old
+    run re-ran its whole pipeline the next time somebody opened it.
+    """
+    client, rid = run
+    import dbx_api.main as api_main
+
+    first = client.get(f"/api/runs/{rid}?wait=true").json()
+
+    # Exactly what losing the process does: the in-memory result is gone.
+    api_main.jobs.invalidate(rid)
+    api_main.jobs._results.clear()
+
+    calls = []
+    original = api_main.replay
+    api_main.replay = lambda *a, **k: (calls.append(1), original(*a, **k))[1]
+    try:
+        again = client.get(f"/api/runs/{rid}").json()
+    finally:
+        api_main.replay = original
+
+    assert calls == [], "opening an unchanged run must not replay the pipeline"
+    assert again["counts"] == first["counts"]
+    assert again["status"] == first["status"]
+
+
+def test_a_decision_invalidates_the_stored_answer(run):
+    """The snapshot must never outlive the thing it was computed from."""
+    client, rid = run
+    before = client.get(f"/api/runs/{rid}?wait=true").json()["counts"]
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    after = client.get(f"/api/runs/{rid}?wait=true").json()["counts"]
+    assert after["ready"] != before["ready"] or after["delivered"] != before["delivered"], (
+        "a decision must produce a fresh answer, not the stored one"
+    )

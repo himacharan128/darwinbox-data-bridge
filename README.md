@@ -150,7 +150,8 @@ flowchart LR
     S1 & S2 & S3 & S4 & S5 & S6 --> SC["score"]
     S7 --> SC
     SC --> T{"where does it land?"}
-    T -->|"≥ 0.75, clear of the runner-up"| AU["Applied automatically"]
+    T -->|"high score, clear of the runner-up"| AU["Applied automatically"]
+    T -->|"or far clear of everything else"| AU
     T -->|"in between"| RV["Escalated to a human<br/>with the evidence and the<br/>question together"]
     T -->|"below the floor"| NO["Left alone"]
 
@@ -170,9 +171,16 @@ self-reported confidence is not a sufficient basis for the boundary" means in co
 rather than in a comment, and `test_model_vote_cannot_decide_alone` asserts it.
 
 Thresholds are **calibrated, not chosen**. `make sweep` reports precision, recall and
-error rate across **77 labelled mapping decisions**; across every threshold tried, zero
-mappings are applied wrongly, zero noise columns are mapped, and zero cases needing a
-human are silently resolved. [The full reasoning](docs/calibration.md).
+error rate across **77 labelled mapping decisions**. At the chosen line, **51 of 57
+mappable columns are applied with no human input**, and across every threshold tried
+zero mappings are applied wrongly, zero noise columns are mapped, and zero cases
+needing a human are silently resolved.
+
+Two obvious ways to push that number higher were measured and **rejected because the
+corpus caught them corrupting data**: raising the model's cap maps a noise column, and
+letting the model break near-ties maps `dtProbationEnd` onto `date_of_joining` on a
+model vote of 1.00. The cap is load-bearing, and there is a measurement that says so.
+[The full reasoning](docs/calibration.md).
 
 Escalations are typed — eleven classes, each with its own evidence shape. An ambiguous
 column shows both candidates' measurements; an ambiguous date shows both readings it
