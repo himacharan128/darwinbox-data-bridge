@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Location",
+    "votes": [
+      {
+        "target_field": "location_code",
+        "vote": 1.0,
+        "reason": "Column name 'Location' and values like 'BLR-HQ', 'MUM-01' match location code patterns"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 794,
+    "input_tokens": 1105,
+    "output_tokens": 173,
+    "cached": false
+  }
+}

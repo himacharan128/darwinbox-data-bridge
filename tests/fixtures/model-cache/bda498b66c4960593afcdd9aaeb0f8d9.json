@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "legacy_sys_id",
+    "votes": [
+      {
+        "target_field": "employee_id",
+        "vote": 1.0,
+        "reason": "Values match pattern ^[A-Z]{3}-[0-9]{5}$ and column name suggests an identifier"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 521,
+    "input_tokens": 1093,
+    "output_tokens": 127,
+    "cached": false
+  }
+}

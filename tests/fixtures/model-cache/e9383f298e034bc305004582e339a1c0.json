@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Manager ID",
+    "votes": [
+      {
+        "target_field": "manager_id",
+        "vote": 1.0,
+        "reason": "Column name 'Manager ID' and values follow employee ID pattern, indicating references to manager identifiers"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 673,
+    "input_tokens": 1036,
+    "output_tokens": 213,
+    "cached": false
+  }
+}

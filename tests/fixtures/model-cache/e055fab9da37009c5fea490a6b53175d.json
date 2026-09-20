@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "DOB",
+    "votes": [
+      {
+        "target_field": "date_of_birth",
+        "vote": 1.0,
+        "reason": "Column name 'DOB' and values are ISO dates, matching birth date format."
+      },
+      {
+        "target_field": "date_of_joining",
+        "vote": 0.0,
+        "reason": "While dates match, 'DOB' specifically denotes birth date, not joining date."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 870,
+    "input_tokens": 1110,
+    "output_tokens": 201,
+    "cached": false
+  }
+}

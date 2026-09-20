@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strRemarks",
+    "votes": [
+      {
+        "target_field": "employment_type",
+        "vote": 1.0,
+        "reason": "Values like 'intern conversion pending' indicate employment classification (intern) and remarks about status"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 768,
+    "input_tokens": 1029,
+    "output_tokens": 160,
+    "cached": false
+  }
+}

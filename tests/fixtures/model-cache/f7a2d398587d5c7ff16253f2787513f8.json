@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "is_active_flag",
+    "votes": [
+      {
+        "target_field": "is_active",
+        "vote": 1.0,
+        "reason": "Column name and boolean values (Y) indicate active flag matching is_active field"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 975,
+    "input_tokens": 996,
+    "output_tokens": 126,
+    "cached": false
+  }
+}

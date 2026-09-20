@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "contact",
+    "votes": [
+      {
+        "target_field": "email",
+        "vote": 1.0,
+        "reason": "Values include email addresses like nikhil.verma@acme-hr.example"
+      },
+      {
+        "target_field": "phone",
+        "vote": 1.0,
+        "reason": "Values also include phone numbers like +91 98450 11016"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 759,
+    "input_tokens": 1307,
+    "output_tokens": 168,
+    "cached": false
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "payload": {
+    "source_column": "div_code",
+    "votes": [
+      {
+        "target_field": "department_code",
+        "vote": 1.0,
+        "reason": "Column name suggests division code and values are department abbreviations like ENG, SALES, HR"
+      },
+      {
+        "target_field": "location_code",
+        "vote": 0.0,
+        "reason": "Values are department names, not typical location identifiers"
+      },
+      {
+        "target_field": "grade_band",
+        "vote": 0.0,
+        "reason": "Grade bands usually numeric or alphanumeric ranges, not department names"
+      },
+      {
+        "target_field": "cost_centre",
+        "vote": 0.0,
+        "reason": "Cost centre codes often numeric; this column holds department strings"
+      },
+      {
+        "target_field": "manager_id",
+        "vote": 0.0,
+        "reason": "Manager IDs follow pattern like ABC-12345, not short strings"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 966,
+    "input_tokens": 1107,
+    "output_tokens": 314,
+    "cached": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "cell",
+    "votes": [
+      {
+        "target_field": "phone",
+        "vote": 1.0,
+        "reason": "Column name 'cell' and values are phone numbers in international format"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1097,
+    "input_tokens": 1149,
+    "output_tokens": 126,
+    "cached": false
+  }
+}

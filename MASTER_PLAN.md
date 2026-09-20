@@ -18,7 +18,7 @@ underspecified. Section 3 is the phase plan. Nothing here is implemented yet.
 | 3 | PII and temporal/effective-dated data = documented future scope | README + write-up |
 | 4 | Open-source OCR only | Textract removed entirely |
 | H | No agent framework | Structured-output calls + one bounded investigator |
-| 5 | AWS: CareerKart account, **hard-isolated** (Option A) | Dedicated IAM principal, `dbx-migration-*` prefix, no link to any CareerKart service |
+| 5 | AWS: that account's owner account, **hard-isolated** (Option A) | Dedicated IAM principal, `dbx-migration-*` prefix, no link to any that account's owner service |
 | 6 | Model access via **Bedrock long-term API key**; typed proposals over **Converse + forced tool use** (A19) | No IAM key pairs; reasoning cleanly separated |
 | 7 | Region **ap-south-1** (Mumbai) | Lowest latency; us-east-1 / us-west-2 as fallbacks |
 | 8 | Repo `darwinbox-data-bridge`, **public** | Secrets live outside the repo tree; gitleaks in commit #1 |
@@ -253,34 +253,32 @@ tokens, most of them reasoning.
 
 | | |
 |---|---|
-| AWS account | `ACCOUNT_ID` (CareerKart), profile `careerkart` |
-| Project principal | `arn:aws:iam::ACCOUNT_ID:user/dbx-migration-agent` |
-| IAM policy | `dbx-bedrock-invoke` — `bedrock:CallWithBearerToken` on `*`, `InvokeModel*` on the two gpt-oss model ARNs only |
-| Credential | Bedrock long-term API key (`ABSK…`, 132 chars), expires **2026-12-18** |
+| AWS account | a dedicated principal in a personal account, isolated from any other workload |
+| IAM policy | one inline policy: `bedrock:CallWithBearerToken`, plus `InvokeModel*` on the two gpt-oss model ARNs only |
+| Credential | a Bedrock long-term API key, held outside the repo tree |
 | Region / model | `ap-south-1` / `openai.gpt-oss-120b-1:0` (fallback `-20b-1:0`) |
 | Latency | ~225 ms simple call; ~800 ms structured proposal |
-| Secrets | `~/.darwinbox-agent/.env`, mode 600, outside the repo tree |
-| Project context | `.envrc` (direnv) exporting the careerkart AWS profile + `dotenv_if_exists ~/.darwinbox-agent/.env` |
+| Secrets | a dotenv file outside the repo tree, mode 600 |
+| Project context | `.envrc` (direnv) exporting the AWS profile and loading that dotenv |
 
-`bedrock:CallWithBearerToken` **must be scoped to `Resource: "*"`** — scoping it to a
+`bedrock:CallWithBearerToken` must be granted at account scope — narrowing it to a
 model ARN yields a 401. IAM propagation took ~15 s.
 
 **`.envrc` must be gitignored in commit #1** — it contains no secrets, but it carries
-absolute paths into the CareerKart credentials directory. A `.envrc.example` is committed
-in its place.
+absolute paths into a credentials directory. A `.envrc.example` is committed in its place.
 
 ### A16 — AWS account isolation (TD001, TD012)
-**Option A: the CareerKart account, hard-isolated.** TD001's "never connect this
-application to CareerKart production resources" is honoured as *no link to any
-running CareerKart service* — not as a prohibition on the account.
+**Option A: an existing personal account, hard-isolated.** TD001's "never connect this
+application to another owner's production resources" is honoured as *no link to any
+running service in that account* — not as a prohibition on the account itself.
 
 Enforced by:
 
-- A dedicated IAM user `dbx-migration-agent`, with an inline policy granting only
+- A dedicated IAM user for this project only, with an inline policy granting only
   `bedrock:InvokeModel*` on the gpt-oss model ARN for Phases 1–6.
 - Every resource created by this project prefixed **`dbx-migration-*`**.
 - A **separate Terraform state file/backend**, so `terraform destroy` at teardown
-  can never reach an existing CareerKart resource.
+  can never reach an existing unrelated resource.
 - No VPC peering, no shared security groups, no reads from existing buckets,
   queues or databases.
 - Phase 3/7 IAM additions (S3, SQS, ECS, RDS) scoped by ARN to the

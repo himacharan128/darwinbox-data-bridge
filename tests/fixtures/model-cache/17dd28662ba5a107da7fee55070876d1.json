@@ -1,0 +1,41 @@
+{
+  "payload": {
+    "source_column": "site",
+    "votes": [
+      {
+        "target_field": "location_code",
+        "vote": 1.0,
+        "reason": "Values like 'BLR-HQ' and 'HYD-01' match typical office location codes (city-abbreviation and site identifier)."
+      },
+      {
+        "target_field": "department_code",
+        "vote": 0.0,
+        "reason": "Pattern resembles location codes more than department identifiers."
+      },
+      {
+        "target_field": "employee_id",
+        "vote": 0.0,
+        "reason": "Pattern does not match required employee ID format (AAA-12345)."
+      },
+      {
+        "target_field": "grade_band",
+        "vote": 0.0,
+        "reason": "Grade bands are not typically formatted as three letters hyphen two chars."
+      },
+      {
+        "target_field": "cost_centre",
+        "vote": 0.0,
+        "reason": "Cost centre codes usually numeric, not city-like strings."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1515,
+    "input_tokens": 1061,
+    "output_tokens": 370,
+    "cached": false
+  }
+}

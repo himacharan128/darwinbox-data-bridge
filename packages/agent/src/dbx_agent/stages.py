@@ -120,7 +120,7 @@ def rejected_votes(proposal: MappingVote, schema: MigrationSchema) -> list[str]:
     return [v.target_field for v in proposal.votes if v.target_field not in known]
 
 
-SCHEMA_PROMPT_VERSION = "schema/v1"
+SCHEMA_PROMPT_VERSION = "schema/v2"
 
 _SCHEMA_SYSTEM = """\
 You are helping design the destination schema for a data migration.
@@ -140,6 +140,9 @@ same person will be loaded several times.
 - Use `enum` with `allowed` only when the values are a small closed set.
 - Ignore columns that are not part of the entity: row numbers, checksums, audit \
 timestamps, sync markers, internal notes, bank details.
+- List in `sources` every source column that feeds the field, spelled EXACTLY as the \
+`column` key gives it. This is how a field is traced back to the data, and how its \
+rules are derived, so a field with no sources is useless.
 - A proposal is a starting point a human will edit, not a finished contract. Prefer \
 being useful over being exhaustive.
 

@@ -52,6 +52,21 @@ def load_lookups(paths: list[str]) -> dict[str, set[str]]:
     return out
 
 
+def lookup_columns(paths: list[str]) -> dict[str, list[str]]:
+    """The column names each lookup file actually has, for declaring it in a schema."""
+    out: dict[str, list[str]] = {}
+    for raw in paths:
+        path = Path(raw)
+        stem = path.stem.rstrip("s")
+        if not path.exists() or is_sidecar(path) or path.suffix.lower() != ".csv":
+            continue
+        with path.open(encoding="utf-8") as fh:
+            header = next(csv.reader(fh), [])
+        if "code" in header and len(header) <= 4:
+            out[stem] = [h.strip() for h in header]
+    return out
+
+
 def _is_lookup(path: Path, lookups: dict[str, set[str]]) -> bool:
     return path.stem.rstrip("s") in lookups
 

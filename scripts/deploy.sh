@@ -19,10 +19,13 @@ docker push "$IMAGE:$TAG"
 docker push "$IMAGE:latest"
 
 echo "==> registering task definition"
-python3 - "$IMAGE:$TAG" <<'PY'
+python3 - "$IMAGE:$TAG" "$ACCT" <<'PY'
 import json, subprocess, sys, pathlib
-image = sys.argv[1]
-spec = json.loads(pathlib.Path("infra/taskdef.json").read_text())
+image, account = sys.argv[1], sys.argv[2]
+# The checked-in task definition carries a placeholder, so no account id is
+# published in the repo. The real one comes from whoever is deploying.
+raw = pathlib.Path("infra/taskdef.json").read_text().replace("ACCOUNT_ID", account)
+spec = json.loads(raw)
 for container in spec["containerDefinitions"]:
     container["image"] = image
 pathlib.Path("/tmp/dbx-taskdef.json").write_text(json.dumps(spec))

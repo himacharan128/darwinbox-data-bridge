@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "Location",
+    "votes": [
+      {
+        "target_field": "location_code",
+        "vote": 1.0,
+        "reason": "Column name 'Location' and values like 'BLR-HO' match location code pattern"
+      },
+      {
+        "target_field": "department_code",
+        "vote": 0.0,
+        "reason": "Values are city-location codes, not typical department identifiers"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1045,
+    "input_tokens": 1061,
+    "output_tokens": 197,
+    "cached": false
+  }
+}

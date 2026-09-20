@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "dtDateOfBirth",
+    "votes": [
+      {
+        "target_field": "date_of_birth",
+        "vote": 1.0,
+        "reason": "Column name includes 'DateOfBirth' and values are ISO dates like 1991-09-23, matching birth dates"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 718,
+    "input_tokens": 1145,
+    "output_tokens": 165,
+    "cached": false
+  }
+}

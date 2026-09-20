@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "dtLastSync",
+    "votes": [
+      {
+        "target_field": "date_of_joining",
+        "vote": 1.0,
+        "reason": "Column name suggests a timestamp of last sync, values are ISO datetime strings typical for a joining date"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1059,
+    "input_tokens": 1012,
+    "output_tokens": 153,
+    "cached": false
+  }
+}

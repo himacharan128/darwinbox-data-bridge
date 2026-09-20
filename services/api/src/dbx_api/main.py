@@ -32,7 +32,7 @@ from pydantic import BaseModel
 
 from .delivery import DestinationClient, Outcome
 from .jobs import jobs
-from .runtime import case_key, load_lookups, replay, source_profiles
+from .runtime import case_key, load_lookups, lookup_columns, replay, source_profiles
 from .store import Store, now
 
 DATA = Path(os.environ.get("DBX_DATA_DIR", ".artifacts"))
@@ -395,6 +395,7 @@ def recommend(run_id: str) -> dict[str, Any]:
     )
 
     lookups = load_lookups(json.loads(run["files_json"]))
+    lookup_cols = lookup_columns(json.loads(run["files_json"]))
 
     kept, dropped = [], []
     for field in proposal.fields:
@@ -402,16 +403,28 @@ def recommend(run_id: str) -> dict[str, Any]:
     if kept:
         proposal.fields = kept
 
+    by_raw = {p.raw_name.strip().casefold(): p for p in profiles}
+
+    def feeding(field: Any) -> list[Any]:
+        """The profiled columns a proposed field says it came from."""
+        found = [by_raw[c.strip().casefold()] for c in field.sources
+                 if c.strip().casefold() in by_raw]
+        if found:
+            return found
+        # The model named no column, or named one that is not in the profiles.
+        # Fall back to the field's own name, which is right for files that already
+        # use destination spelling.
+        key = re.sub(r"[^a-z0-9]+", "", field.name.casefold())
+        hit = next((p for column, p in profiles_by_key.items()
+                    if column == key or column.endswith(key) or key.endswith(column)), None)
+        return [hit] if hit else []
+
     marked = 0
     for field in proposal.fields:
-        key = re.sub(r"[^a-z0-9]+", "", field.name.casefold())
-        source = next(
-            (p for column, p in profiles_by_key.items()
-             if column == key or column.endswith(key) or key.endswith(column)),
-            None,
-        )
-        if source is None:
+        columns = feeding(field)
+        if not columns:
             continue
+        source = max(columns, key=lambda p: p.non_null)
 
         # A field whose values all live in an uploaded lookup gets that rule, which is
         # the single strongest signal mapping has.
@@ -424,20 +437,32 @@ def recommend(run_id: str) -> dict[str, Any]:
                 field.allowed = []
                 break
 
-        if field.unique or not field.required:
-            continue
-        if getattr(field, "reference", None):
+        if field.unique or field.reference:
             continue      # a lookup value identifies the lookup row, not the person
         if _looks_like_a_lookup_value(field.name, profiles_by_key):
             continue
-        if identifier_like(field.name, field.type):
-            field.unique = True
-            marked += 1
-            # Give it the shape its values actually have, so mapping has evidence
-            # beyond the column's name.
-            mask = source.dominant_mask()
-            if mask and mask.coverage >= 0.95 and field.type == "string":
-                field.pattern = mask_to_pattern(mask.mask)
+        if not identifier_like(field.name, field.type):
+            continue
+        # Every column feeding it has to be an identifier, or it is not one.
+        if min(p.cardinality_ratio for p in columns) < 0.99:
+            continue
+        field.unique = True
+        marked += 1
+
+    # Give identifiers the shape their values actually have, so mapping has evidence
+    # beyond the column's name. Only where every source column agrees on the shape.
+    patterned = 0
+    for field in proposal.fields:
+        if not field.unique or field.type != "string" or field.pattern:
+            continue
+        masks = [p.dominant_mask() for p in feeding(field)]
+        if not masks or any(m is None or m.coverage < 0.95 for m in masks):
+            continue
+        shapes = {m.mask for m in masks if m}
+        if len(shapes) != 1:
+            continue
+        field.pattern = mask_to_pattern(shapes.pop())
+        patterned += 1 if field.pattern else 0
 
     draft = {
         "schema_version": 1,
@@ -454,6 +479,14 @@ def recommend(run_id: str) -> dict[str, Any]:
             for f in proposal.fields
         ],
     }
+    # A reference is only legal against a declared lookup. The uploaded file that
+    # supplied the values is that declaration.
+    referenced = {f.reference.split(".")[0] for f in proposal.fields if f.reference}
+    if referenced:
+        draft["lookups"] = [
+            {"name": name, "key": "code", "fields": sorted(lookup_cols.get(name, ["code"]))}
+            for name in sorted(referenced)
+        ]
     schema = MigrationSchema.model_validate(draft)
     version = store.add_schema_version(
         run_id, schema.model_dump_json(), origin="recommended",
@@ -465,6 +498,7 @@ def recommend(run_id: str) -> dict[str, Any]:
             f"Proposed a {len(schema.fields)}-field schema for {schema.entity}"
             + (f"; left out {len(dropped)} system column(s)" if dropped else "")
             + (f"; {marked} field(s) identify a person" if marked else "")
+            + (f"; {patterned} got the value shape seen in the data" if patterned else "")
         ),
         "at": now(), "provider": call.provider, "model": call.model,
         "prompt_version": call.prompt_version, "latency_ms": call.latency_ms,

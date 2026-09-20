@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "dob",
+    "votes": [
+      {
+        "target_field": "date_of_birth",
+        "vote": 1.0,
+        "reason": "Column name 'dob' and ISO date values (YYYY-MM-DD) clearly indicate employee birth dates"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 910,
+    "input_tokens": 1206,
+    "output_tokens": 138,
+    "cached": false
+  }
+}

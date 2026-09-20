@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "source_column": "intSeqNo",
+    "votes": []
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 758,
+    "input_tokens": 1113,
+    "output_tokens": 117,
+    "cached": false
+  }
+}

@@ -58,10 +58,19 @@ class ProposedField(BaseModel):
     unique: bool = False
     allowed: list[str] = Field(default_factory=list, description="for enum only")
     format: str | None = Field(default=None, description="for date only, e.g. YYYY-MM-DD")
+    sources: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description=(
+            "The source columns this field came from, spelled exactly as they appear "
+            "in the 'column' key of the profiles. Required: this is how the field is "
+            "traced back to the data."
+        ),
+    )
     #: Filled in from the data after the model answers, not asked of the model.
     pattern: str | None = None
     reference: str | None = None
-    reason: str = Field(description="which source columns led to this, in one sentence")
+    reason: str = Field(description="why those columns are one field, in one sentence")
 
 
 class ProposedSchema(BaseModel):

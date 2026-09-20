@@ -1,18 +1,189 @@
 # darwinbox-data-bridge
 
-An agent that migrates a client's messy HR exports into a target schema: it works out
+An agent that migrates a client's messy HR exports into a target schema. It works out
 the mapping itself, cleans what it can defend, pushes the result to a destination API,
 and stops to ask a human only where the evidence genuinely runs out.
 
 Built for the Darwinbox Forward Deployed Engineer take-home.
 
----
-
 ### → **Live: http://dbx-console-alb-1789124705.ap-south-1.elb.amazonaws.com**
 
 **[One-page write-up](docs/WRITEUP.md)** · **[Why the line is there](docs/calibration.md)** ·
-**[Demo script](docs/DEMO.md)** · **[Deploying](docs/DEPLOY.md)** ·
-**[Test samples](samples/README.md)** · **[How each piece works](docs/FUNCTIONALITY.md)**
+**[Deploying](docs/DEPLOY.md)** · **[Test samples](samples/README.md)** ·
+**[How each piece works](docs/FUNCTIONALITY.md)**
+
+---
+
+## In one picture
+
+Seven files in seven shapes go in. One validated dataset comes out. A human is asked
+only about the parts the evidence could not settle.
+
+```mermaid
+flowchart LR
+    F["Client exports<br/>CSV · Excel · JSON · YAML<br/>PDF · scanned roster"]
+    A["The agent<br/>map · clean · validate<br/>reconcile"]
+    H["Human<br/>only the undecidable"]
+    D["Destination HRMS<br/>validated records"]
+
+    F --> A
+    A -->|"evidence runs out"| H
+    H -->|"decision"| A
+    A -->|"nothing open against it"| D
+
+    style A fill:#ede9fe,stroke:#6d28d9,stroke-width:2px
+    style H fill:#fef3c7,stroke:#b45309
+    style D fill:#dcfce7,stroke:#15803d
+```
+
+---
+
+## Product flow
+
+What an operator actually does. Nothing is mapped until a schema is approved — a run
+against a schema nobody agreed to makes every decision after it unaccountable.
+
+```mermaid
+flowchart TD
+    U["1 · Upload the client's files<br/>or pick a bundled sample set"]
+    R["2 · See what was read<br/>file by file; anything unreadable is named<br/>nothing mapped yet"]
+    Q{"3 · Is there a<br/>target schema?"}
+    P["Paste the client's schema"]
+    G["Agent proposes one<br/>from the columns it found"]
+    E["4 · Edit the draft<br/>types, constraints, uniqueness"]
+    OK(["5 · Approve — this starts the migration"])
+    W["6 · Supervise<br/>live activity + queue of what it could not settle"]
+    S["Sent automatically<br/>records with nothing open against them"]
+    B["Rollback<br/>undoes a delivery and pauses sending"]
+
+    U --> R --> Q
+    Q -->|"client has one"| P
+    Q -->|"client has none"| G
+    P --> E
+    G --> E
+    E --> OK --> W
+    W --> S
+    S -.->|"if something was wrong"| B
+    B -.-> W
+
+    style OK fill:#ede9fe,stroke:#6d28d9,stroke-width:2px
+    style S fill:#dcfce7,stroke:#15803d
+    style B fill:#fee2e2,stroke:#b91c1c
+```
+
+Constraints you set in step 4 are not decoration — they become evidence the agent
+scores against, which means fewer questions in step 6.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph browser["Browser"]
+        UI["apps/web<br/>React console — desktop and mobile<br/>activity · review queue · records · destination"]
+    end
+
+    subgraph api["services/api"]
+        LIFE["Run lifecycle<br/>upload · schema versions · approval"]
+        REVIEW["Review decisions<br/>content-addressed overrides"]
+        SEND["Delivery<br/>retry · rollback · reconcile"]
+    end
+
+    subgraph core["The engine — knows nothing about employees"]
+        EX["packages/extraction<br/>readers with cell-level provenance"]
+        MC["packages/migration-core<br/>profiling · scoring · cleanup<br/>validation · matching · pipeline"]
+        CT["packages/contracts<br/>schema, evidence, escalation,<br/>audit vocabulary"]
+    end
+
+    AG["packages/agent<br/>bounded model stages<br/>forced tool use"]
+    BR["Amazon Bedrock<br/>openai.gpt-oss-120b"]
+    TG["services/mock-target<br/>destination HRMS — its own database,<br/>reached only over HTTP"]
+    ST[("Durable state<br/>human decisions +<br/>what the destination accepted")]
+
+    UI <--> LIFE
+    UI <--> REVIEW
+    LIFE --> EX --> MC
+    MC <--> CT
+    MC -.->|"nominates candidates"| AG
+    AG <-->|"typed tool call"| BR
+    AG -.->|"capped vote"| MC
+    MC --> SEND -->|"HTTP"| TG
+    REVIEW --> ST
+    SEND --> ST
+    ST -.->|"replay"| MC
+
+    style AG fill:#ede9fe,stroke:#6d28d9
+    style ST fill:#fef3c7,stroke:#b45309
+    style TG fill:#dcfce7,stroke:#15803d
+```
+
+**The engine is schema-driven.** Nothing in `migration-core` or `agent` knows what an
+employee is — `test_no_hardcoded_fields` fails the build if a domain field name ever
+appears in either.
+
+**Only two things are durable**: what a human decided, and what the destination
+accepted. Everything else is derived by replaying the pipeline over the uploaded files
+plus those decisions — so resuming a run and reprocessing after a decision are the same
+mechanism, not two code paths that can disagree.
+
+---
+
+## The autonomy boundary
+
+The interesting question is not *can it map columns* but *where does it stop*.
+
+```mermaid
+flowchart LR
+    subgraph det["Measured from the data — 75% of the scale"]
+        S1["header similarity"]
+        S2["type parse rate"]
+        S3["constraint fit"]
+        S4["uniqueness fit"]
+        S5["pattern-mask fit"]
+        S6["values exist in<br/>the referenced lookup"]
+    end
+    subgraph mdl["The model — capped at 25%"]
+        S7["its opinion"]
+    end
+
+    S1 & S2 & S3 & S4 & S5 & S6 --> SC["score"]
+    S7 --> SC
+    SC --> T{"where does it land?"}
+    T -->|"≥ 0.75, clear of the runner-up"| AU["Applied automatically"]
+    T -->|"in between"| RV["Escalated to a human<br/>with the evidence and the<br/>question together"]
+    T -->|"below the floor"| NO["Left alone"]
+
+    style mdl fill:#fee2e2,stroke:#b91c1c
+    style det fill:#dcfce7,stroke:#15803d
+    style AU fill:#dcfce7,stroke:#15803d
+    style RV fill:#fef3c7,stroke:#b45309
+```
+
+```python
+score = 0.75 * deterministic_evidence + 0.25 * model_vote
+```
+
+A candidate with no deterministic support **cannot exceed 0.25**, so it can never reach
+the auto-apply threshold however certain the model sounds. That is what "a model's
+self-reported confidence is not a sufficient basis for the boundary" means in code
+rather than in a comment, and `test_model_vote_cannot_decide_alone` asserts it.
+
+Thresholds are **calibrated, not chosen**. `make sweep` reports precision, recall and
+error rate across **77 labelled mapping decisions**; across every threshold tried, zero
+mappings are applied wrongly, zero noise columns are mapped, and zero cases needing a
+human are silently resolved. [The full reasoning](docs/calibration.md).
+
+Escalations are typed — eleven classes, each with its own evidence shape. An ambiguous
+column shows both candidates' measurements; an ambiguous date shows both readings it
+could be; an uncertain identity shows what agrees and what conflicts.
+
+The line between safe and unsafe cleanup is **reversible and evidence-backed** versus
+**inventing data**. Stripping punctuation so a value satisfies a declared pattern is
+safe. Adding a `+91` country code so it satisfies that same pattern is not — so the
+agent escalates instead.
+
+---
 
 ## Run it
 
@@ -24,124 +195,30 @@ uv sync && pnpm install
 make run            # builds the UI, starts the destination and the API
 ```
 
+Open **http://127.0.0.1:8080** and press **New migration**.
 Or in containers, the same way a deployment runs it: `make stack`.
-
-Open **http://127.0.0.1:8080** and press **New migration**. It loads the bundled
-client exports from `tests/fixtures/run1/`.
-
-Other entry points:
 
 ```bash
 make demo           # run one migration in the terminal
 make eval           # measure the escalation boundary against the labelled corpus
 make sweep          # show how the boundary moves as thresholds change
-make test           # 39 tests, no credentials or network needed
+make test           # 84 tests, no credentials or network needed
 ```
 
 The model runs from **recorded replays** committed under `tests/fixtures/model-cache`,
 so everything above works offline. Set `OPENAI_API_KEY` and `AWS_REGION` (see
 `.env.example`) to call the live model instead.
 
-## The flow
+---
 
-1. **Upload the client's files** — or pick one of five bundled sample sets. CSV, Excel,
-   JSON, YAML, PDF and scans.
-2. **See what was read** — file by file, with anything unreadable named and explained.
-   Nothing has been mapped yet.
-3. **Agree a target schema** — paste your own, or have the agent propose one from the
-   columns it found. Either way it is a draft you edit.
-4. **Approve it.** That is what starts the migration; a run against a schema nobody
-   agreed to makes every decision after it unaccountable.
-5. **Supervise** — live activity and a queue of what it could not settle. Records that
-   pass with nothing open against them are **sent automatically**; rollback undoes a
-   delivery and pauses sending so the undo sticks.
+## What the numbers on screen mean
 
-## What it does
+**Rows read** and **employees found** sit side by side because 46 rows becoming 40
+people is reconciliation doing its job, not data loss. **Sent to destination** and
+**needs review** complete the set. Excluded and destination-refused appear only when
+they are not zero.
 
-1. **Reads seven files in seven shapes** — CSV, Excel, JSON, YAML, pasted text, a
-   native PDF and a scanned one read through OCR — in five naming
-   conventions, with overlapping employees and complementary fields — and reconciles
-   them into one dataset without being told how.
-2. **Maps and cleans on its own.** 66 of 101 source columns map with no human input,
-   and it leaves checksums, audit timestamps and bank details alone. Dates are
-   normalised, duplicates removed, whitespace trimmed, enums canonicalised.
-3. **Escalates only what it cannot settle**, with the evidence and the question
-   together, so a case is resolvable without opening the source file.
-4. **Delivers to a real stub API as records become ready**, with per-record outcomes,
-   retry, rollback, and an append-only audit trail.
-
-The four numbers on screen are **rows read**, **employees found**, **sent to
-destination** and **needs review** — the first two side by side because 46 rows
-becoming 40 people is reconciliation doing its job. Excluded and destination-refused
-appear only when they are not zero.
-
-## The autonomy boundary
-
-The interesting question is not *can it map columns* but *where does it stop*.
-
-A mapping score is composed in code from six signals. Five are measured from the
-actual data — header similarity, type parse rate, constraint fit, uniqueness fit,
-pattern-mask fit, and whether the values exist in the referenced lookup. The sixth is
-the model's opinion, and it is **capped at 0.25 of the scale**:
-
-```python
-score = 0.75 * deterministic_evidence + 0.25 * model_vote
-```
-
-So a candidate with no deterministic support cannot exceed 0.25 and can never reach
-the 0.75 auto-apply threshold, however certain the model sounds. That is what
-"a model's self-reported confidence is not a sufficient basis for the boundary" means
-in code rather than in a comment, and `test_model_vote_cannot_decide_alone` asserts it.
-
-Thresholds are **calibrated, not chosen**. `make sweep` reports precision, recall and
-error rate across 77 labelled decisions; across every threshold tried, zero mappings
-are applied wrongly, zero noise columns are mapped, and zero cases needing a human are
-silently resolved. [The full reasoning](docs/calibration.md).
-
-Escalations are typed, eleven classes, each with its own evidence shape — an
-ambiguous column shows both candidates' measurements, an ambiguous date shows both
-readings it could be, an uncertain identity shows what agrees and what conflicts.
-
-The line between safe and unsafe cleanup is **reversible and evidence-backed** versus
-**inventing data**. Stripping punctuation so a value satisfies a declared pattern is
-safe. Adding a `+91` country code so it satisfies that same pattern is not, and the
-agent escalates instead.
-
-## Architecture
-
-```
-apps/web              React console (desktop and mobile compositions): live activity, escalation queue, records, destination
-services/api          Run lifecycle, review decisions, delivery, rollback, audit
-services/mock-target  The destination HRMS — its own database, reached only over HTTP
-packages/contracts    Schema language, evidence, escalation and audit vocabulary
-packages/migration-core  Profiling, scoring, cleanup, validation, matching, pipeline
-packages/extraction   CSV/XLSX readers with cell-level provenance
-packages/agent        Bedrock provider (forced tool use), bounded model stages
-tests/fixtures        The client's exports, the target schema, recorded model replays
-tests/evaluations     The labelled corpus that makes the boundary measurable
-```
-
-**The engine is schema-driven.** Nothing in `migration-core` or `agent` knows what an
-employee is — `test_no_hardcoded_fields` fails the build if a domain field name ever
-appears in either. The schema under `tests/fixtures/schemas/` is one instance, not
-the product's schema.
-
-**Only two things are durable**: what a human decided, and what the destination
-accepted. Everything else is derived by replaying the pipeline over the uploaded files
-plus those decisions. Reopening a run recomputes the same queue, so resuming and
-reprocessing-after-a-decision are the same mechanism rather than two code paths that
-can disagree.
-
-**Typed model output uses forced tool use, never `response_format`.** Verified against
-gpt-oss-120b: `response_format: json_schema, strict: true` returned reasoning tags, a
-markdown preamble and truncated JSON, while `toolChoice` returned pre-parsed,
-schema-conformant input. It also separates chain-of-thought structurally, so dropping
-it is not a regex over `<reasoning>` tags.
-
-**Prompt injection** is handled in three layers: source values never enter the system
-prompt, output is a typed tool call so prose has no channel to become an instruction,
-and the policy gate discards any proposal naming a column or field outside the
-manifest. One fixture cell carries an injection payload.
+---
 
 ## Tech
 
@@ -150,9 +227,21 @@ PyMuPDF + docTR (Apache 2.0) for documents —
 `openai.gpt-oss-120b` (Apache 2.0, open weights) on Amazon Bedrock via Converse —
 SQLite locally, Postgres via `DATABASE_URL` — ruff, pytest.
 
+**Typed model output uses forced tool use, never `response_format`.** Verified against
+gpt-oss-120b: `response_format: json_schema, strict: true` returned reasoning tags, a
+markdown preamble and truncated JSON, while `toolChoice` returned pre-parsed,
+schema-conformant input.
+
+**Prompt injection** is handled in three layers: source values never enter the system
+prompt; output is a typed tool call, so prose has no channel to become an instruction;
+and the policy gate discards any proposal naming a column or field outside the
+manifest. One fixture cell carries an injection payload.
+
+---
+
 ## Deliberately out of scope
 
-Named here because they are real gaps, not oversights:
+Named here because they are real gaps, not oversights.
 
 - **PII handling.** This is HR data — salary, date of birth, national identifiers.
   Production needs field-level sensitivity in the schema, masked display with
@@ -167,13 +256,15 @@ Named here because they are real gaps, not oversights:
 - **Durable queue and worker.** Processing is in-process; production wants the job
   graph, leases and dead-letter queues described in `MASTER_PLAN.md`.
 
+---
+
 ## Notes
 
 The brief suggests roughly 4–6 hours. This is deliberately the production-shaped
-version — the ~4-hour core is the vertical slice in `packages/` plus `services/`,
-and everything around it (the labelled corpus, the threshold sweep, the recorded
-replays, the integration suite) exists to make the autonomy boundary *defensible*
-rather than merely demonstrable.
+version — the ~4-hour core is the vertical slice in `packages/` plus `services/`, and
+everything around it (the labelled corpus, the threshold sweep, the recorded replays,
+the integration suite) exists to make the autonomy boundary *defensible* rather than
+merely demonstrable.
 
 `MASTER_PLAN.md` carries the full design record, including the decisions that were
 reversed and why.

@@ -1,0 +1,320 @@
+{
+  "payload": {
+    "entity": "employee",
+    "fields": [
+      {
+        "name": "employee_id",
+        "type": "string",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Emp ID",
+          "code",
+          "strEmployeeCode",
+          "staff_code",
+          "emp_ref"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Primary identifier for the employee, appears under many synonymous column names"
+      },
+      {
+        "name": "first_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "First Name",
+          "given_name",
+          "strFirstNm",
+          "fname",
+          "legal_first",
+          "First Name."
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Given name of the employee, collected from various column variants"
+      },
+      {
+        "name": "last_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Last Name",
+          "surname",
+          "strLastNm",
+          "lname",
+          "legal_last",
+          "Last Nam\u00e9"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Family name of the employee, collected from various column variants"
+      },
+      {
+        "name": "email",
+        "type": "email",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Email",
+          "strEmailAddr",
+          "email_id",
+          "corp_email"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Work email address, present in multiple source columns"
+      },
+      {
+        "name": "phone",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Mobile",
+          "strMobileNo",
+          "cell",
+          "contact"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Mobile/contact phone number, gathered from several columns"
+      },
+      {
+        "name": "date_of_birth",
+        "type": "date",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "DOB",
+          "dtDateOfBirth",
+          "birth_date",
+          "birth_dt"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Employee's birth date, appears under many column names with different formats"
+      },
+      {
+        "name": "date_of_joining",
+        "type": "date",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Date of Joining",
+          "doj",
+          "dtDateOfJoin",
+          "joining_dt",
+          "hire_dt"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Date the employee joined the company, collected from several synonymous columns"
+      },
+      {
+        "name": "department_code",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Dept Code",
+          "dept",
+          "strDeptCd",
+          "department",
+          "div_code"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Department identifier/code, appears under multiple column names"
+      },
+      {
+        "name": "job_title",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Designation",
+          "strDesignation",
+          "job_title",
+          "grade"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Employee's designation or job title, collected from various columns"
+      },
+      {
+        "name": "employment_type",
+        "type": "enum",
+        "required": false,
+        "unique": false,
+        "allowed": [
+          "FULL_TIME",
+          "PART_TIME",
+          "INTERN",
+          "CONTRACT"
+        ],
+        "format": null,
+        "sources": [
+          "Employment Type",
+          "strEmpType",
+          "emp_type",
+          "worker_class",
+          "Employment"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Employment classification, limited set of values across sources"
+      },
+      {
+        "name": "manager_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Manager ID",
+          "mgr",
+          "strReportingMgr",
+          "reports_to",
+          "supervisor_ref",
+          "Type -Manager ID"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Reference to the employee's manager, appears under many column names"
+      },
+      {
+        "name": "location_code",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Location",
+          "loc",
+          "strLocCd",
+          "office",
+          "site"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Work location or office code, collected from several columns"
+      },
+      {
+        "name": "grade_band",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "strGradeBand"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Grade band for the employee, present in one source column"
+      },
+      {
+        "name": "cost_centre",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "cost_centre"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Cost centre code associated with the employee"
+      },
+      {
+        "name": "is_active",
+        "type": "boolean",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "is_active_flag"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Flag indicating if the employee is currently active"
+      },
+      {
+        "name": "is_deleted",
+        "type": "boolean",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "bIsDeleted"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Flag indicating if the record has been soft\u2011deleted"
+      },
+      {
+        "name": "source_system",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "strSourceSystem"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Identifier of the originating source system"
+      },
+      {
+        "name": "last_sync_timestamp",
+        "type": "date",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "dtLastSync"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "Timestamp of the last synchronization from the source system"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "schema/v2",
+    "latency_ms": 9428,
+    "input_tokens": 8237,
+    "output_tokens": 2084,
+    "cached": false
+  }
+}
