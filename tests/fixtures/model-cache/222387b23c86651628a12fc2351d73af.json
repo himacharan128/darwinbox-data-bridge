@@ -1,0 +1,99 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "staff_code",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Pattern matches employee_id format and column name indicates staff code"
+      },
+      {
+        "source_column": "fname",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column holds given names"
+      },
+      {
+        "source_column": "lname",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column holds family names"
+      },
+      {
+        "source_column": "email_id",
+        "target_field": "email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are email addresses"
+      },
+      {
+        "source_column": "mobile",
+        "target_field": "phone",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are phone numbers"
+      },
+      {
+        "source_column": "birth_date",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and date format indicate birth date"
+      },
+      {
+        "source_column": "joining_dt",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and date format indicate joining date"
+      },
+      {
+        "source_column": "department",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are department abbreviations"
+      },
+      {
+        "source_column": "grade",
+        "target_field": "grade_band",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column holds grade/role descriptions"
+      },
+      {
+        "source_column": "emp_type",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match allowed enum for employment type"
+      },
+      {
+        "source_column": "reports_to",
+        "target_field": "manager_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Pattern matches employee IDs and column name indicates manager reference"
+      },
+      {
+        "source_column": "site",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are location codes"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 1500,
+    "input_tokens": 4741,
+    "output_tokens": 759,
+    "cached": false
+  }
+}

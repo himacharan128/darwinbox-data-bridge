@@ -1,0 +1,85 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "employee_id",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Matches pattern and name for primary employee identifier"
+      },
+      {
+        "source_column": "first_name",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and sample value indicate given name"
+      },
+      {
+        "source_column": "last_name",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and sample value indicate family name"
+      },
+      {
+        "source_column": "work_email",
+        "target_field": "work_email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Email type and column name match work email field"
+      },
+      {
+        "source_column": "department_code",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and three\u2011letter code pattern match department reference"
+      },
+      {
+        "source_column": "date_of_joining",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Date pattern and column name indicate joining date"
+      },
+      {
+        "source_column": "employment_type",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and value FULL_TIME map to employment type"
+      },
+      {
+        "source_column": "location_code",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and pattern match location reference code"
+      },
+      {
+        "source_column": "status",
+        "target_field": "status",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and value ACTIVE correspond to employment status enum"
+      },
+      {
+        "source_column": "date_of_birth",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Date pattern and column name indicate birth date"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 1182,
+    "input_tokens": 2810,
+    "output_tokens": 583,
+    "cached": false
+  }
+}

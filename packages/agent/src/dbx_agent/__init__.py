@@ -4,7 +4,9 @@ The model proposes. Deterministic code disposes.
 """
 
 from .proposals import (
+    ColumnAssignment,
     FieldVote,
+    FileAssignment,
     FileRole,
     InvestigationResult,
     InvestigationStep,
@@ -21,19 +23,24 @@ from .provider import (
     build_provider,
 )
 from .stages import (
+    ASSIGN_PROMPT_VERSION,
     PROMPT_VERSION,
     SCHEMA_PROMPT_VERSION,
+    assign_file_columns,
     recommend_schema,
     rejected_votes,
     vote_on_column,
 )
 
 __all__ = [
+    "ASSIGN_PROMPT_VERSION",
     "PROMPT_VERSION",
     "SCHEMA_PROMPT_VERSION",
     "BedrockProvider",
     "CachingProvider",
+    "ColumnAssignment",
     "FieldVote",
+    "FileAssignment",
     "FileRole",
     "InvestigationResult",
     "InvestigationStep",
@@ -43,6 +50,7 @@ __all__ = [
     "ProposedField",
     "ProposedSchema",
     "Provider",
+    "assign_file_columns",
     "build_provider",
     "recommend_schema",
     "rejected_votes",

@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "Emp ID",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match pattern ^[A-Z]{3}-[0-9]{5}$ and column name indicates employee identifier"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 662,
+    "input_tokens": 1090,
+    "output_tokens": 117,
+    "cached": false
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "Emp ID",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match EMP-xxxxx pattern required for employee_id"
+      },
+      {
+        "source_column": "First Name",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains given names matching first_name field"
+      },
+      {
+        "source_column": "Last Name",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains surnames matching last_name field"
+      },
+      {
+        "source_column": "Email",
+        "target_field": "work_email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are email addresses for work_email field"
+      },
+      {
+        "source_column": "Mobile",
+        "target_field": "mobile_number",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are +91xxxxxxxxxx matching mobile_number pattern"
+      },
+      {
+        "source_column": "DOB",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are dates in YYYY-MM-DD matching date_of_birth"
+      },
+      {
+        "source_column": "Date of Joining",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are dates in YYYY-MM-DD matching date_of_joining"
+      },
+      {
+        "source_column": "Dept Code",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are department abbreviations matching department_code"
+      },
+      {
+        "source_column": "Designation",
+        "target_field": "designation",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are job titles matching designation field"
+      },
+      {
+        "source_column": "Employment Type",
+        "target_field": "employment_type",
+        "confidence": 0.9,
+        "runner_up": null,
+        "reason": "Value 'FULL TIME' maps to enum FULL_TIME"
+      },
+      {
+        "source_column": "Manager ID",
+        "target_field": "manager_employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match EMP-xxxxx pattern for manager_employee_id"
+      },
+      {
+        "source_column": "Location",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are location codes matching location_code"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 3420,
+    "input_tokens": 4105,
+    "output_tokens": 830,
+    "cached": false
+  }
+}

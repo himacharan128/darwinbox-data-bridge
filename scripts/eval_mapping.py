@@ -16,15 +16,17 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from dbx_agent import build_provider, vote_on_column
+from dbx_agent import assign_file_columns, build_provider
 from dbx_contracts import Decision, MigrationSchema, SourceRef, Thresholds
 from dbx_extraction import read
+from dbx_migration_core.pipeline import _resolve_within_file
 from dbx_migration_core.profiling import profile_column
 from dbx_migration_core.scoring import rank_column
 
@@ -96,16 +98,24 @@ def collect(schema: MigrationSchema, *, use_llm: bool) -> list[Row]:
                 columns[key].append(value)
         src = records[0].source
 
-        for header, values in columns.items():
-            profile = profile_column(
+        # Profile the whole file, then ask about it in one go — the same way the
+        # pipeline does it, so the corpus measures what actually runs.
+        profiles = [
+            profile_column(
                 SourceRef(file=src.file, sheet=src.sheet, column=header), header, values
             )
-            votes: dict[str, float] = {}
-            if provider is not None:
-                votes, _ = vote_on_column(provider, profile, schema)
+            for header, values in columns.items()
+        ]
+        by_column: dict[str, dict[str, float]] = {}
+        if provider is not None:
+            by_column, _ = assign_file_columns(provider, fname, profiles, schema)
+
+        for profile in profiles:
+            header = profile.raw_name
             target, outcome, difficulty = labels.get((fname, header), (None, "?", "?"))
             rows.append(
-                Row(fname, header, target, outcome, difficulty, profile, votes, lookups)
+                Row(fname, header, target, outcome, difficulty, profile,
+                    by_column.get(header, {}), lookups)
             )
     return rows
 
@@ -122,11 +132,23 @@ def evaluate(rows: list[Row], schema: MigrationSchema, thresholds: Thresholds) -
     escalated = needed = correctly_held = 0
     details = []
 
-    for row in rows:
+    # Rank per file and resolve within it, exactly as the pipeline does: one field
+    # cannot be fed by two columns of the same file, and the loser is decided again
+    # rather than escalated.
+    ranked_by_row: dict[int, Any] = {}
+    by_file: dict[str, list[tuple[str, Any]]] = defaultdict(list)
+    for i, row in enumerate(rows):
         mapping = rank_column(
             row.profile, schema, llm_votes=row.votes or None, thresholds=thresholds,
             lookups=row.lookups,
         )
+        ranked_by_row[i] = mapping
+        by_file[row.file].append((row.column, mapping))
+    for pairs in by_file.values():
+        _resolve_within_file(pairs)
+
+    for i, row in enumerate(rows):
+        mapping = ranked_by_row[i]
         auto = mapping.decision is Decision.AUTO_APPLY
         reviewed = mapping.decision is Decision.REVIEW
         want = row.expected_outcome

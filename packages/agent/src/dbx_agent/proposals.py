@@ -25,6 +25,30 @@ class MappingVote(BaseModel):
     votes: list[FieldVote] = Field(default_factory=list, max_length=5)
 
 
+class ColumnAssignment(BaseModel):
+    """Where one column of a file belongs, decided alongside its neighbours."""
+
+    source_column: str = Field(description="Exact column name from the provided list")
+    target_field: str | None = Field(
+        default=None,
+        description="Exact field name from the schema, or null if it belongs to none",
+    )
+    confidence: float = Field(
+        ge=0.0, le=1.0, description="0 = guessing, 1 = certain"
+    )
+    runner_up: str | None = Field(
+        default=None,
+        description="The next most plausible field, or null if nothing else fits",
+    )
+    reason: str = Field(description="One sentence citing the column name or its values")
+
+
+class FileAssignment(BaseModel):
+    """Every column of one file placed at once, so siblings inform each other."""
+
+    assignments: list[ColumnAssignment] = Field(default_factory=list, max_length=60)
+
+
 class FileRole(BaseModel):
     """What a file appears to be: the entity itself, or supporting lookup data."""
 

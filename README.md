@@ -171,7 +171,7 @@ self-reported confidence is not a sufficient basis for the boundary" means in co
 rather than in a comment, and `test_model_vote_cannot_decide_alone` asserts it.
 
 Thresholds are **calibrated, not chosen**. `make sweep` reports precision, recall and
-error rate across **77 labelled mapping decisions**. At the chosen line, **51 of 57
+error rate across **77 labelled mapping decisions**. At the chosen line, **50 of 57
 mappable columns are applied with no human input**, and across every threshold tried
 zero mappings are applied wrongly, zero noise columns are mapped, and zero cases
 needing a human are silently resolved.

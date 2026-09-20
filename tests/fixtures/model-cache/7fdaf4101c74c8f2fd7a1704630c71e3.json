@@ -1,0 +1,78 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "contact.email",
+        "target_field": "work_email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column type email and pattern matches email address"
+      },
+      {
+        "source_column": "dept",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Three-letter department code matches department_code field"
+      },
+      {
+        "source_column": "id",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Pattern AAA-##### matches employee_id format"
+      },
+      {
+        "source_column": "joined",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Date format YYYY-MM-DD and column name indicates joining date"
+      },
+      {
+        "source_column": "loc",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Pattern matches location code format"
+      },
+      {
+        "source_column": "name.first",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and string values represent first name"
+      },
+      {
+        "source_column": "name.last",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and string values represent last name"
+      },
+      {
+        "source_column": "state",
+        "target_field": "status",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values ACTIVE/INACTIVE correspond to status enum"
+      },
+      {
+        "source_column": "type",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values like FULL_TIME map to employment_type"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 2742,
+    "input_tokens": 2557,
+    "output_tokens": 599,
+    "cached": false
+  }
+}

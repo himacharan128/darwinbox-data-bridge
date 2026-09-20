@@ -1,0 +1,219 @@
+{
+  "payload": {
+    "entity": "employee",
+    "fields": [
+      {
+        "name": "employee_id",
+        "type": "string",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Emp ID",
+          "employee_id",
+          "id"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "primary identifier for the employee across all source files"
+      },
+      {
+        "name": "work_email",
+        "type": "email",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Email",
+          "work_email",
+          "contact.email"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "employee's work email address, used for communication and often unique"
+      },
+      {
+        "name": "first_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "First Name",
+          "first_name",
+          "name.first"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "given name of the employee"
+      },
+      {
+        "name": "last_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Last Name",
+          "last_name",
+          "name.last"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "family name of the employee"
+      },
+      {
+        "name": "mobile",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Mobile"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "mobile phone number for the employee"
+      },
+      {
+        "name": "date_of_birth",
+        "type": "date",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "DOB",
+          "date_of_birth"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "employee's birth date"
+      },
+      {
+        "name": "date_of_joining",
+        "type": "date",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Date of Joining",
+          "date_of_joining",
+          "joined"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "date the employee started with the organization"
+      },
+      {
+        "name": "department_code",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Dept Code",
+          "department_code",
+          "dept"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "code identifying the employee's department"
+      },
+      {
+        "name": "location_code",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Location",
+          "location_code",
+          "loc"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "code for the employee's work location"
+      },
+      {
+        "name": "designation",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Designation"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "job title or role of the employee"
+      },
+      {
+        "name": "employment_type",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Employment Type",
+          "employment_type",
+          "type"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "type of employment contract (e.g., full time, part time)"
+      },
+      {
+        "name": "status",
+        "type": "enum",
+        "required": false,
+        "unique": false,
+        "allowed": [
+          "ACTIVE",
+          "INACTIVE"
+        ],
+        "format": null,
+        "sources": [
+          "Status",
+          "state"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "current employment status of the employee"
+      },
+      {
+        "name": "manager_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "sources": [
+          "Manager ID"
+        ],
+        "pattern": null,
+        "reference": null,
+        "reason": "employee identifier of the manager"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "schema/v2",
+    "latency_ms": 3689,
+    "input_tokens": 3550,
+    "output_tokens": 1308,
+    "cached": false
+  }
+}

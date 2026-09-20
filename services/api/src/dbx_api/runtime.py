@@ -12,7 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from dbx_agent import build_provider, vote_on_column
+from dbx_agent import assign_file_columns, build_provider
 from dbx_contracts import Action, CaseState, MigrationSchema, ReviewCase
 from dbx_extraction import UnsupportedInput, confidence_for, is_sidecar, read
 from dbx_migration_core import Overrides, Pipeline, RunResult, apply_decision
@@ -107,14 +107,16 @@ def replay(
     seen = 0
     expected = sum(len(records[0].values) for records in sources.values() if records)
 
-    def votes(profile: Any, sch: MigrationSchema) -> dict[str, float]:
+    def votes(
+        file_name: str, profiles: list[Any], sch: MigrationSchema
+    ) -> dict[str, dict[str, float]]:
         nonlocal seen
-        seen += 1
+        seen += len(profiles)
         if report:
-            report("mapping", f"Working out where {profile.raw_name!r} belongs",
+            report("mapping", f"Working out where the columns of {file_name} belong",
                    min(seen, expected), expected)
         try:
-            return vote_on_column(provider, profile, sch)[0]
+            return assign_file_columns(provider, file_name, profiles, sch)[0]
         except Exception:  # noqa: BLE001 - a model outage must not stop the run
             return {}
 

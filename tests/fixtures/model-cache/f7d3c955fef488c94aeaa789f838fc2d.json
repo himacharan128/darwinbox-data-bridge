@@ -1,0 +1,99 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "staff_code",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match EMP-xxxxx pattern required for employee_id"
+      },
+      {
+        "source_column": "fname",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and values are first names"
+      },
+      {
+        "source_column": "lname",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and values are surnames"
+      },
+      {
+        "source_column": "email_id",
+        "target_field": "work_email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are email addresses, column name indicates email"
+      },
+      {
+        "source_column": "mobile",
+        "target_field": "mobile_number",
+        "confidence": 0.9,
+        "runner_up": null,
+        "reason": "Values are Indian mobile numbers with +91 prefix"
+      },
+      {
+        "source_column": "birth_date",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and ISO date values correspond to birth date"
+      },
+      {
+        "source_column": "joining_dt",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and date values correspond to joining date"
+      },
+      {
+        "source_column": "department",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are department abbreviations, matching required code field"
+      },
+      {
+        "source_column": "grade",
+        "target_field": "designation",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are job titles/grades, fitting designation field"
+      },
+      {
+        "source_column": "emp_type",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are enum strings matching allowed employment types"
+      },
+      {
+        "source_column": "reports_to",
+        "target_field": "manager_employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are employee IDs indicating manager relationship"
+      },
+      {
+        "source_column": "site",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are location codes (city-site), matching location_code"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 2468,
+    "input_tokens": 4649,
+    "output_tokens": 830,
+    "cached": false
+  }
+}

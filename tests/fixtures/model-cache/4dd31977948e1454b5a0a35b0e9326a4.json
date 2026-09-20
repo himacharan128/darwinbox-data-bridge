@@ -1,0 +1,29 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "Emp ID",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match pattern ^[A-Z]{3}-[0-9]{5}$ and column name indicates employee identifier"
+      },
+      {
+        "source_column": "Email",
+        "target_field": "work_email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column type is email and matches work email usage"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 656,
+    "input_tokens": 1279,
+    "output_tokens": 163,
+    "cached": false
+  }
+}

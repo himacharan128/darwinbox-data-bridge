@@ -32,12 +32,12 @@ no constraint became `escalate` — and that wrongly condemned exact matches lik
 
 ```
  T_auto  T_gap  auto ok  wrong  noise  over-esc  under-esc   agree
-   0.70   0.05       52      0      1         5          0    0.92
-   0.70   0.10       51      0      0         7          0    0.91   <- chosen
-   0.70   0.15       50      0      0         8          0    0.90
+   0.70   0.05       52      0      0         6          0    0.92
+   0.70   0.10       50      0      0         8          0    0.90
+   0.70   0.15       49      0      0         9          0    0.88
    0.75   0.10       50      0      0         8          0    0.90
    0.80   0.10       50      0      0         8          0    0.90
-   0.90   0.10       47      0      0        11          0    0.86
+   0.90   0.10       46      0      0        12          0    0.84
 ```
 
 Three things this shows that a chosen number could not:
@@ -46,10 +46,13 @@ Three things this shows that a chosen number could not:
 under-escalations at every threshold tried. They are properties of the design — the
 capped model vote, the hard vetoes, the gap requirement — not of a lucky cutoff.
 
-**`T_gap` is what protects against noise.** One junk column gets mapped at
-`gap = 0.05` and none at `0.10`. A column that fits two fields almost equally well is
-usually a column that fits neither, so requiring separation is the specific defence
-against confidently mapping a checksum.
+**`T_gap` used to be what protected against noise**, and no longer has to be. A
+junk column was mapped at `gap = 0.05` and none at `0.10`, because a column that
+fits two fields almost equally well is usually a column that fits neither. Asking
+the model about a whole file at once removed that exposure: told plainly that a
+row number belongs to no field, it says so, and the sweep is now clean at every
+gap tried. The requirement stays — it costs two columns and defends against a
+failure mode that returns the moment the model is unavailable.
 
 **The cost of caution is legible.** Every 0.05 of extra threshold buys nothing in
 safety and costs roughly three to five columns a consultant then has to confirm by
@@ -57,7 +60,7 @@ hand. That is the trade being made, priced.
 
 ## Chosen: `T_auto = 0.70`, `T_gap = 0.10`, `T_decisive = 0.35`
 
-**51 of 57** mappable columns applied unaided, zero wrong, zero noise mapped, zero
+**50 of 57** mappable columns applied unaided, zero wrong, zero noise mapped, zero
 genuine ambiguity silently resolved. Agreement with the corpus: 0.91.
 
 Two earlier versions of this boundary escalated far too much, for two separate and
@@ -93,10 +96,38 @@ model carry a column on its own.
 |---|---|---|---|---|
 | baseline | 44 | 0 | 0 | 0 |
 | + abbreviation signals | 45 | 0 | 0 | 0 |
-| + decisive margin | **51** | **0** | **0** | **0** |
+| + decisive margin | 51 | 0 | 0 | 0 |
+| + whole-file assignment | **50** | **0** | **0** | **0** |
 
 The margin is insensitive between 0.25 and 0.45 — identical results across that
 whole range — so 0.35 sits in the middle of a flat region rather than on a cliff.
+
+## Asking about one column at a time was the bigger mistake
+
+The model used to be asked about each column on its own: here is `Manager ID`,
+which field is it? That is a question a person could not answer either. Beside a
+column called `Emp ID` it is obvious, and the file had been holding that answer
+the whole time.
+
+`Manager ID` scored 1.000 for `manager_id` on its name and 0.789 for
+`employee_id` on the shape of its values, and went to a human as a tie. It is now
+one model call per file rather than per column — every header, its samples and
+the schema together, with the model told that two columns of one file may not be
+given the same field. On the edge-case sample that took a file from 18 open
+questions to one, and the one that remains is a column whose only value is
+`EMP-99999`, a manager who does not exist.
+
+A deterministic pass backs it up: within a single file, a field applied to one
+column is taken back from any other column claiming it. Across files it stays
+shared, because that is how complementary exports merge into one person.
+
+**That pass may only take a field away, never hand one out.** Letting it promote
+looked much better — 55 of 57, escalation precision 1.00 — and mapped
+`dtProbationEnd` onto `date_of_joining` at a gap of 0.59. The gap was
+manufactured: every rival had been eliminated, so the survivor looked unopposed.
+Elimination proves a column is *not* some field. It cannot prove what it *is*,
+because plenty of columns belong to no field at all, and a probation-end date is
+one of them.
 
 ## Where the model's knowledge does belong
 
@@ -146,7 +177,7 @@ deterministic evidence is equal reaches 73% — and maps `dtProbationEnd` to
 `date_of_joining` on a model vote of **1.00**. Confidently, completely wrong, and it
 would write probation-end dates into the joining-date field with no case raised.
 
-So 51 of 57 is not a tuning ceiling that more effort would lift. The last six need
+So 50 of 57 is not a tuning ceiling that more effort would lift. The rest need
 evidence that is not in the data yet. The principled route for the near-ties is a
 *deterministic* separator — a manager reference is a value drawn from the employee-id
 column but not unique, which is measurable — not a model guess.

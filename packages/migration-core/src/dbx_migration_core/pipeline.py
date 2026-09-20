@@ -39,7 +39,7 @@ from dbx_contracts import (
 from .cleanup import ColumnPlan, UnsafeValue, clean, plan_column
 from .matching import MatchDecision, conflicting_fields, match_records
 from .profiling import profile_column
-from .scoring import rank_column
+from .scoring import decide, rank_column
 from .validation import check_uniqueness, validate_record
 
 #: The bounded correction cycle: validate, apply one safe correction, validate again.
@@ -53,7 +53,11 @@ UNRECOGNISED_FILE_RATIO = 0.30
 
 
 class VoteSource(Protocol):
-    def __call__(self, profile: ColumnProfile, schema: MigrationSchema) -> dict[str, float]: ...
+    """One call per file, not per column, so columns are judged among their siblings."""
+
+    def __call__(
+        self, file_name: str, profiles: list[ColumnProfile], schema: MigrationSchema
+    ) -> dict[str, dict[str, float]]: ...
 
 
 @dataclass
@@ -103,6 +107,42 @@ class RunResult:
     @property
     def open_cases(self) -> list[ReviewCase]:
         return [c for c in self.cases if c.state.value == "open"]
+
+
+def _resolve_within_file(
+    ranked: list[tuple[str, ColumnMapping]],
+) -> list[tuple[str, ColumnMapping]]:
+    """Stop two columns of one file being applied to the same field.
+
+    Scoring each column alone lets 'Emp ID' and 'Manager ID' both land on
+    employee_id. Across files that is correct and necessary - complementary
+    exports describe the same people - but inside one file it means the weaker
+    claim belongs somewhere else, so it is taken back and asked again.
+
+    Only ever taken back. Eliminating a rival proves this column is not that
+    field; it does not prove it is the next one down, because plenty of columns
+    belong to no field at all. Promoting on elimination read 'the only date field
+    left is date_of_joining' and mapped a probation-end date onto it.
+    """
+    winner: dict[str, tuple[str, ColumnMapping]] = {}
+    for header, mapping in ranked:
+        field = mapping.chosen_field
+        if mapping.decision is not Decision.AUTO_APPLY or not field or not mapping.best:
+            continue
+        held = winner.get(field)
+        if held is None or mapping.best.score > held[1].best.score:
+            winner[field] = (header, mapping)
+
+    for field, (owner, _) in winner.items():
+        for header, mapping in ranked:
+            if header == owner or mapping.chosen_field != field:
+                continue
+            mapping.candidates = [
+                c for c in mapping.candidates if c.target_field != field
+            ]
+            mapping.chosen_field = None
+            decide(mapping)
+    return ranked
 
 
 class Pipeline:
@@ -191,17 +231,35 @@ class Pipeline:
                     columns[header].append(value)
             src = records[0].source
 
+            # Profile the whole file first. A column is judged among its siblings:
+            # 'Manager ID' is ambiguous alone and obvious beside 'Emp ID'.
+            profiles: list[ColumnProfile] = []
             for header, values in columns.items():
                 profile = profile_column(
                     SourceRef(file=src.file, sheet=src.sheet, column=header), header, values
                 )
                 self.profiles[(name, header)] = profile
-                llm = self.votes(profile, self.schema) if self.votes else None
+                profiles.append(profile)
+
+            llm_by_column = self.votes(name, profiles, self.schema) if self.votes else {}
+
+            ranked: list[tuple[str, ColumnMapping]] = []
+            for profile in profiles:
+                header = profile.raw_name
                 mapping = rank_column(
-                    profile, self.schema, llm_votes=llm, lookups=self.result.lookups
+                    profile, self.schema,
+                    llm_votes=llm_by_column.get(header) or None,
+                    lookups=self.result.lookups,
                 )
+                ranked.append((header, mapping))
+
+            # One field cannot be fed by two columns of the same file. Across files
+            # it can and must - that is how complementary exports merge - but within
+            # one file it means the weaker claim belongs somewhere else.
+            for header, mapping in _resolve_within_file(ranked):
                 self.result.mappings.append(mapping)
 
+                profile = self.profiles[(name, header)]
                 forced = self.overrides.column_map.get((name, header))
                 if forced:
                     mapping.decision = Decision.AUTO_APPLY

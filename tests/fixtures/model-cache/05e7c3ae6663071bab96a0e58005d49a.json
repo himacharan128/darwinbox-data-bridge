@@ -1,0 +1,92 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "code",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match EMP-xxxxx pattern required for employee_id"
+      },
+      {
+        "source_column": "given_name",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains given names of employees"
+      },
+      {
+        "source_column": "surname",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains family names of employees"
+      },
+      {
+        "source_column": "contact",
+        "target_field": "work_email",
+        "confidence": 0.8,
+        "runner_up": "mobile_number",
+        "reason": "Mixed column includes email addresses; required unique work_email field"
+      },
+      {
+        "source_column": "dob",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "ISO date strings matching required date format"
+      },
+      {
+        "source_column": "doj",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "ISO date strings representing joining dates"
+      },
+      {
+        "source_column": "dept",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Short department abbreviations matching required code reference"
+      },
+      {
+        "source_column": "role",
+        "target_field": "designation",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Job titles describing employee role"
+      },
+      {
+        "source_column": "type",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "All values are 'CONTRACT', matching allowed enum"
+      },
+      {
+        "source_column": "mgr",
+        "target_field": "manager_employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values follow EMP-xxxxx pattern referencing another employee"
+      },
+      {
+        "source_column": "loc",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values represent location identifiers as required"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 1985,
+    "input_tokens": 4683,
+    "output_tokens": 790,
+    "cached": false
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "code",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Pattern matches employee_id format and values like EMP-00015"
+      },
+      {
+        "source_column": "given_name",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains given names of individuals"
+      },
+      {
+        "source_column": "surname",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains family names of individuals"
+      },
+      {
+        "source_column": "contact",
+        "target_field": "email",
+        "confidence": 0.9,
+        "runner_up": "phone",
+        "reason": "Mixed values include email addresses; email is required field"
+      },
+      {
+        "source_column": "dob",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are dates in YYYY-MM-DD format representing birth dates"
+      },
+      {
+        "source_column": "doj",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are dates in YYYY-MM-DD format representing joining dates"
+      },
+      {
+        "source_column": "dept",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are short department codes like ENG, SALES"
+      },
+      {
+        "source_column": "role",
+        "target_field": "job_title",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values describe job titles such as Contract Engineer"
+      },
+      {
+        "source_column": "type",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "All values are 'CONTRACT', matching allowed enum"
+      },
+      {
+        "source_column": "mgr",
+        "target_field": "manager_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Pattern matches employee_id format for managers"
+      },
+      {
+        "source_column": "loc",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values represent location codes like MUM-01, REMOTE"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 1669,
+    "input_tokens": 4775,
+    "output_tokens": 826,
+    "cached": false
+  }
+}

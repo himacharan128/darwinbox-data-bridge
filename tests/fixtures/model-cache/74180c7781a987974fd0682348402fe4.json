@@ -1,0 +1,120 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "Emp ID",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Matches employee_id pattern ^[A-Z]{3}-[0-9]{5}$ and column name"
+      },
+      {
+        "source_column": "First Name.",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name indicates given name"
+      },
+      {
+        "source_column": "Last Nam\u00e9",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name indicates family name despite accent"
+      },
+      {
+        "source_column": "Email",
+        "target_field": "email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and email\u2011like values"
+      },
+      {
+        "source_column": "Mobile",
+        "target_field": "phone",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and phone\u2011like values"
+      },
+      {
+        "source_column": "DOB",
+        "target_field": "date_of_birth",
+        "confidence": 0.9,
+        "runner_up": null,
+        "reason": "Column name and date\u2011like values (YYYY\u2011MM\u2011DD)"
+      },
+      {
+        "source_column": "Date of Joining.",
+        "target_field": "date_of_joining",
+        "confidence": 0.9,
+        "runner_up": null,
+        "reason": "Column name and date\u2011like values (YYYY\u2011MM\u2011DD)"
+      },
+      {
+        "source_column": "Dept Code",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and short alphabetic codes"
+      },
+      {
+        "source_column": "Designation",
+        "target_field": "job_title",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name indicates job title"
+      },
+      {
+        "source_column": "Employment",
+        "target_field": "employment_type",
+        "confidence": 0.9,
+        "runner_up": null,
+        "reason": "Values correspond to enum FULL_TIME (minor accent typo)"
+      },
+      {
+        "source_column": "Type -Manager ID",
+        "target_field": "manager_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains manager identifiers matching employee_id pattern"
+      },
+      {
+        "source_column": "Location",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and location\u2011style codes"
+      },
+      {
+        "source_column": "grade_band",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "No such column in source file"
+      },
+      {
+        "source_column": "cost_centre",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "No such column in source file"
+      },
+      {
+        "source_column": "is_active",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "No such column in source file"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 1924,
+    "input_tokens": 4297,
+    "output_tokens": 1034,
+    "cached": false
+  }
+}
