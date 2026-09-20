@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, Fragment } from "react";
 import { api, ApiError, PHRASE, type RunState } from "./api";
 import Review from "./Review";
+import Loading from "./Loading";
 import Wizard from "./Wizard";
 
 const say = (k: string) => PHRASE[k] ?? k.replace(/_/g, " ").toLowerCase();
@@ -14,7 +15,7 @@ const fieldLabel = (name: string) =>
 
 type View = "auto" | "desktop" | "mobile";
 
-function useView(): [View, boolean, (v: View) => void] {
+function useView(): [View, boolean, (v: View) => void, boolean] {
   const [choice, setChoice] = useState<View>(() => {
     try { return (localStorage.getItem("dbx.view") as View) || "auto"; }
     catch { return "auto"; }   // private windows must not break the page
@@ -33,7 +34,10 @@ function useView(): [View, boolean, (v: View) => void] {
     setChoice(v);
     try { localStorage.setItem("dbx.view", v); } catch { /* not worth failing over */ }
   };
-  return [choice, choice === "auto" ? narrow : choice === "mobile", set];
+  // Asking for Mobile on a wide screen means "show me the phone", not "stretch
+  // one column across 1400px".
+  return [choice, choice === "auto" ? narrow : choice === "mobile", set,
+          choice === "mobile" && !narrow];
 }
 
 function useRun(runId: string | null) {
@@ -260,7 +264,7 @@ function Destination({ runId }: { runId: string }) {
   useEffect(() => { api.destination(runId).then(setData).catch((e) => setErr(String(e))); }, [runId]);
 
   if (err) return <div className="panel empty"><strong>Can't reach the destination</strong>{err}</div>;
-  if (!data) return <div className="panel empty">Checking the destination…</div>;
+  if (!data) return <Loading label="Checking what the destination holds…" rows={4} />;
   if (!data.records.length) {
     return <div className="panel empty">
       <strong>Nothing has been sent yet</strong>
@@ -369,7 +373,7 @@ function Schema({ runId }: { runId: string }) {
   const [data, setData] = useState<any>(null);
   useEffect(() => { api.schema(runId).then(setData).catch(() => {}); }, [runId]);
 
-  if (!data) return <div className="panel empty">Loading…</div>;
+  if (!data) return <Loading label="Loading the agreed target…" rows={3} />;
   if (!data.active) return <div className="panel empty">No schema agreed for this run yet.</div>;
 
   return (
@@ -416,13 +420,18 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [wizard, setWizard] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const [choice, isMobile, setView] = useView();
+  const [choice, isMobile, setView, phonePreview] = useView();
   const { state, error, gone, refresh } = useRun(runId);
 
   // A run that no longer exists should not leave a dead id in the address bar.
   useEffect(() => {
     if (gone) { setRunId(null); history.replaceState(null, "", location.pathname); }
   }, [gone]);
+
+  useEffect(() => {
+    document.body.classList.toggle("phone-preview", phonePreview);
+    return () => document.body.classList.remove("phone-preview");
+  }, [phonePreview]);
 
   const loadRuns = useCallback(() => { api.runs().then(setRuns).catch(() => {}); }, []);
   useEffect(loadRuns, [loadRuns]);
@@ -449,8 +458,16 @@ export default function App() {
     (r.label ?? r.id).replace(/^(sample|fixtures)\//, "").replace(/[-_]/g, " ");
 
   return (
+    <>
+    {phonePreview && (
+      <div className="escape-hatch">
+        <span>Previewing the mobile layout</span>
+        <button onClick={() => setView("desktop")}>Exit</button>
+      </div>
+    )}
     <div className={`shell${isMobile ? " is-mobile" : ""}${navOpen ? " nav-open" : ""}`}
-         data-layout={isMobile ? "mobile" : "desktop"}>
+         data-layout={isMobile ? "mobile" : "desktop"}
+         data-preview={phonePreview ? "phone" : undefined}>
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">d</span>
@@ -536,6 +553,10 @@ export default function App() {
           </div>
         )}
 
+        {!wizard && runId && !state && !error && (
+          <Loading label="Opening this migration…" rows={4} />
+        )}
+
         {!wizard && state?.status === "awaiting_schema" && (
           <div className="panel empty">
             <strong>Waiting on you</strong>
@@ -616,5 +637,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type RunFiles, type Sample, type SchemaState } from "./api";
 import SchemaEditor, { blankField, type Schema } from "./SchemaEditor";
+import Loading from "./Loading";
 
 /**
  * Getting a run started: upload files, then agree a target schema.
@@ -166,6 +167,8 @@ function ChooseSchema({
         <li>3 · Review and send</li>
       </ol>
 
+      {!files && <Loading label="Reading your files…" rows={4} />}
+
       {files && (
         <div className="panel" style={{ marginBottom: 14 }}>
           <h2>What was read</h2>
@@ -224,17 +227,20 @@ function ChooseSchema({
               <span className="change">
                 Build the list yourself, one field at a time.
               </span>
+              <span className="choice-go">Build it myself →</span>
             </button>
-            <button className="choice primary-choice" disabled={busy} onClick={() => {
+            <button className="choice recommended" disabled={busy} onClick={() => {
               setMode("propose");
               void act(() => api.recommendSchema(runId),
                        "The agent read your columns and proposed this. Edit anything.");
             }}>
+              <span className="choice-tag">Recommended</span>
               <b>Suggest it from my files</b>
               <span className="change">
                 Reads the columns and drafts a list for you. You change anything you
                 like before approving.
               </span>
+              <span className="choice-go">Suggest the fields →</span>
             </button>
           </div>
         </div>
