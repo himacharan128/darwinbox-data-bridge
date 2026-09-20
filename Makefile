@@ -1,4 +1,4 @@
-.PHONY: help setup web db-up db-down fmt lint test eval run demo
+.PHONY: help setup web db-up db-down fmt lint test eval sweep run demo stack stack-down
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1 | sed 's/^/  make /'
@@ -30,6 +30,12 @@ sweep:          ## show how the boundary moves with the thresholds
 
 demo:           ## run one migration in the terminal
 	uv run python scripts/run_migration.py
+
+stack:          ## build and run the whole stack in containers
+	docker compose up --build
+
+stack-down:
+	docker compose down -v
 
 db-up:
 	docker compose up -d postgres

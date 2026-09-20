@@ -8,6 +8,9 @@ Built for the Darwinbox Forward Deployed Engineer take-home.
 
 ---
 
+**[One-page write-up](docs/WRITEUP.md)** · **[Why the line is there](docs/calibration.md)** ·
+**[Demo script](docs/DEMO.md)** · **[Deploying](docs/DEPLOY.md)**
+
 ## Run it
 
 Needs Python 3.12 (via [uv](https://docs.astral.sh/uv/)), Node 22 and nothing else —
@@ -17,6 +20,8 @@ no database to start, no cloud account.
 uv sync && pnpm install
 make run            # builds the UI, starts the destination and the API
 ```
+
+Or in containers, the same way a deployment runs it: `make stack`.
 
 Open **http://127.0.0.1:8080** and press **New migration**. It loads the bundled
 client exports from `tests/fixtures/run1/`.
@@ -36,11 +41,13 @@ so everything above works offline. Set `OPENAI_API_KEY` and `AWS_REGION` (see
 
 ## What it does
 
-1. **Reads three files in three shapes** — CSV, XLSX and another CSV, with different
-   headers, overlapping employees and complementary fields — and reconciles them into
-   one dataset without being told how.
-2. **Maps and cleans on its own.** 26 of 35 source columns map with no human input.
-   Dates are normalised, duplicates removed, whitespace trimmed, enums canonicalised.
+1. **Reads seven files in seven shapes** — CSV, Excel, JSON, YAML, pasted text, a
+   native PDF and a scanned one read through OCR — in five naming
+   conventions, with overlapping employees and complementary fields — and reconciles
+   them into one dataset without being told how.
+2. **Maps and cleans on its own.** 66 of 101 source columns map with no human input,
+   and it leaves checksums, audit timestamps and bank details alone. Dates are
+   normalised, duplicates removed, whitespace trimmed, enums canonicalised.
 3. **Escalates only what it cannot settle**, with the evidence and the question
    together, so a case is resolvable without opening the source file.
 4. **Delivers to a real stub API** with per-record outcomes, retry, rollback, and an
@@ -65,8 +72,9 @@ the 0.75 auto-apply threshold, however certain the model sounds. That is what
 in code rather than in a comment, and `test_model_vote_cannot_decide_alone` asserts it.
 
 Thresholds are **calibrated, not chosen**. `make sweep` reports precision, recall and
-error rate across the range; across every threshold tried, zero mappings are applied
-wrongly and zero cases needing a human are silently resolved.
+error rate across 77 labelled decisions; across every threshold tried, zero mappings
+are applied wrongly, zero noise columns are mapped, and zero cases needing a human are
+silently resolved. [The full reasoning](docs/calibration.md).
 
 Escalations are typed, eleven classes, each with its own evidence shape — an
 ambiguous column shows both candidates' measurements, an ambiguous date shows both
@@ -80,7 +88,7 @@ agent escalates instead.
 ## Architecture
 
 ```
-apps/web              React console: live activity, escalation queue, records, destination
+apps/web              React console (desktop and mobile compositions): live activity, escalation queue, records, destination
 services/api          Run lifecycle, review decisions, delivery, rollback, audit
 services/mock-target  The destination HRMS — its own database, reached only over HTTP
 packages/contracts    Schema language, evidence, escalation and audit vocabulary
@@ -116,6 +124,7 @@ manifest. One fixture cell carries an injection payload.
 ## Tech
 
 Python 3.12 · FastAPI · Pydantic · uv — React 18 · TypeScript · Vite · pnpm —
+PyMuPDF + docTR (Apache 2.0) for documents —
 `openai.gpt-oss-120b` (Apache 2.0, open weights) on Amazon Bedrock via Converse —
 SQLite locally, Postgres via `DATABASE_URL` — ruff, pytest.
 
@@ -130,8 +139,6 @@ Named here because they are real gaps, not oversights:
   place source values reach the model.
 - **Effective-dated records.** An HRMS models employees temporally — transfers,
   promotions, compensation history. This flattens to a current-state snapshot.
-- **PDF and OCR ingestion**, with extraction confidence as its own escalation class
-  showing the cropped scan region beside the value.
 - **Destination upsert.** Runs are independent processing scopes; a natural-key
   collision across runs is detected and surfaced rather than silently creating a
   duplicate, but true update semantics need a stable external-ID contract.
