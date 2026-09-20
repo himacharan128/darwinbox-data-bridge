@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "cost_centre",
+    "votes": [
+      {
+        "target_field": "department_code",
+        "vote": 1.0,
+        "reason": "Values follow pattern CC-#### typical of cost centre codes matching department identifiers"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1020,
+    "input_tokens": 1001,
+    "output_tokens": 159,
+    "cached": false
+  }
+}

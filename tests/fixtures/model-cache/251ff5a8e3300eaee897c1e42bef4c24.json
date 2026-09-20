@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "hire_dt",
+    "votes": [
+      {
+        "target_field": "date_of_joining",
+        "vote": 1.0,
+        "reason": "Column name 'hire_dt' and ISO date values match employee joining date"
+      },
+      {
+        "target_field": "date_of_birth",
+        "vote": 0.0,
+        "reason": "Dates could be birth dates but column name indicates hiring, not birth"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 980,
+    "input_tokens": 1083,
+    "output_tokens": 179,
+    "cached": false
+  }
+}

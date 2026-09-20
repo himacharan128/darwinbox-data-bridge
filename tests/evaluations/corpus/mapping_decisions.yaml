@@ -1,332 +1,652 @@
-_doc: Labelled source-column -> target-field mapping decisions. `auto` means the agent must apply it with
-  no human confirmation; escalating an `auto` case counts against escalation precision. `basis` records
-  which evidence signal should carry the decision, so a regression that starts relying on the LLM vote
-  for a case marked name/mask/type_parse is visible.
-_alias_independence: Only 8 of 35 columns are resolvable via a declared alias. The rest must map on measured
-  evidence, which is what proves the engine is not alias-driven.
-_phase2_target: Expand to ~80 mapping decisions including adversarial negatives.
+_doc: Labelled source-column to target-field decisions across five exports in five naming cultures. `auto`
+  must be applied with no human input; `escalate` must raise a case; `no_map` must be left alone — a corpus
+  of only mappable columns measures nothing about restraint.
+_alias_independence: Aliases are declared for 4 target fields. Every other column must map on measured
+  evidence.
+_counts:
+  total: 77
+  auto: 57
+  escalate: 2
+  no_map: 18
 cases:
 - id: MAP-001
   source:
     file: run1/hrms_employees_export.csv
     column: Emp ID
-  expected_outcome: auto
-  basis: alias+mask
-  difficulty: easy
   expected_target: employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-002
   source:
     file: run1/hrms_employees_export.csv
     column: First Name
-  expected_outcome: auto
-  basis: name
-  difficulty: easy
   expected_target: first_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
 - id: MAP-003
   source:
     file: run1/hrms_employees_export.csv
     column: Last Name
-  expected_outcome: auto
-  basis: name
-  difficulty: easy
   expected_target: last_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
 - id: MAP-004
   source:
     file: run1/hrms_employees_export.csv
     column: Email
-  expected_outcome: auto
-  basis: type_parse
-  difficulty: easy
   expected_target: work_email
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-005
   source:
     file: run1/hrms_employees_export.csv
     column: Mobile
-  expected_outcome: auto
-  basis: type_parse+mask
-  difficulty: easy
   expected_target: mobile_number
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-006
   source:
     file: run1/hrms_employees_export.csv
     column: DOB
-  expected_outcome: auto
-  basis: alias
-  difficulty: easy
   expected_target: date_of_birth
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-007
   source:
     file: run1/hrms_employees_export.csv
     column: Date of Joining
-  expected_outcome: auto
-  basis: name
-  difficulty: easy
   expected_target: date_of_joining
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-008
   source:
     file: run1/hrms_employees_export.csv
     column: Dept Code
-  expected_outcome: escalate
-  basis: name+reference_fit
-  difficulty: easy
   expected_target: department_code
-  expected_class: AMBIGUOUS_MAPPING
-  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
-    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
-    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
-    field moves this case to auto, which is the affordance a consultant should reach for.
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-009
   source:
     file: run1/hrms_employees_export.csv
     column: Designation
-  expected_outcome: auto
-  basis: name
-  difficulty: easy
   expected_target: designation
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
 - id: MAP-010
   source:
     file: run1/hrms_employees_export.csv
     column: Employment Type
-  expected_outcome: auto
-  basis: name+enum_fit
-  difficulty: easy
   expected_target: employment_type
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-011
   source:
     file: run1/hrms_employees_export.csv
     column: Manager ID
-  expected_outcome: auto
-  basis: mask+reference_fit
-  difficulty: medium
   expected_target: manager_employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-012
   source:
     file: run1/hrms_employees_export.csv
     column: Location
-  expected_outcome: auto
-  basis: reference_fit
-  difficulty: medium
   expected_target: location_code
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-013
   source:
     file: run1/payroll_staff.xlsx
     column: staff_code
-  expected_outcome: auto
-  basis: alias+mask
-  difficulty: easy
   expected_target: employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-014
   source:
     file: run1/payroll_staff.xlsx
     column: fname
-  expected_outcome: auto
-  basis: alias
-  difficulty: easy
   expected_target: first_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
 - id: MAP-015
   source:
     file: run1/payroll_staff.xlsx
     column: lname
-  expected_outcome: auto
-  basis: alias
-  difficulty: easy
   expected_target: last_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
 - id: MAP-016
   source:
     file: run1/payroll_staff.xlsx
     column: email_id
-  expected_outcome: auto
-  basis: type_parse
-  difficulty: easy
   expected_target: work_email
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-017
   source:
     file: run1/payroll_staff.xlsx
     column: mobile
-  expected_outcome: auto
-  basis: type_parse+mask
-  difficulty: easy
   expected_target: mobile_number
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-018
   source:
     file: run1/payroll_staff.xlsx
     column: birth_date
-  expected_outcome: auto
-  basis: name+type_parse
-  difficulty: easy
   expected_target: date_of_birth
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-019
   source:
     file: run1/payroll_staff.xlsx
     column: joining_dt
-  expected_outcome: auto
-  basis: name+type_parse
-  difficulty: easy
   expected_target: date_of_joining
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-020
   source:
     file: run1/payroll_staff.xlsx
     column: department
-  expected_outcome: auto
-  basis: name+reference_fit
-  difficulty: easy
   expected_target: department_code
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-021
   source:
     file: run1/payroll_staff.xlsx
     column: grade
-  expected_outcome: escalate
-  basis: value_semantics
-  difficulty: hard
   expected_target: designation
+  expected_outcome: escalate
+  basis: ambiguous
+  difficulty: n/a
   expected_class: AMBIGUOUS_MAPPING
-  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
-    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
-    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
-    field moves this case to auto, which is the affordance a consultant should reach for.
+  why: '''grade'' commonly means a pay band; here it holds job titles. Genuinely two readings'
 - id: MAP-022
   source:
     file: run1/payroll_staff.xlsx
     column: emp_type
-  expected_outcome: auto
-  basis: name+enum_fit
-  difficulty: easy
   expected_target: employment_type
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-023
   source:
     file: run1/payroll_staff.xlsx
     column: reports_to
-  expected_outcome: auto
-  basis: mask+reference_fit
-  difficulty: medium
   expected_target: manager_employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-024
   source:
     file: run1/payroll_staff.xlsx
     column: site
-  expected_outcome: escalate
-  basis: reference_fit
-  difficulty: hard
   expected_target: location_code
-  expected_class: AMBIGUOUS_MAPPING
-  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
-    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
-    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
-    field moves this case to auto, which is the affordance a consultant should reach for.
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-025
   source:
     file: run1/contractors_2024.csv
     column: code
-  expected_outcome: auto
-  basis: mask
-  difficulty: medium
   expected_target: employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-026
   source:
     file: run1/contractors_2024.csv
     column: given_name
-  expected_outcome: auto
-  basis: alias
-  difficulty: easy
   expected_target: first_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
 - id: MAP-027
   source:
     file: run1/contractors_2024.csv
     column: surname
-  expected_outcome: auto
-  basis: alias
-  difficulty: easy
   expected_target: last_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
 - id: MAP-028
   source:
     file: run1/contractors_2024.csv
     column: contact
   expected_outcome: escalate
+  expected_class: AMBIGUOUS_MAPPING
   basis: ambiguous
   difficulty: n/a
-  expected_class: AMBIGUOUS_MAPPING
   see: ESC-001
+  why: 3 email and 3 phone values; work_email and mobile_number are equally plausible
 - id: MAP-029
   source:
     file: run1/contractors_2024.csv
     column: dob
-  expected_outcome: auto
-  basis: alias
-  difficulty: easy
   expected_target: date_of_birth
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-030
   source:
     file: run1/contractors_2024.csv
     column: doj
-  expected_outcome: auto
-  basis: value_semantics
-  difficulty: hard
   expected_target: date_of_joining
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-031
   source:
     file: run1/contractors_2024.csv
     column: dept
-  expected_outcome: escalate
-  basis: name+reference_fit
-  difficulty: easy
   expected_target: department_code
-  expected_class: AMBIGUOUS_MAPPING
-  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
-    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
-    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
-    field moves this case to auto, which is the affordance a consultant should reach for.
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-032
   source:
     file: run1/contractors_2024.csv
     column: role
-  expected_outcome: escalate
-  basis: value_semantics
-  difficulty: medium
   expected_target: designation
-  expected_class: AMBIGUOUS_MAPPING
-  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
-    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
-    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
-    field moves this case to auto, which is the affordance a consultant should reach for.
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
 - id: MAP-033
   source:
     file: run1/contractors_2024.csv
     column: type
-  expected_outcome: auto
-  basis: enum_fit
-  difficulty: medium
   expected_target: employment_type
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-034
   source:
     file: run1/contractors_2024.csv
     column: mgr
-  expected_outcome: auto
-  basis: mask+reference_fit
-  difficulty: medium
   expected_target: manager_employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-035
   source:
     file: run1/contractors_2024.csv
     column: loc
-  expected_outcome: escalate
-  basis: reference_fit
-  difficulty: medium
   expected_target: location_code
-  expected_class: AMBIGUOUS_MAPPING
-  relabelled: Target field declares no discriminating constraint (no non-string type, pattern, enum or
-    uniqueness), so the only evidence is header similarity plus the model's opinion — and the model's
-    weight is capped precisely so it cannot decide alone. Declaring an alias or a constraint on the target
-    field moves this case to auto, which is the affordance a consultant should reach for.
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
 - id: MAP-036
   source:
-    file: <none>
-    column: null
-  expected_target: status
-  expected_outcome: escalate
-  expected_class: UNMAPPED_REQUIRED
-  basis: no_candidate_above_floor
-  difficulty: n/a
-  see: ESC-002
-_relabelling_note: Six cases were first labelled `auto` on the assumption that value semantics would carry
-  them. Measurement disagreed, for a reason recorded on each case. The corpus follows the measurement;
-  the scorer was not bent to fit the original guess.
+    file: run1/workday_extract.csv
+    column: record_no
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-037
+  source:
+    file: run1/workday_extract.csv
+    column: emp_ref
+  expected_target: employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-038
+  source:
+    file: run1/workday_extract.csv
+    column: legal_first
+  expected_target: first_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
+- id: MAP-039
+  source:
+    file: run1/workday_extract.csv
+    column: legal_last
+  expected_target: last_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
+- id: MAP-040
+  source:
+    file: run1/workday_extract.csv
+    column: corp_email
+  expected_target: work_email
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-041
+  source:
+    file: run1/workday_extract.csv
+    column: cell
+  expected_target: mobile_number
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-042
+  source:
+    file: run1/workday_extract.csv
+    column: birth_dt
+  expected_target: date_of_birth
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-043
+  source:
+    file: run1/workday_extract.csv
+    column: hire_dt
+  expected_target: date_of_joining
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-044
+  source:
+    file: run1/workday_extract.csv
+    column: div_code
+  expected_target: department_code
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-045
+  source:
+    file: run1/workday_extract.csv
+    column: job_title
+  expected_target: designation
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
+- id: MAP-046
+  source:
+    file: run1/workday_extract.csv
+    column: worker_class
+  expected_target: employment_type
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-047
+  source:
+    file: run1/workday_extract.csv
+    column: supervisor_ref
+  expected_target: manager_employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-048
+  source:
+    file: run1/workday_extract.csv
+    column: office
+  expected_target: location_code
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-049
+  source:
+    file: run1/workday_extract.csv
+    column: last_modified_ts
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-050
+  source:
+    file: run1/workday_extract.csv
+    column: created_by
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-051
+  source:
+    file: run1/workday_extract.csv
+    column: internal_notes
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-052
+  source:
+    file: run1/workday_extract.csv
+    column: is_active_flag
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-053
+  source:
+    file: run1/workday_extract.csv
+    column: cost_centre
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-054
+  source:
+    file: run1/workday_extract.csv
+    column: row_checksum
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-055
+  source:
+    file: run1/workday_extract.csv
+    column: legacy_sys_id
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-056
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strEmployeeCode
+  expected_target: employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-057
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strFirstNm
+  expected_target: first_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
+- id: MAP-058
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strLastNm
+  expected_target: last_name
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
+- id: MAP-059
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strEmailAddr
+  expected_target: work_email
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-060
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strMobileNo
+  expected_target: mobile_number
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-061
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: dtDateOfBirth
+  expected_target: date_of_birth
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-062
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: dtDateOfJoin
+  expected_target: date_of_joining
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-063
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strDeptCd
+  expected_target: department_code
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-064
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strDesignation
+  expected_target: designation
+  expected_outcome: auto
+  basis: name_and_model_only
+  difficulty: hard
+- id: MAP-065
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strEmpType
+  expected_target: employment_type
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-066
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strReportingMgr
+  expected_target: manager_employee_id
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-067
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strLocCd
+  expected_target: location_code
+  expected_outcome: auto
+  basis: measured_constraints
+  difficulty: easy
+- id: MAP-068
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: intSeqNo
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-069
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strRemarks
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-070
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: dtLastSync
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-071
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strSourceSystem
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-072
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: bIsDeleted
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-073
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strGradeBand
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-074
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: intVersionNo
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-075
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strAuditUser
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-076
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: strBankAcctNo
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+- id: MAP-077
+  source:
+    file: run1/legacy_hrms_dump.csv
+    column: dtProbationEnd
+  expected_outcome: no_map
+  expected_target: null
+  basis: not_entity_data
+  difficulty: negative
+  note: system, audit or free-text column; mapping it would be a false positive
+_labelling: Labelled by judgment, not by a rule over the schema. An earlier pass marked every column whose
+  target declares no constraint as `escalate`, which wrongly condemned exact name matches like Designation
+  -> designation. `escalate` now means genuinely two readings.

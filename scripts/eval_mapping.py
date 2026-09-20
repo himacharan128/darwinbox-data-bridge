@@ -30,7 +30,13 @@ from dbx_migration_core.scoring import rank_column
 
 FIXTURES = ROOT / "tests" / "fixtures"
 CORPUS = ROOT / "tests" / "evaluations" / "corpus"
-FILES = ["hrms_employees_export.csv", "payroll_staff.xlsx", "contractors_2024.csv"]
+FILES = [
+    "hrms_employees_export.csv",
+    "payroll_staff.xlsx",
+    "contractors_2024.csv",
+    "workday_extract.csv",
+    "legacy_hrms_dump.csv",
+]
 
 
 @dataclass
@@ -42,6 +48,7 @@ class Row:
     difficulty: str
     profile: object
     votes: dict[str, float]
+    lookups: dict[str, set[str]]
 
 
 def load_schema() -> MigrationSchema:
@@ -56,15 +63,28 @@ def load_labels() -> dict[tuple[str, str], tuple[str | None, str, str]]:
         (c["source"]["file"].split("/")[-1], c["source"]["column"]): (
             c.get("expected_target"),
             c["expected_outcome"],
-            c["difficulty"],
+            c.get("difficulty", "?"),
         )
         for c in doc["cases"]
         if c["source"]["column"]
     }
 
 
+def load_lookups() -> dict[str, set[str]]:
+    import csv as _csv
+
+    out: dict[str, set[str]] = {}
+    for name, fname in (("department", "departments.csv"), ("location", "locations.csv")):
+        path = FIXTURES / "run1" / fname
+        if path.exists():
+            with path.open(encoding="utf-8") as fh:
+                out[name] = {r["code"] for r in _csv.DictReader(fh)}
+    return out
+
+
 def collect(schema: MigrationSchema, *, use_llm: bool) -> list[Row]:
     labels = load_labels()
+    lookups = load_lookups()
     provider = build_provider(ROOT / "tests" / "fixtures" / "model-cache") if use_llm else None
     rows: list[Row] = []
 
@@ -84,42 +104,71 @@ def collect(schema: MigrationSchema, *, use_llm: bool) -> list[Row]:
             if provider is not None:
                 votes, _ = vote_on_column(provider, profile, schema)
             target, outcome, difficulty = labels.get((fname, header), (None, "?", "?"))
-            rows.append(Row(fname, header, target, outcome, difficulty, profile, votes))
+            rows.append(
+                Row(fname, header, target, outcome, difficulty, profile, votes, lookups)
+            )
     return rows
 
 
 def evaluate(rows: list[Row], schema: MigrationSchema, thresholds: Thresholds) -> dict:
-    tp = fp = fn = correct = wrong = 0
+    """Score the boundary three ways, because there are three kinds of mistake.
+
+    Mapping a column that is not entity data at all (a checksum, an audit timestamp)
+    is the worst of them: it silently corrupts the dataset with no case raised. It is
+    tracked separately from applying the wrong field.
+    """
+    auto_correct = auto_wrong = false_positive = 0
+    over = under = 0
+    escalated = needed = correctly_held = 0
     details = []
+
     for row in rows:
         mapping = rank_column(
-            row.profile, schema, llm_votes=row.votes or None, thresholds=thresholds
+            row.profile, schema, llm_votes=row.votes or None, thresholds=thresholds,
+            lookups=row.lookups,
         )
         auto = mapping.decision is Decision.AUTO_APPLY
-        should_escalate = row.expected_outcome == "escalate"
+        reviewed = mapping.decision is Decision.REVIEW
+        want = row.expected_outcome
 
-        if should_escalate and not auto:
-            tp += 1  # correctly held back
-        elif not should_escalate and not auto:
-            fp += 1  # over-escalation: a safe case sent to a human
-        elif should_escalate and auto:
-            fn += 1  # under-escalation: guessed at something uncertain
-        if not should_escalate and auto:
-            if mapping.chosen_field == row.expected_target:
-                correct += 1
+        if want == "no_map":
+            if auto:
+                false_positive += 1
+            elif reviewed:
+                over += 1
+        elif want == "escalate":
+            needed += 1
+            if auto:
+                under += 1
             else:
-                wrong += 1
-        details.append((row, mapping, auto, should_escalate))
+                correctly_held += 1
+        else:  # auto
+            if auto:
+                if mapping.chosen_field == row.expected_target:
+                    auto_correct += 1
+                else:
+                    auto_wrong += 1
+            else:
+                over += 1
 
-    escalated = tp + fp
-    needed = tp + fn
+        if reviewed:
+            escalated += 1
+        ok = (
+            (want == "auto" and auto and mapping.chosen_field == row.expected_target)
+            or (want == "escalate" and not auto)
+            or (want == "no_map" and not auto and not reviewed)
+        )
+        details.append((row, mapping, auto, want, ok))
+
     return {
-        "precision": tp / escalated if escalated else 1.0,
-        "recall": tp / needed if needed else 1.0,
-        "auto_correct": correct,
-        "auto_wrong": wrong,
-        "over_escalated": fp,
-        "under_escalated": fn,
+        "precision": correctly_held / escalated if escalated else 1.0,
+        "recall": correctly_held / needed if needed else 1.0,
+        "auto_correct": auto_correct,
+        "auto_wrong": auto_wrong,
+        "false_positive": false_positive,
+        "over_escalated": over,
+        "under_escalated": under,
+        "agreement": sum(1 for d in details if d[4]) / len(details),
         "total": len(rows),
         "details": details,
     }
@@ -138,37 +187,40 @@ def main() -> int:
     if args.sweep:
         print(f"\nThreshold sweep ({mode})\n" + "=" * 78)
         print(
-            f"{'T_auto':>7} {'T_gap':>6} {'auto ok':>8} {'auto wrong':>11}"
-            f" {'over-esc':>9} {'under-esc':>10} {'precision':>10} {'recall':>8}"
+            f"{'T_auto':>7} {'T_gap':>6} {'auto ok':>8} {'wrong':>6} {'noise':>6}"
+            f" {'over-esc':>9} {'under-esc':>10} {'agree':>7}"
         )
         for auto in (0.70, 0.75, 0.80, 0.85, 0.90, 0.95):
             for gap in (0.05, 0.10, 0.15, 0.20):
                 m = evaluate(rows, schema, Thresholds(auto_apply=auto, gap=gap, review_floor=0.50))
                 print(
-                    f"{auto:>7.2f} {gap:>6.2f} {m['auto_correct']:>8} {m['auto_wrong']:>11}"
-                    f" {m['over_escalated']:>9} {m['under_escalated']:>10}"
-                    f" {m['precision']:>10.2f} {m['recall']:>8.2f}"
+                    f"{auto:>7.2f} {gap:>6.2f} {m['auto_correct']:>8} {m['auto_wrong']:>6}"
+                    f" {m['false_positive']:>6} {m['over_escalated']:>9}"
+                    f" {m['under_escalated']:>10} {m['agreement']:>7.2f}"
                 )
         return 0
 
     thresholds = Thresholds()
     m = evaluate(rows, schema, thresholds)
     print(f"\nMapping boundary ({mode})\n" + "=" * 78)
-    for row, mapping, auto, should in m["details"]:
+    for row, mapping, auto, want, ok in m["details"]:
         best = mapping.best
-        ok = (auto and mapping.chosen_field == row.expected_target) or (should and not auto)
-        label = f"{best.target_field}={best.score:.2f}" if best else "-"
+        label = f"{best.target_field}={best.score:.2f}" if best else "(nothing)"
+        mark = "OK " if ok else "XX "
         print(
-            f"  {'OK ' if ok else 'XX '}{mapping.decision.value:10s} "
-            f"{row.column:18s} -> {label:28s} gap={mapping.gap:.2f} [{row.difficulty}]"
+            f"  {mark}{mapping.decision.value:10s} {row.column:18s} -> {label:28s}"
+            f" gap={mapping.gap:.2f}  want={want}"
         )
     print("=" * 78)
+    print(f"  labelled decisions     : {m['total']}")
     print(f"  auto-applied correctly : {m['auto_correct']}")
+    print(f"  noise columns mapped   : {m['false_positive']}   <- must be 0")
     print(f"  auto-applied WRONGLY   : {m['auto_wrong']}   <- must be 0")
     print(f"  over-escalated         : {m['over_escalated']}   (safe cases sent to a human)")
     print(f"  under-escalated        : {m['under_escalated']}   <- must be 0")
     print(f"  escalation precision   : {m['precision']:.2f}")
     print(f"  escalation recall      : {m['recall']:.2f}")
+    print(f"  agreement with corpus  : {m['agreement']:.2f}")
     return 0
 
 

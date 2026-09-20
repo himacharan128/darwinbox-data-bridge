@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strMobileNo",
+    "votes": [
+      {
+        "target_field": "mobile_number",
+        "vote": 1.0,
+        "reason": "Column name suggests mobile, values are Indian phone numbers with +91 prefix matching mobile_number pattern"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 480,
+    "input_tokens": 1025,
+    "output_tokens": 156,
+    "cached": false
+  }
+}

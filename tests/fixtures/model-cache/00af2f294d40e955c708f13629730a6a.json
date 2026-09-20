@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "div_code",
+    "votes": [
+      {
+        "target_field": "department_code",
+        "vote": 1.0,
+        "reason": "Values are short alphabetic department abbreviations (ENG, SALES, HR, etc.) matching typical department codes"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 958,
+    "input_tokens": 1015,
+    "output_tokens": 178,
+    "cached": false
+  }
+}

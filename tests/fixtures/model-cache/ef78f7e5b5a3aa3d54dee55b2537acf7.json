@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "dtProbationEnd",
+    "votes": [
+      {
+        "target_field": "date_of_joining",
+        "vote": 1.0,
+        "reason": "Column name indicates a date related to employment and values are ISO dates, matching date_of_joining format"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1046,
+    "input_tokens": 1053,
+    "output_tokens": 217,
+    "cached": false
+  }
+}

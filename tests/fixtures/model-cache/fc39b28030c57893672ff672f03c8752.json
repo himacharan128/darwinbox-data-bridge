@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "legal_last",
+    "votes": [
+      {
+        "target_field": "last_name",
+        "vote": 1.0,
+        "reason": "Column name suggests a legal last name and sample values are surnames like Menon, Deshpande"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1248,
+    "input_tokens": 1027,
+    "output_tokens": 142,
+    "cached": false
+  }
+}

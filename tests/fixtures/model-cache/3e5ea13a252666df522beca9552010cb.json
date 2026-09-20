@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strAuditUser",
+    "votes": [
+      {
+        "target_field": "designation",
+        "vote": 1.0,
+        "reason": "Column values are the string 'admin', which is a common job title/role matching the designation field."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1534,
+    "input_tokens": 880,
+    "output_tokens": 194,
+    "cached": false
+  }
+}

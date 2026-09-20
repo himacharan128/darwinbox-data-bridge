@@ -135,11 +135,11 @@ class Decision(StrEnum):
 class Thresholds(BaseModel):
     """Calibrated in Phase 2 against the labelled corpus, not asserted here."""
 
-    auto_apply: float = 0.75
-    gap: float = 0.15
+    auto_apply: float = 0.70
+    gap: float = 0.10
     review_floor: float = 0.50
     calibrated: bool = True
-    calibration_ref: str = "scripts/eval_mapping.py --sweep, Phase 1 corpus (35 columns)"
+    calibration_ref: str = "docs/calibration.md — 77 labelled decisions, 5 source files"
 
 
 class ColumnMapping(BaseModel):

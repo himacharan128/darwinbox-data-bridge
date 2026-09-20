@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strEmployeeCode",
+    "votes": [
+      {
+        "target_field": "employee_id",
+        "vote": 1.0,
+        "reason": "Values match pattern ^EMP-[0-9]{5}$ and column name suggests employee code"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 858,
+    "input_tokens": 973,
+    "output_tokens": 137,
+    "cached": false
+  }
+}

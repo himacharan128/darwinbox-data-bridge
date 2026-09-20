@@ -1,0 +1,5 @@
+strEmployeeCode,strFirstNm,strLastNm,strEmailAddr,strMobileNo,dtDateOfBirth,dtDateOfJoin,strDeptCd,strDesignation,strEmpType,strReportingMgr,strLocCd,intSeqNo,strRemarks,dtLastSync,strSourceSystem,bIsDeleted,strGradeBand,intVersionNo,strAuditUser,strBankAcctNo,dtProbationEnd
+EMP-00035,Anil,Kumar,anil.kumar@acme-hr.example,+91 98450 11035,1991-09-23,2020-02-17,ENG,Senior Engineer,FULL_TIME,EMP-00002,BLR-HQ,1,,2024-02-01T00:00:00Z,LEGACY_HRMS,N,B2,3,admin,XXXX4412,2020-08-17
+EMP-00036,Fatima,Sheikh,fatima.sheikh@acme-hr.example,+91 98450 11036,1994-03-11,2022-06-06,SALES,Account Manager,FULL_TIME,EMP-00004,HYD-01,2,relocated,2024-02-01T00:00:00Z,LEGACY_HRMS,N,B1,2,admin,XXXX7781,2022-12-06
+EMP-00037,Joseph,Fernandes,joseph.fernandes@acme-hr.example,+91 98450 11037,1988-12-30,2018-04-23,FIN,Finance Lead,FULL_TIME,EMP-00007,MUM-01,3,,2024-02-01T00:00:00Z,LEGACY_HRMS,N,C1,5,admin,XXXX9023,2018-10-23
+EMP-00038,Neha,Agarwal,neha.agarwal@acme-hr.example,+91 98450 11038,1996-07-19,2023-01-09,HR,HR Analyst,INTERN,EMP-00006,MUM-01,4,intern conversion pending,2024-02-01T00:00:00Z,LEGACY_HRMS,N,A2,1,admin,XXXX3345,2023-07-09

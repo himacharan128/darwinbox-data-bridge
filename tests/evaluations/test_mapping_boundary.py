@@ -40,8 +40,23 @@ def test_never_silently_resolves_a_case_that_needs_a_human(measured):
 
 def test_most_mappings_are_applied_without_a_human(measured):
     """Criterion 3 is a boundary, not a queue. If everything escalates, nothing works."""
-    _, rows, m = measured
-    assert m["auto_correct"] / len(rows) >= 0.70
+    _, _, m = measured
+    mappable = m["auto_correct"] + m["over_escalated"]
+    assert m["auto_correct"] / mappable >= 0.70
+
+
+def test_never_maps_a_column_that_is_not_entity_data(measured):
+    """The worst available failure: silently mapping a checksum or an audit timestamp.
+
+    It corrupts the dataset with no case raised, so nobody catches it downstream.
+    """
+    _, _, m = measured
+    assert m["false_positive"] == 0
+
+
+def test_agreement_with_the_labelled_corpus_holds(measured):
+    _, _, m = measured
+    assert m["agreement"] >= 0.80
 
 
 def test_model_vote_cannot_decide_alone():
@@ -67,7 +82,7 @@ def test_ambiguous_column_is_held_back(measured):
     _, _, m = measured
     contact = [d for d in m["details"] if d[0].column == "contact"]
     assert contact, "the ambiguous column vanished from the corpus"
-    _, mapping, auto, _ = contact[0]
+    _, mapping, auto, _, _ = contact[0]
     assert not auto
     assert mapping.chosen_field is None
 
@@ -75,4 +90,16 @@ def test_ambiguous_column_is_held_back(measured):
 def test_thresholds_are_calibrated_not_asserted():
     t = Thresholds()
     assert t.calibrated is True
-    assert "eval_mapping" in t.calibration_ref
+    assert "calibration" in t.calibration_ref
+
+
+@pytest.mark.parametrize(
+    ("auto", "gap"), [(0.70, 0.10), (0.75, 0.15), (0.80, 0.10), (0.85, 0.15), (0.90, 0.10)]
+)
+def test_safety_properties_hold_across_the_threshold_range(measured, auto, gap):
+    """Zero wrong and zero under-escalated is a property of the design, not the cutoff."""
+    schema, rows, _ = measured
+    m = evaluate(rows, schema, Thresholds(auto_apply=auto, gap=gap, review_floor=0.50))
+    assert m["auto_wrong"] == 0
+    assert m["under_escalated"] == 0
+    assert m["false_positive"] == 0

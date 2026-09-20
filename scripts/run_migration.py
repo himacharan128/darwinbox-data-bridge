@@ -22,7 +22,13 @@ from dbx_extraction import read
 from dbx_migration_core import Pipeline
 
 FIX = ROOT / "tests" / "fixtures"
-EMPLOYEE_FILES = ["hrms_employees_export.csv", "payroll_staff.xlsx", "contractors_2024.csv"]
+EMPLOYEE_FILES = [
+    "hrms_employees_export.csv",
+    "payroll_staff.xlsx",
+    "contractors_2024.csv",
+    "workday_extract.csv",
+    "legacy_hrms_dump.csv",
+]
 LOOKUP_FILES = {"department": "departments.csv", "location": "locations.csv"}
 
 
