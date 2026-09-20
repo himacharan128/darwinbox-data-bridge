@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "payroll_staff.xlsx columns list shows no designation column, only grade"
+  },
+  "steps": [
+    {
+      "looked_at": "columns in file: file='payroll_staff.xlsx'",
+      "found": "payroll_staff.xlsx has 12 columns: staff_code (e.g. EMP-00001, EMP-00004); fname (e.g. Aarav, Ananya); lname (e.g. Sharma, Iyer); email_id (e.g. aarav.sharma@acme-hr.example, ananya.iyer@acme-hr.example); mobile (e.g. +91 98450 11001, +91 98450 11004); birth_date (e.g. 1985-03-14, 1988-05-30); joining_dt (e.g. 01/04/2015, 05/09/2016); department (e.g. ENG, SALES); grade (e.g. VP Engineering, Direc"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1979,
+    "input_tokens": 3600,
+    "output_tokens": 271,
+    "cached": false
+  }
+}

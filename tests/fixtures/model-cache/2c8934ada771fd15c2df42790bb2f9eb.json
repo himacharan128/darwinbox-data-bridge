@@ -1,0 +1,26 @@
+{
+  "payload": null,
+  "steps": [
+    {
+      "looked_at": "values in column: column='department_code', file='hrms_employees_export.csv'",
+      "found": "no column 'department_code' in 'hrms_employees_export.csv'"
+    },
+    {
+      "looked_at": "columns in file: file='hrms_employees_export.csv'",
+      "found": "hrms_employees_export.csv has 12 columns: Emp ID (e.g. EMP-00010, EMP-00001); First Name (e.g. Reyansh, Aarav); Last Name (e.g. Bose, Sharma); Email (e.g. reyansh.bose@acme-hr.example, aarav.sharma@acme-hr.example); Mobile (e.g. +91 98450 11010, +91 98450 11001); DOB (e.g. 27/01/1996, 14/03/1985); Date of Joining (e.g. 14/05/2023, 01/04/2015); Dept Code (e.g. ENG, SALES); Designation (e.g. Enginee"
+    },
+    {
+      "looked_at": "known values: field='department_code'",
+      "found": "department_code must be one of the 5 department codes: ENG, FIN, HR, SALES, TECHOPS"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1732,
+    "input_tokens": 5129,
+    "output_tokens": 192,
+    "cached": false
+  }
+}

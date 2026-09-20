@@ -32,7 +32,11 @@ CREATE TABLE IF NOT EXISTS runs (
     label        TEXT,
     -- Set by a rollback. Automatic delivery follows readiness, so without this an undo
     -- would be undone by the very next processing pass.
-    delivery_paused INTEGER NOT NULL DEFAULT 0
+    delivery_paused INTEGER NOT NULL DEFAULT 0,
+    -- Sending is a step the consultant takes. Off until they ask for it, because
+    -- "push to target" is a decision somebody makes, not a thing that happens
+    -- while they are reading the queue.
+    auto_send       INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS schema_versions (
     id          TEXT PRIMARY KEY,
@@ -105,6 +109,9 @@ class Store:
         path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(SCHEMA)
+            cols = {r["name"] for r in conn.execute("PRAGMA table_info(runs)")}
+            if "auto_send" not in cols:
+                conn.execute("ALTER TABLE runs ADD COLUMN auto_send INTEGER NOT NULL DEFAULT 0")
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -146,6 +153,18 @@ class Store:
     def delivery_paused(self, run_id: str) -> bool:
         run = self.get_run(run_id)
         return bool(run and run["delivery_paused"])
+
+    def set_auto_send(self, run_id: str, on: bool) -> None:
+        with self.connect() as conn:
+            conn.execute("UPDATE runs SET auto_send = ? WHERE id = ?",
+                         (1 if on else 0, run_id))
+
+    def auto_send(self, run_id: str) -> bool:
+        run = self.get_run(run_id)
+        try:
+            return bool(run and run["auto_send"])
+        except (IndexError, KeyError):
+            return False        # a run created before the column existed
 
     def set_status(self, run_id: str, status: str) -> None:
         with self.connect() as conn:

@@ -82,7 +82,15 @@ def approve(client, run_id: str) -> None:
 def start_run(client, folder: str = "run1") -> str:
     run_id = upload(client, folder)
     approve(client, run_id)
+    # Pushing is a step somebody takes. These tests are about what happens to a
+    # record after it has been sent, so they take it once and leave sending on.
+    keep_sending(client, run_id)
     return run_id
+
+
+def keep_sending(client, run_id: str) -> None:
+    client.get(f"/api/runs/{run_id}?wait=true")
+    client.post(f"/api/runs/{run_id}/deliver", json={"keep_sending": True})
 
 
 def _answer(client, run, needle, value, action="correct"):

@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "Lookup of other sources for employee EMP-00013 date_of_joining returned no matching data"
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00013', field='date_of_joining'",
+      "found": "the merged record has None"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1304,
+    "input_tokens": 3652,
+    "output_tokens": 200,
+    "cached": false
+  }
+}

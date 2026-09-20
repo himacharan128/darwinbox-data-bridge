@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": true,
+    "suggestion": "FULL_TIME",
+    "conclusion": "Checked the merged record for EMP-00004 and found employment_type set to 'FULL_TIME' from payroll_staff.xlsx"
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00004', field='employment_type'",
+      "found": "the merged record has 'FULL_TIME'; it came from payroll_staff.xlsx \u00b7 sheet Staff \u00b7 row 2 \u00b7 column 'emp_type' as 'FULL_TIME'. This employee was built from: hrms_employees_export.csv \u00b7 row 4, payroll_staff.xlsx \u00b7 sheet Staff \u00b7 row 2"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1415,
+    "input_tokens": 3362,
+    "output_tokens": 240,
+    "cached": false
+  }
+}

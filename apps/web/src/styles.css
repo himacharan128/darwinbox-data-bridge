@@ -546,6 +546,23 @@ details.why .reasons { margin-top: 8px; }
   .choice:hover:not(:disabled) { transform: none; }
 }
 
+.send-controls { display: flex; gap: 8px; align-items: center; }
+
+/* ------------------------------------------------- what the agent checked */
+
+.looked {
+  margin: 0 0 16px; padding: 13px 15px; border-radius: var(--r-sm);
+  background: var(--violet-50); border: 1px solid var(--violet-100, var(--line));
+}
+.looked > ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 7px; }
+.looked > ul li { display: grid; gap: 1px; font-size: 12.5px; }
+.looked > ul li b { font-weight: 600; color: var(--ink-2); }
+.looked > ul li span { color: var(--ink-3); }
+.looked-said {
+  margin: 10px 0 0; padding-top: 9px; border-top: 1px solid var(--line);
+  font-size: 13.5px; color: var(--ink); font-weight: 500;
+}
+
 /* --------------------------------------------------------- alias offers */
 
 .offers { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }

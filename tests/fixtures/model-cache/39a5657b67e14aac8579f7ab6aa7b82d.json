@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "contractors_2024.csv has a 'contact' column containing email addresses but no dedicated email column"
+  },
+  "steps": [
+    {
+      "looked_at": "columns in file: file='contractors_2024.csv'",
+      "found": "contractors_2024.csv has 11 columns: code (e.g. EMP-00015, EMP-00016); given_name (e.g. Nikhil, Tara); surname (e.g. Verma, Sinha); contact (e.g. nikhil.verma@acme-hr.example, +91 98450 11016); dob (e.g. 1990-06-21, 1994-12-03); doj (e.g. 2023-02-01, 2023-04-17); dept (e.g. ENG, SALES); role (e.g. Contract Engineer, Contract Designer); type (e.g. CONTRACT); mgr (e.g. EMP-00002, EMP-00004); loc (e."
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 2808,
+    "input_tokens": 3720,
+    "output_tokens": 298,
+    "cached": false
+  }
+}

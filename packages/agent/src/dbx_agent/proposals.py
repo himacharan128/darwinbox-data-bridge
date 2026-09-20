@@ -58,19 +58,27 @@ class FileRole(BaseModel):
     reason: str
 
 
-class InvestigationStep(BaseModel):
-    tool: str
-    argument: str
-    finding: str
+class Finding(BaseModel):
+    """What the agent worked out after going and looking at the data.
 
+    It never applies anything. A finding becomes a recommended answer on the case
+    that a person confirms, which is why `suggestion` has to be something the code
+    can check before it is offered.
+    """
 
-class InvestigationResult(BaseModel):
-    """What the bounded investigator learned before giving up or deciding."""
-
-    resolved: bool
-    chosen_field: str | None = None
-    steps: list[InvestigationStep] = Field(default_factory=list)
-    conclusion: str
+    settled: bool = Field(
+        description="true only if the data you looked at actually answers the question"
+    )
+    suggestion: str | None = Field(
+        default=None,
+        description=(
+            "The value or field name you propose, copied exactly from what you saw. "
+            "Null if nothing you found supports one."
+        ),
+    )
+    conclusion: str = Field(
+        description="One sentence a non-technical person can act on, citing what you found"
+    )
 
 
 class ProposedField(BaseModel):

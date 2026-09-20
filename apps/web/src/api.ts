@@ -5,6 +5,9 @@ export type Case = {
   actions: string[];
   options: { label: string; value: string | null; description: string | null; recommended: boolean }[];
   blocks: number; children: number; state: string;
+  /** What the agent went and looked at before deciding it had to ask. */
+  checked?: { looked_at: string; found: string }[];
+  found?: string | null;
 };
 
 export type Progress = {
@@ -22,6 +25,7 @@ export type RunState = {
     ready: number; blocked: number;
   };
   delivery_paused?: boolean;
+  auto_send?: boolean;
   cases: Case[];
   failures?: { record: string; reason: string }[];
   records: {
@@ -106,7 +110,11 @@ export const api = {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ action, value, reason }),
     }).then(json),
-  deliver: (run: string) => fetch(`/api/runs/${run}/deliver`, { method: "POST" }).then(json),
+  deliver: (run: string, keepSending = false) =>
+    fetch(`/api/runs/${run}/deliver`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ keep_sending: keepSending }),
+    }).then(json) as Promise<{ sent: Record<string, number> }>,
   rollback: (run: string) => fetch(`/api/runs/${run}/rollback`, { method: "POST" }).then(json),
   destination: (run: string) => fetch(`/api/runs/${run}/destination`).then(json),
   audit: (run: string) => fetch(`/api/runs/${run}/audit`).then(json),

@@ -132,6 +132,21 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
         </div>
       )}
 
+      {(c.found || !!(c.checked ?? []).length) && (
+        <div className="looked">
+          <span className="callout-label">Before asking you, the agent checked</span>
+          <ul>
+            {(c.checked ?? []).map((k, i) => (
+              <li key={i}>
+                <b>{k.looked_at}</b>
+                <span>{k.found}</span>
+              </li>
+            ))}
+          </ul>
+          {c.found && <p className="looked-said">{c.found}</p>}
+        </div>
+      )}
+
       {!!reasons.length && (
         <details className="why">
           <summary>Why the agent is unsure</summary>

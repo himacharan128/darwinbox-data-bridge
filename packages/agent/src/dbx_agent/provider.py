@@ -46,6 +46,21 @@ class ProposalError(RuntimeError):
     """The model did not return a usable typed proposal."""
 
 
+class Lookup(BaseModel):
+    """One read-only thing the investigator is allowed to go and check."""
+
+    name: str
+    description: str
+    input_schema: dict[str, Any]
+
+
+class Step(BaseModel):
+    """One look the agent took, kept so a person can see what it actually checked."""
+
+    looked_at: str
+    found: str
+
+
 class Provider(ABC):
     name: str
 
@@ -62,6 +77,28 @@ class Provider(ABC):
         max_tokens: int = 2048,
     ) -> tuple[T, ModelCall]:
         """Force one typed proposal out of the model."""
+
+    def investigate(
+        self,
+        answer_model: type[T],
+        *,
+        system: str,
+        user: str,
+        answer_tool: str,
+        lookups: list[Lookup],
+        run_lookup: Any,
+        prompt_version: str,
+        max_steps: int = 4,
+        reasoning_effort: str = "low",
+        max_tokens: int = 2048,
+    ) -> tuple[T | None, list[Step], ModelCall]:
+        """Let the model go and look things up before it answers.
+
+        The difference between an agent and a form-filler. Bounded: it gets
+        `max_steps` looks, every one is read-only, and if it has not concluded by
+        then the question goes to a person with whatever it did find attached.
+        """
+        raise NotImplementedError
 
 
 def _tool_schema(model: type[BaseModel]) -> dict[str, Any]:
@@ -148,6 +185,149 @@ class BedrockProvider(Provider):
         return schema_model.model_validate(payload), call
 
 
+    def investigate(
+        self,
+        answer_model: type[T],
+        *,
+        system: str,
+        user: str,
+        answer_tool: str,
+        lookups: list[Lookup],
+        run_lookup: Any,
+        prompt_version: str,
+        max_steps: int = 4,
+        reasoning_effort: str = "low",
+        max_tokens: int = 2048,
+    ) -> tuple[T | None, list[Step], ModelCall]:
+        reads = [
+            {
+                "toolSpec": {
+                    "name": lk.name,
+                    "description": lk.description,
+                    "inputSchema": {"json": lk.input_schema},
+                }
+            }
+            for lk in lookups
+        ]
+        answering = {
+            "toolSpec": {
+                "name": answer_tool,
+                "description": answer_model.__doc__ or answer_tool,
+                "inputSchema": {"json": _tool_schema(answer_model)},
+            }
+        }
+
+        messages: list[dict[str, Any]] = [{"role": "user", "content": [{"text": user}]}]
+        steps: list[Step] = []
+        started = time.monotonic()
+        tokens_in = tokens_out = 0
+        answer: T | None = None
+
+        def turn(tools: list[dict[str, Any]], choice: dict[str, Any]) -> list[dict[str, Any]]:
+            nonlocal tokens_in, tokens_out
+            response = self._client.converse(
+                modelId=self.model_id,
+                system=[{"text": system}],
+                messages=messages,
+                toolConfig={"tools": tools, "toolChoice": choice},
+                inferenceConfig={"maxTokens": max_tokens, "temperature": 0},
+                additionalModelRequestFields={"reasoning_effort": reasoning_effort},
+            )
+            usage = response.get("usage", {})
+            tokens_in += usage.get("inputTokens", 0)
+            tokens_out += usage.get("outputTokens", 0)
+            return response["output"]["message"]["content"]
+
+        for step_no in range(max_steps):
+            # The first turn offers only the lookups. Left free to answer straight
+            # away it does, every time, and then reports having "checked the source
+            # data" without having called anything. One real look is the minimum
+            # that makes this an investigation rather than a guess.
+            tools = [*reads] if step_no == 0 else [*reads, answering]
+            content = turn(tools, {"any": {}})
+            uses = [b["toolUse"] for b in content if "toolUse" in b]
+            if not uses:
+                break
+
+            # reasoningContent is deliberately dropped here as everywhere else.
+            replies: list[dict[str, Any]] = []
+            for use in uses:
+                if use["name"] == answer_tool:
+                    answer = _validated(use["input"], answer_model)
+                    if answer is not None:
+                        break
+                    continue
+                found = run_lookup(use["name"], use["input"])
+                steps.append(Step(
+                    looked_at=_describe(use["name"], use["input"]),
+                    found=str(found)[:400],
+                ))
+                replies.append({
+                    "toolResult": {
+                        "toolUseId": use["toolUseId"],
+                        "content": [{"text": str(found)[:2000]}],
+                    }
+                })
+            if answer is not None:
+                break
+            messages.append({"role": "assistant", "content": content})
+            messages.append({"role": "user", "content": replies})
+
+        if answer is None:
+            # Out of looks, or it stopped calling tools. Either way it has to commit
+            # to something now, even if that something is "I could not settle it".
+            # Saying so in words as well as in toolChoice matters: forced to answer
+            # off the back of a tool conversation it will otherwise invent another
+            # lookup to call, and the name it invents is not one that exists.
+            messages.append({"role": "user", "content": [{
+                "text": (
+                    "Stop looking now and record your finding with "
+                    f"`{answer_tool}`, using only what the lookups returned above. "
+                    "If they did not settle it, say so and set settled to false."
+                )
+            }]})
+            content = turn([answering], {"tool": {"name": answer_tool}})
+            answer = _first_answer(content, answer_tool, answer_model)
+
+        call = ModelCall(
+            provider=self.name, model=self.model_id, prompt_version=prompt_version,
+            latency_ms=int((time.monotonic() - started) * 1000),
+            input_tokens=tokens_in, output_tokens=tokens_out,
+        )
+        return answer, steps, call
+
+
+def _validated[M: BaseModel](payload: Any, answer_model: type[M]) -> M | None:
+    """A malformed answer is a failed investigation, not a crashed run."""
+    try:
+        return answer_model.model_validate(payload)
+    except Exception:  # noqa: BLE001 - the case simply goes to a person unaided
+        return None
+
+
+def _first_answer[M: BaseModel](
+    content: list[dict[str, Any]], answer_tool: str, answer_model: type[M]
+) -> M | None:
+    """Take the answer, and only the answer.
+
+    Under a forced toolChoice the model still sometimes calls a tool it made up,
+    so the name is checked rather than assumed.
+    """
+    for block in content:
+        use = block.get("toolUse")
+        if use and use.get("name") == answer_tool:
+            return _validated(use["input"], answer_model)
+    return None
+
+
+def _describe(tool: str, args: dict[str, Any]) -> str:
+    """The look, in words a consultant can read."""
+    pretty = tool.replace("_", " ")
+    if not args:
+        return pretty
+    return f"{pretty}: " + ", ".join(f"{k}={v!r}" for k, v in args.items())
+
+
 class CachingProvider(Provider):
     """Replay identical requests from disk.
 
@@ -214,6 +394,59 @@ class CachingProvider(Provider):
             )
         )
         return result, call
+
+
+    def investigate(
+        self,
+        answer_model: type[T],
+        *,
+        system: str,
+        user: str,
+        answer_tool: str,
+        lookups: list[Lookup],
+        run_lookup: Any,
+        prompt_version: str,
+        max_steps: int = 4,
+        reasoning_effort: str = "low",
+        max_tokens: int = 2048,
+    ) -> tuple[T | None, list[Step], ModelCall]:
+        """Cached whole, not turn by turn.
+
+        What is worth replaying is the investigation - what it went and looked at,
+        and what it concluded - not the individual exchanges that produced it.
+        Keying on the opening question keeps a replay reproducible even though the
+        path through the looks is the model's to choose.
+        """
+        key = self._key(answer_model, system, user, f"{prompt_version}/investigate")
+        path = self.cache_dir / f"{key}.json"
+
+        if path.exists():
+            cached = json.loads(path.read_text())
+            call = ModelCall.model_validate(cached["call"])
+            call.cached = True
+            answer = (
+                answer_model.model_validate(cached["payload"])
+                if cached.get("payload") is not None else None
+            )
+            return answer, [Step.model_validate(x) for x in cached.get("steps", [])], call
+
+        if self.offline or self.inner is None:
+            raise ProposalError(
+                f"offline mode and no recorded investigation for {answer_tool} ({key}). "
+                "Record a live run first."
+            )
+
+        answer, steps, call = self.inner.investigate(
+            answer_model, system=system, user=user, answer_tool=answer_tool,
+            lookups=lookups, run_lookup=run_lookup, prompt_version=prompt_version,
+            max_steps=max_steps, reasoning_effort=reasoning_effort, max_tokens=max_tokens,
+        )
+        path.write_text(json.dumps({
+            "payload": answer.model_dump(mode="json") if answer else None,
+            "steps": [x.model_dump(mode="json") for x in steps],
+            "call": call.model_dump(mode="json"),
+        }, indent=2))
+        return answer, steps, call
 
 
 def build_provider(cache_dir: Path | None = None, *, offline: bool = False) -> Provider:

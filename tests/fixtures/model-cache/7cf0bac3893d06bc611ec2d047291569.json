@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": true,
+    "suggestion": "2016-09-05",
+    "conclusion": "Other source hrms_employees_export.csv shows date_of_joining as 2016-09-05 for EMP-00004"
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00004', field='date_of_joining'",
+      "found": "the merged record has '2016-09-05'; it came from hrms_employees_export.csv \u00b7 row 4 \u00b7 column 'Date of Joining' as '05/09/2016'. This employee was built from: hrms_employees_export.csv \u00b7 row 4, payroll_staff.xlsx \u00b7 sheet Staff \u00b7 row 2"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1703,
+    "input_tokens": 3778,
+    "output_tokens": 275,
+    "cached": false
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": true,
+    "suggestion": "date_of_joining",
+    "conclusion": "The legacy_hrms_dump.csv column list shows dtDateOfJoin as a date field, matching the target field date_of_joining."
+  },
+  "steps": [
+    {
+      "looked_at": "columns in file: file='legacy_hrms_dump.csv'",
+      "found": "legacy_hrms_dump.csv has 22 columns: strEmployeeCode (e.g. EMP-00035, EMP-00036); strFirstNm (e.g. Anil, Fatima); strLastNm (e.g. Kumar, Sheikh); strEmailAddr (e.g. anil.kumar@acme-hr.example, fatima.sheikh@acme-hr.example); strMobileNo (e.g. +91 98450 11035, +91 98450 11036); dtDateOfBirth (e.g. 1991-09-23, 1994-03-11); dtDateOfJoin (e.g. 2020-02-17, 2022-06-06); strDeptCd (e.g. ENG, SALES); strD"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1365,
+    "input_tokens": 3976,
+    "output_tokens": 239,
+    "cached": false
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": "19845011042:",
+    "conclusion": "Other source scanned_roster.pdf shows phone value '19845011042:' for employee EMP-00042"
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00042', field='phone'",
+      "found": "the merged record has '+919845011042'; it came from roster_export.pdf \u00b7 page 1 \u00b7 row 3 \u00b7 column 'Mobile' as '+919845011042'. This employee was built from: roster_export.pdf \u00b7 page 1 \u00b7 row 3, scanned_roster.pdf \u00b7 page 1 \u00b7 row 3"
+    },
+    {
+      "looked_at": "values in column: column='Mobile', file='scanned_roster.pdf'",
+      "found": "3 of 3 rows filled, 3 distinct. Values: '491984501 1040' x1, '4919845011041' x1, '19845011042:' x1"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1556,
+    "input_tokens": 3999,
+    "output_tokens": 254,
+    "cached": false
+  }
+}

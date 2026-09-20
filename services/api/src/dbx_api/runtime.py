@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from dbx_contracts import Action, CaseState, MigrationSchema, ReviewCase
 from dbx_extraction import UnsupportedInput, confidence_for, is_sidecar, read
 from dbx_migration_core import Overrides, Pipeline, RunResult, apply_decision
 
+from .investigate import enrich
 from .store import Store
 
 
@@ -149,13 +151,31 @@ def replay(
 
     if report:
         report("validating", "Checking records against the target schema")
-    result = Pipeline(
+    pipeline = Pipeline(
         run_id, schema, votes=votes, overrides=overrides, confidence=confidence
-    ).run(sources, lookups)
+    )
+    result = pipeline.run(sources, lookups)
     answered = {d["case_key"] for d in decisions}
     for case in result.cases:
         if case_key(case) in answered:
             case.state = CaseState.RESOLVED
+
+    # Everything above is deterministic. Only now, with the queue settled, does the
+    # agent go and look at the data behind the questions it is about to ask - and
+    # all it may do with what it finds is suggest an answer on a case that still
+    # needs a person.
+    if result.open_cases and not offline:
+        if report:
+            report("investigating", "Looking into what it could not settle",
+                   0, len(result.open_cases))
+        try:
+            looked = enrich(result, schema, pipeline.profiles, provider)
+            if looked and report:
+                report("investigating", f"Checked the data behind {looked} question(s)",
+                       looked, looked)
+        except Exception as exc:  # noqa: BLE001 - never lose a queue over this
+            logging.getLogger("dbx.api").warning("investigation pass failed: %s", exc)
+
     return result, overrides
 
 

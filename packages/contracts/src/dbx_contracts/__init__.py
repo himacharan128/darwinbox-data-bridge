@@ -26,7 +26,15 @@ from .records import (
     ValidationIssue,
     ValidationResult,
 )
-from .review import Action, CaseState, EscalationClass, HumanDecision, Option, ReviewCase
+from .review import (
+    Action,
+    CaseState,
+    Checked,
+    EscalationClass,
+    HumanDecision,
+    Option,
+    ReviewCase,
+)
 from .schema import (
     FieldSpec,
     FieldType,
@@ -45,6 +53,7 @@ __all__ = [
     "Candidate",
     "CanonicalRecord",
     "CaseState",
+    "Checked",
     "ColumnMapping",
     "ColumnProfile",
     "Decision",

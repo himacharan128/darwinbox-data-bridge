@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "Lookup of payroll_staff.xlsx column emp_type showed values FULL_TIME, FTE, CONTRACT, INTERN, including invalid FTE entries."
+  },
+  "steps": [
+    {
+      "looked_at": "values in column: column='emp_type', file='payroll_staff.xlsx'",
+      "found": "18 of 20 filled. Values: 'FULL_TIME' x12, 'FTE' x3, 'CONTRACT' x2, 'INTERN' x1"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 2222,
+    "input_tokens": 2794,
+    "output_tokens": 274,
+    "cached": false
+  }
+}

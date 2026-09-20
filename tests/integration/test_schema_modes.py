@@ -217,8 +217,9 @@ def test_delivered_records_keep_the_version_they_were_sent_under(client, run):
         json={"action": "correct", "value": "constant:ACTIVE"},
     )
     client.get(f"/api/runs/{run}?wait=true")
+    client.post(f"/api/runs/{run}/deliver", json={"keep_sending": True})
     before = client.get(f"/api/runs/{run}/destination").json()["records"]
-    assert before, "records with no open case deliver on their own"
+    assert before, "pushing sends the records with nothing open against them"
     versions_before = {r["natural_key"]: r["schema_version"] for r in before}
 
     edited = yaml.safe_load(SCHEMA_YAML.read_text())
@@ -269,7 +270,7 @@ def test_agent_offers_other_names_for_a_schema_you_supplied(client):
 
     body = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
     # Strip every declared alias: this is a schema someone wrote without them.
-    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.M)
+    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.MULTILINE)
     version = client.post(f"/api/runs/{run_id}/schema", json={"body": bare}).json()["version"]
 
     out = client.post(f"/api/runs/{run_id}/schema/{version}/aliases")
@@ -286,7 +287,7 @@ def test_suggested_aliases_are_never_applied_on_their_own(client):
     the gate. Nothing may reach the schema without a person putting it there."""
     run_id = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
     body = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
-    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.M)
+    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.MULTILINE)
     version = client.post(f"/api/runs/{run_id}/schema", json={"body": bare}).json()["version"]
 
     before = client.get(f"/api/runs/{run_id}/schema").json()
@@ -305,7 +306,7 @@ def test_every_suggestion_carries_the_values_behind_it(client):
     """
     run_id = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
     body = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
-    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.M)
+    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.MULTILINE)
     version = client.post(f"/api/runs/{run_id}/schema", json={"body": bare}).json()["version"]
 
     offers = client.post(f"/api/runs/{run_id}/schema/{version}/aliases").json()["suggestions"]

@@ -1,0 +1,17 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "Checked source data for employment_type values but did not find any occurrence of 'FTE' or a clear mapping to allowed enums"
+  },
+  "steps": [],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v1",
+    "latency_ms": 581,
+    "input_tokens": 874,
+    "output_tokens": 147,
+    "cached": false
+  }
+}

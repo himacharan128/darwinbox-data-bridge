@@ -1,0 +1,18 @@
+{
+  "payload": null,
+  "steps": [
+    {
+      "looked_at": "values in column: column='Date of Joining', file='scanned_roster.pdf'",
+      "found": "no column 'Date of Joining' in 'scanned_roster.pdf'"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1650,
+    "input_tokens": 3556,
+    "output_tokens": 160,
+    "cached": false
+  }
+}

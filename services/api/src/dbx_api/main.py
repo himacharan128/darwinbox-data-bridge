@@ -87,6 +87,10 @@ def _case_payload(case: Any, names: dict[str, str] | None = None) -> dict[str, A
         "attempts": case.attempts,
         "actions": [a.value for a in case.actions],
         "options": [o.model_dump() for o in case.options],
+        # What the agent went and checked before asking, so the question arrives
+        # with its legwork attached rather than as a bare request for help.
+        "checked": [c.model_dump() for c in case.checked],
+        "found": case.found,
         "blocks": case.waiting_count,
         "children": len(case.child_records),
         "state": case.state.value,
@@ -722,10 +726,16 @@ def _ensure_processing(run_id: str) -> Any | None:
 
 
 def _process_run(run_id: str, report: Any) -> Any:
-    """Replay, then deliver whatever came out ready. One step, not two."""
+    """Work the files. Sending is a separate step somebody takes.
+
+    Pushing to the target is the one action with a consequence outside this tool,
+    so it stays a decision rather than something that happens while the consultant
+    is still reading the queue. Once they have seen a push land they can turn on
+    auto-send, and from then on readiness is enough.
+    """
     result, _ = replay(store, run_id, report=report)
     ready = len(result.ready)
-    if ready:
+    if ready and store.auto_send(run_id):
         report("delivering", f"Sending {ready} record(s) to the destination", 0, ready)
         deliver_ready(run_id, result)
     return result
@@ -830,6 +840,7 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
         "status": _status(result, records, accepted),
         "progress": progress.as_dict(),
         "delivery_paused": store.delivery_paused(run_id),
+        "auto_send": store.auto_send(run_id),
         "counts": {
             # Raw rows before reconciliation, beside the employees they became. Showing
             # both is what makes reconciliation legible.
@@ -965,13 +976,19 @@ def deliver_ready(run_id: str, result: Any) -> dict[str, int]:
 
 
 @app.post("/api/runs/{run_id}/deliver")
-def deliver(run_id: str) -> dict[str, Any]:
-    """Send what is outstanding, and resume automatic delivery if it was paused.
+def deliver(
+    run_id: str, keep_sending: Annotated[bool, Body(embed=True)] = False
+) -> dict[str, Any]:
+    """Push to the target: the step the consultant takes.
 
-    Normal delivery happens on its own; this is the button for after a rollback, or
-    for retrying what the destination refused.
+    Sends everything currently ready, reports what the destination said about each
+    record, and is also the way back after a rollback or a refusal. `keep_sending`
+    turns on automatic delivery from here on, for a consultant who has watched one
+    push land and does not want to press it again.
     """
     store.pause_delivery(run_id, False)
+    if keep_sending:
+        store.set_auto_send(run_id, True)
     jobs.wait(run_id, timeout=180)
     result = jobs.result(run_id)
     if result is None:

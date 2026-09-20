@@ -268,7 +268,8 @@ function Destination({ runId }: { runId: string }) {
   if (!data.records.length) {
     return <div className="panel empty">
       <strong>Nothing has been sent yet</strong>
-      Employees are sent as soon as nothing is holding them up.
+      Press <b>Push to the target</b> above to send the employees that have
+      nothing open against them.
     </div>;
   }
 
@@ -523,17 +524,29 @@ export default function App() {
           )}
           <span className="spacer" />
           {state && !wizard && counts && (
-            state.delivery_paused ? (
-              <button className="primary" disabled={busy}
-                      onClick={() => void act(() => api.deliver(state.run_id))}>
-                Resume sending
-              </button>
-            ) : (
-              <button className="danger" disabled={busy || !counts.delivered}
-                      onClick={() => void act(() => api.rollback(state.run_id))}>
-                Undo sending
-              </button>
-            )
+            <div className="send-controls">
+              {/* Pushing to the target is the one action with a consequence outside
+                  this tool, so it is a button somebody presses, not something that
+                  happens while they are reading the queue. */}
+              {counts.ready > 0 && (
+                <button className="primary" disabled={busy}
+                        onClick={() => void act(() => api.deliver(state.run_id))}>
+                  Push {counts.ready} to the target
+                </button>
+              )}
+              {state.delivery_paused && counts.ready === 0 && (
+                <button className="primary" disabled={busy}
+                        onClick={() => void act(() => api.deliver(state.run_id))}>
+                  Resume sending
+                </button>
+              )}
+              {!!counts.delivered && (
+                <button className="danger" disabled={busy}
+                        onClick={() => void act(() => api.rollback(state.run_id))}>
+                  Undo sending
+                </button>
+              )}
+            </div>
           )}
         </header>
 

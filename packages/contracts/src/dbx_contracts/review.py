@@ -43,6 +43,13 @@ class Option(BaseModel):
     recommended: bool = False
 
 
+class Checked(BaseModel):
+    """One thing the agent went and looked at before interrupting anyone."""
+
+    looked_at: str
+    found: str
+
+
 class CaseState(StrEnum):
     OPEN = "open"
     RESOLVED = "resolved"
@@ -70,6 +77,12 @@ class ReviewCase(BaseModel):
     # what we need
     actions: list[Action] = Field(default_factory=list)
     options: list[Option] = Field(default_factory=list)
+
+    #: What the agent checked in the data before deciding it had to ask. Shown on the
+    #: case, so a question arrives with the legwork already done rather than as a
+    #: bare request for help.
+    checked: list[Checked] = Field(default_factory=list)
+    found: str | None = None
 
     state: CaseState = CaseState.OPEN
     blocks_records: list[str] = Field(default_factory=list)

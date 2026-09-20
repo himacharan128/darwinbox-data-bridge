@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "Lookup shows manager_employee_id for EMP-00026 is 'EMP-00026' in the source file"
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00026', field='manager_employee_id'",
+      "found": "the merged record has 'EMP-00026'; it came from hrms_employees_export.csv \u00b7 row 18 \u00b7 column 'Manager ID' as 'EMP-00026'. This employee was built from: hrms_employees_export.csv \u00b7 row 18"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 1679,
+    "input_tokens": 3326,
+    "output_tokens": 237,
+    "cached": false
+  }
+}

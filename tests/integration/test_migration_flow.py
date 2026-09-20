@@ -71,6 +71,13 @@ def start_run(client, folder: str = "run1", schema: str | None = None) -> str:
     return run_id
 
 
+def keep_sending(client, run_id: str) -> str:
+    """Press the push button once and leave sending on, as a consultant would."""
+    client.get(f"/api/runs/{run_id}?wait=true")
+    client.post(f"/api/runs/{run_id}/deliver", json={"keep_sending": True})
+    return run_id
+
+
 def _answer(client, run, needle, value, action="correct"):
     state = client.get(f"/api/runs/{run}?wait=true").json()
     case = next((c for c in state["cases"] if needle in c["headline"]), None)
@@ -84,7 +91,7 @@ def _answer(client, run, needle, value, action="correct"):
 @pytest.fixture
 def run(stack):
     client, _ = stack
-    return client, start_run(client)
+    return client, keep_sending(client, start_run(client))
 
 
 def test_agent_processes_without_asking_about_everything(run):
@@ -104,8 +111,13 @@ def test_one_answer_unblocks_many_records(run):
     assert result["ready"] >= 10, "a field-level answer must release every record it blocked"
 
 
-def test_records_deliver_themselves_once_nothing_is_blocking_them(run):
-    """Delivery follows readiness. A click before the fact only delayed safe work."""
+def test_pushing_sends_what_is_ready_and_nothing_else(run):
+    """Delivery follows readiness once a person has asked for it.
+
+    Pushing to the target is the one action with a consequence outside this tool,
+    so it starts as a button. After the first push the consultant can leave sending
+    on, and from then on readiness is enough.
+    """
     client, rid = run
     before = client.get(f"/api/runs/{rid}?wait=true").json()["counts"]["delivered"]
     _answer(client, rid, "no column for status", "constant:ACTIVE")
@@ -284,3 +296,66 @@ def test_a_decision_invalidates_the_stored_answer(run):
     assert after["ready"] != before["ready"] or after["delivered"] != before["delivered"], (
         "a decision must produce a fresh answer, not the stored one"
     )
+
+
+def test_the_agent_looks_at_the_data_before_it_asks(run):
+    """An agent investigates; a form just asks.
+
+    Every case it raises about something checkable should arrive with the looking
+    already done, so a consultant reads a finding rather than starting from scratch.
+    """
+    client, rid = run
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+    cases = state["cases"]
+    assert cases, "the fixtures raise cases"
+
+    looked_into = [c for c in cases if c.get("checked")]
+    assert looked_into, "no case shows any sign the agent checked anything"
+
+    for case in looked_into:
+        for step in case["checked"]:
+            assert step["looked_at"], "a look with no description is not auditable"
+            assert step["found"], "a look that found nothing should not be recorded"
+        # A conclusion drawn from nothing is the failure mode this guards.
+        assert case.get("found"), "it looked, so it owes a conclusion"
+
+
+def test_a_suggestion_is_only_ever_offered_never_applied(run):
+    """The model may propose an answer. It may not be the one who gives it."""
+    client, rid = run
+    before = client.get(f"/api/runs/{rid}?wait=true").json()
+    suggested = [
+        (c["key"], o["value"])
+        for c in before["cases"]
+        for o in c["options"] if o.get("recommended")
+    ]
+    if not suggested:
+        pytest.skip("no suggestion was produced for these fixtures")
+
+    # Every case carrying a suggestion is still open and still blocking its records.
+    for key, _ in suggested:
+        case = next(c for c in before["cases"] if c["key"] == key)
+        assert case["state"] == "open", "a suggestion must not resolve the case"
+
+
+def test_nothing_reaches_the_target_until_somebody_pushes(stack):
+    """The one action with a consequence outside this tool stays a decision.
+
+    Everything else the agent does is reversible inside the console. Writing to the
+    client's system is not, so readiness alone is not permission.
+    """
+    client, _ = stack
+    rid = start_run(client)
+    # One field-level answer is what makes these records sendable at all.
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+
+    assert state["counts"]["ready"] > 0, "the fixtures should produce sendable records"
+    assert state["counts"]["delivered"] == 0, "nothing may be sent before it is asked for"
+    assert client.get(f"/api/runs/{rid}/destination").json()["records"] == []
+
+    sent = client.post(f"/api/runs/{rid}/deliver", json={"keep_sending": False}).json()
+    assert sum(sent["sent"].values()) > 0
+    after = client.get(f"/api/runs/{rid}?wait=true").json()
+    assert after["counts"]["delivered"] > 0
+    assert after["auto_send"] is False, "one push is one push, not a standing instruction"

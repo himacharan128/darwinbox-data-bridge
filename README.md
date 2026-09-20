@@ -24,12 +24,12 @@ flowchart LR
     F["Client exports<br/>CSV · Excel · JSON · YAML<br/>PDF · scanned roster"]
     A["The agent<br/>map · clean · validate<br/>reconcile"]
     H["Human<br/>only the undecidable"]
-    D["Destination HRMS<br/>validated records"]
+    D["Destination HRMS<br/>validated records, per-record result"]
 
     F --> A
     A -->|"evidence runs out"| H
     H -->|"decision"| A
-    A -->|"nothing open against it"| D
+    A -->|"you press Push"| D
 
     style A fill:#ede9fe,stroke:#6d28d9,stroke-width:2px
     style H fill:#fef3c7,stroke:#b45309
@@ -53,7 +53,7 @@ flowchart TD
     E["4 · Edit the draft<br/>types, constraints, uniqueness"]
     OK(["5 · Approve — this starts the migration"])
     W["6 · Supervise<br/>live activity + queue of what it could not settle"]
-    S["Sent automatically<br/>records with nothing open against them"]
+    S["Push to the target<br/>sends the records with nothing open against them"]
     B["Rollback<br/>undoes a delivery and pauses sending"]
 
     U --> R --> Q
@@ -62,7 +62,7 @@ flowchart TD
     P --> E
     G --> E
     E --> OK --> W
-    W --> S
+    W -->|"you press Push"| S
     S -.->|"if something was wrong"| B
     B -.-> W
 
