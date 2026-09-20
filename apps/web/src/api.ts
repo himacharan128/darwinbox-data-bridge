@@ -36,7 +36,11 @@ const json = async (r: Response) => {
 export type SchemaState = {
   active: { entity: string; fields: { name: string; type: string; required?: boolean;
     unique?: boolean; allowed?: string[]; pattern?: string; reference?: string;
-    description?: string }[] };
+    description?: string }[] } | null;
+  showing_version: number | null;
+  showing_state: string | null;
+  origin: string | null;
+  draft_version: number | null;
   approved_version: number | null;
   versions: { version: number; state: string; origin: string; approved_by: string | null;
     created_at: string }[];
@@ -89,7 +93,7 @@ export const api = {
     fetch(`/api/runs/${run}/schema`, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ body, origin: "edited" }),
-    }).then(json),
+    }).then(json) as Promise<{ version: number; state: string; fields: number }>,
   approveSchema: (run: string, version: number) =>
     fetch(`/api/runs/${run}/schema/${version}/approve`, { method: "POST" }).then(json),
 };

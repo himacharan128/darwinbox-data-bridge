@@ -1,38 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type RunFiles, type Sample, type SchemaState } from "./api";
+import SchemaEditor, { blankField, type Schema } from "./SchemaEditor";
 
 /**
  * Getting a run started: upload files, then agree a target schema.
  *
- * The schema step is not a formality. Nothing is mapped, cleaned or delivered until
- * a human has approved one — a migration against a schema nobody agreed to makes
- * every decision after it unaccountable. So approval is what starts the work.
+ * The schema step is not a formality. Nothing is mapped, cleaned or delivered until a
+ * human approves one — a migration against a schema nobody agreed to makes every
+ * decision after it unaccountable. So approval is what starts the work.
  */
 export default function Wizard(
   { onReady, resume }: { onReady: (runId: string) => void; resume?: string | null },
 ) {
   const [runId, setRunId] = useState<string | null>(resume ?? null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  if (!runId) {
-    return <PickFiles busy={busy} setBusy={setBusy} error={error} setError={setError}
-                      onUploaded={setRunId} />;
-  }
-  return <ChooseSchema runId={runId} onApproved={() => onReady(runId)} />;
+  if (!runId) return <PickFiles onUploaded={setRunId} />;
+  return (
+    <ChooseSchema runId={runId} onApproved={() => onReady(runId)}
+                  onBack={() => setRunId(null)} />
+  );
 }
 
 /* ------------------------------------------------------------------ step 1 */
 
-function PickFiles({
-  busy, setBusy, error, setError, onUploaded,
-}: {
-  busy: boolean; setBusy: (b: boolean) => void;
-  error: string | null; setError: (e: string | null) => void;
-  onUploaded: (runId: string) => void;
-}) {
+function PickFiles({ onUploaded }: { onUploaded: (runId: string) => void }) {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { api.samples().then(setSamples).catch(() => {}); }, []);
 
@@ -41,11 +36,6 @@ function PickFiles({
     try { onUploaded((await fn()).run_id); }
     catch (e) { setError(String(e).replace("Error: ", "")); }
     finally { setBusy(false); }
-  };
-
-  const drop = (e: React.DragEvent) => {
-    e.preventDefault(); setDragging(false);
-    if (e.dataTransfer.files?.length) void send(() => api.upload(e.dataTransfer.files));
   };
 
   return (
@@ -63,17 +53,22 @@ function PickFiles({
           (departments, locations) along with them and they will be recognised.
         </p>
 
-        <label
-          className={`dropzone${dragging ? " over" : ""}`}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={drop}
-        >
+        <label className={`dropzone${dragging ? " over" : ""}`}
+               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+               onDragLeave={() => setDragging(false)}
+               onDrop={(e) => {
+                 e.preventDefault(); setDragging(false);
+                 if (e.dataTransfer.files?.length) {
+                   void send(() => api.upload(e.dataTransfer.files));
+                 }
+               }}>
           <input type="file" multiple disabled={busy} style={{ display: "none" }}
                  onChange={(e) => e.target.files?.length &&
                    void send(() => api.upload(e.target.files!))} />
           <strong>Drop files here</strong>
-          <span className="change">or click to choose · nothing starts until you approve a schema</span>
+          <span className="change">
+            or click to choose · nothing starts until you approve a schema
+          </span>
         </label>
 
         {busy && <p className="change" role="status">Uploading…</p>}
@@ -82,9 +77,10 @@ function PickFiles({
 
       {!!samples.length && (
         <div className="panel" style={{ marginTop: 14 }}>
-          <h2>…or use a bundled set</h2>
+          <h2>Sample files</h2>
           <p className="change" style={{ marginTop: 0 }}>
-            Each one is aimed at a different behaviour. Start with <b>02-messy</b>.
+            Bundled sets for trying it without files of your own. Each is aimed at a
+            different behaviour — start with <b>02-messy</b>.
           </p>
           <div className="samples">
             {samples.map((s) => (
@@ -106,35 +102,68 @@ function PickFiles({
 
 type Mode = null | "supply" | "propose";
 
-function ChooseSchema({ runId, onApproved }: { runId: string; onApproved: () => void }) {
+function ChooseSchema({
+  runId, onApproved, onBack,
+}: { runId: string; onApproved: () => void; onBack: () => void }) {
   const [files, setFiles] = useState<RunFiles | null>(null);
   const [schema, setSchema] = useState<SchemaState | null>(null);
-  const [mode, setMode] = useState<Mode>(null);
+  const [working, setWorking] = useState<Schema | null>(null);
   const [draft, setDraft] = useState("");
+  const [mode, setMode] = useState<Mode>(null);
+  const [raw, setRaw] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     api.runFiles(runId).then(setFiles).catch(() => {});
-    api.schema(runId).then(setSchema).catch(() => {});
+    const state = await api.schema(runId).catch(() => null);
+    if (!state) return;
+    setSchema(state);
+    // Whatever is showing becomes what you are editing. Without this, asking the agent
+    // updates a panel while the editor still holds whatever was there before — which
+    // looks exactly like the agent having done nothing.
+    if (state.active) {
+      setWorking(state.active as Schema);
+      setDraft(JSON.stringify(state.active, null, 2));
+      setDirty(false);
+    }
   }, [runId]);
-  useEffect(load, [load]);
+
+  useEffect(() => { void load(); }, [load]);
 
   const act = async (fn: () => Promise<unknown>, done?: string) => {
     setBusy(true); setError(null); setNote(null);
-    try { await fn(); if (done) setNote(done); load(); }
+    try { await fn(); if (done) setNote(done); await load(); }
     catch (e) { setError(String(e).replace("Error: ", "")); }
     finally { setBusy(false); }
   };
 
-  const draftVersion = schema?.versions.find((v) => v.state === "draft");
+  const saveDraft = async () => {
+    const body = raw ? draft : JSON.stringify(working);
+    const saved = await api.putSchema(runId, body);
+    setDirty(false);
+    return saved;
+  };
+
   const unreadable = files?.files.filter((f) => !f.supported) ?? [];
+  // A small file whose first column is "code" is a lookup table — which is what a
+  // reference constraint can point at.
+  const lookupNames = (files?.files ?? [])
+    .filter((f) => f.supported && f.columns[0] === "code" && f.columns.length <= 4)
+    .map((f) => f.name.replace(/\.[^.]+$/, "").replace(/s$/, ""));
+
+  const canApprove = !busy && (dirty || !!schema?.draft_version);
 
   return (
     <>
       <ol className="steps" aria-label="Progress">
-        <li className="done">1 · Your files</li>
+        <li>
+          <button type="button" className="steplink" onClick={onBack}>
+            ✓ 1 · Your files
+          </button>
+        </li>
         <li aria-current="step">2 · Target schema</li>
         <li>3 · Review and send</li>
       </ol>
@@ -174,10 +203,13 @@ function ChooseSchema({ runId, onApproved }: { runId: string; onApproved: () => 
               {unreadable.length} file(s) could not be read and will be ignored.
             </p>
           )}
+          <button type="button" className="icon" onClick={onBack} style={{ marginTop: 10 }}>
+            ← Add or change files
+          </button>
         </div>
       )}
 
-      {!mode && (
+      {!mode && !schema?.active && (
         <div className="panel">
           <h2>Step 2 — where should this data land?</h2>
           <p className="change" style={{ marginTop: 0 }}>
@@ -185,115 +217,108 @@ function ChooseSchema({ runId, onApproved }: { runId: string; onApproved: () => 
             mapped or sent until you approve one.
           </p>
           <div className="choices">
-            <button className="choice" onClick={() => {
+            <button className="choice" disabled={busy} onClick={() => {
               setMode("supply");
-              api.schemaStarter(runId).then((r) => setDraft(r.body)).catch(() => {});
+              setWorking({ entity: "employee", fields: [blankField(1)] });
+              setDirty(true);
             }}>
               <b>I have a target schema</b>
               <span className="change">
-                Paste or edit YAML or JSON. It is validated before you can approve it.
+                Build it field by field, or paste YAML or JSON under Advanced. It is
+                validated before you can approve it.
               </span>
             </button>
             <button className="choice primary-choice" disabled={busy} onClick={() => {
               setMode("propose");
-              void act(() => api.recommendSchema(runId), "The agent proposed a schema — edit it below.");
+              void act(() => api.recommendSchema(runId),
+                       "The agent read your columns and proposed this. Edit anything.");
             }}>
               <b>Propose one from my files</b>
               <span className="change">
-                The agent reads the columns and suggests fields, types and rules. You edit
-                and approve.
+                The agent reads the columns and suggests fields, types and rules. You
+                edit and approve.
               </span>
             </button>
           </div>
         </div>
       )}
 
-      {mode === "propose" && busy && (
+      {busy && mode === "propose" && !schema?.active && (
         <div className="panel" role="status">
           <h2>Reading your columns…</h2>
           <p className="change">Working out what the destination should look like.</p>
         </div>
       )}
 
-      {mode && !busy && (
-        <>
-          {schema?.active && (
-            <div className="panel" style={{ marginBottom: 14 }}>
-              <h2>
-                Proposed schema — {schema.active.entity}
-                {draftVersion && <span className="pill warn" style={{ marginLeft: 8 }}>
-                  <i className="dot" />draft v{draftVersion.version}</span>}
-              </h2>
-              <div className="scroll">
-                <table>
-                  <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Rules</th></tr></thead>
-                  <tbody>
-                    {schema.active.fields.map((f) => (
-                      <tr key={f.name}>
-                        <td data-label="Field" className="mono">{f.name}</td>
-                        <td data-label="Type">{f.type}</td>
-                        <td data-label="Required">{f.required ? "yes" : "—"}</td>
-                        <td data-label="Rules" className="change">
-                          {[f.unique && "unique",
-                            f.pattern && `matches ${f.pattern}`,
-                            f.allowed?.length && `one of ${f.allowed.join(", ")}`,
-                            f.reference && `references ${f.reference}`,
-                          ].filter(Boolean).join(" · ") || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+      {(mode || schema?.active) && !(busy && !schema?.active) && (
+        <div className="panel">
+          <div className="editor-head">
+            <h2 style={{ margin: 0 }}>
+              {schema?.origin === "recommended"
+                ? "The agent's proposal — edit anything"
+                : "Target schema"}
+            </h2>
+            <span className="spacer" />
+            {schema?.showing_version && (
+              <span className={`pill ${schema.showing_state === "approved" ? "ok" : "warn"}`}>
+                <i className="dot" />v{schema.showing_version} · {schema.showing_state}
+              </span>
+            )}
+            {dirty && <span className="pill warn"><i className="dot" />unsaved changes</span>}
+            <button type="button" className="icon" aria-pressed={raw}
+                    onClick={() => {
+                      if (!raw && working) setDraft(JSON.stringify(working, null, 2));
+                      setRaw(!raw);
+                    }}>
+              {raw ? "Back to the editor" : "Advanced: raw YAML"}
+            </button>
+          </div>
 
-          <div className="panel">
-            <h2>{mode === "supply" ? "Your schema" : "Edit before approving"}</h2>
-            <p className="change" style={{ marginTop: 0 }}>
-              Rename fields, change types, mark things required, add allowed values or
-              patterns. Anything you constrain here is evidence the agent can use, which
-              means fewer questions later.
-            </p>
-            <textarea value={draft} onChange={(e) => setDraft(e.target.value)}
-              aria-label="Target schema as YAML or JSON" rows={12}
-              placeholder={"entity: employee\nfields:\n  - name: employee_id\n    type: string\n    required: true\n    unique: true"}
+          <p className="change">
+            Nothing is mapped or sent until you approve this.
+          </p>
+
+          {raw ? (
+            <textarea value={draft}
+              onChange={(e) => { setDraft(e.target.value); setDirty(true); }}
+              aria-label="Target schema as YAML or JSON" rows={16}
               style={{ width: "100%", font: "12.5px ui-monospace, Menlo, monospace",
                        background: "var(--panel-2)", color: "var(--ink)", padding: 10,
                        border: "1px solid var(--line)", borderRadius: 8 }} />
+          ) : working ? (
+            <SchemaEditor schema={working} lookups={lookupNames}
+                          onChange={(next) => { setWorking(next); setDirty(true); }} />
+          ) : (
+            <p className="empty">Nothing to edit yet.</p>
+          )}
 
-            {error && <p style={{ color: "var(--bad)" }} role="alert">{error}</p>}
-            {note && <p className="change" role="status">{note}</p>}
+          {error && <p style={{ color: "var(--bad)" }} role="alert">{error}</p>}
+          {note && <p className="change" role="status">{note}</p>}
 
-            <div className="actions" style={{ marginTop: 12 }}>
-              <button disabled={busy || !draft.trim()}
-                      onClick={() => void act(() => api.putSchema(runId, draft),
-                                              "Saved as a new draft.")}>
-                Save my edits as a draft
-              </button>
-              {mode === "supply" && (
-                <button disabled={busy}
-                        onClick={() => void act(() => api.recommendSchema(runId),
-                                                "The agent proposed one.")}>
-                  Ask the agent instead
-                </button>
-              )}
-              <span className="spacer" />
-              <button className="primary" disabled={busy || !draftVersion}
-                      onClick={() => void act(async () => {
-                        await api.approveSchema(runId, draftVersion!.version);
-                        onApproved();
-                      })}>
-                Approve and start the migration
-              </button>
-            </div>
-            {!draftVersion && (
-              <p className="change">
-                Save a draft first — approving is what starts the migration.
-              </p>
-            )}
+          <div className="actions" style={{ marginTop: 14 }}>
+            <button disabled={busy}
+                    onClick={() => void act(() => api.recommendSchema(runId),
+                                            "The agent proposed a schema.")}>
+              {schema?.active ? "Ask the agent again" : "Ask the agent to propose one"}
+            </button>
+            <button disabled={busy || !dirty}
+                    onClick={() => void act(() => saveDraft(),
+                                            "Saved. Approve it when you are happy.")}>
+              Save my changes
+            </button>
+            <span className="spacer" />
+            <button className="primary" disabled={!canApprove}
+                    onClick={() => void act(async () => {
+                      const version = dirty
+                        ? (await saveDraft()).version
+                        : schema!.draft_version!;
+                      await api.approveSchema(runId, version);
+                      onApproved();
+                    })}>
+              Approve and start the migration
+            </button>
           </div>
-        </>
+        </div>
       )}
     </>
   );

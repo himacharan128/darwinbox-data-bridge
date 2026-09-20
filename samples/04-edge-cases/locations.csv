@@ -1,5 +1,7 @@
 code,name,city
-BLR-HQ,Bangalore HQ,Bengaluru
-HYD-01,Hyderabad,Hyderabad
-MUM-01,Mumbai,Mumbai
+BLR-HQ,Bangalore Headquarters,Bengaluru
+HYD-01,Hyderabad Office,Hyderabad
+MUM-01,Mumbai Office,Mumbai
+DEL-01,Delhi Office,New Delhi
+PUN-01,Pune Office,Pune
 REMOTE,Remote,

@@ -1,5 +1,25 @@
 Emp ID,First Name,Last Name,Email,Mobile,DOB,Date of Joining,Dept Code,Designation,Employment Type,Manager ID,Location,Status
-EMP-10001,Nandini,Rao,nandini.rao@acme-hr.example,+919845010001,1990-04-12,2019-06-03,ENG,Senior Engineer,FULL_TIME,,BLR-HQ,ACTIVE
-EMP-10002,Farhan,Ali,farhan.ali@acme-hr.example,+919845010002,1993-09-27,2021-02-15,SALES,Account Executive,FULL_TIME,EMP-10001,HYD-01,ACTIVE
-EMP-10003,Leela,Krishnan,leela.krishnan@acme-hr.example,+919845010003,1988-01-30,2017-11-20,FIN,Finance Manager,FULL_TIME,EMP-10001,MUM-01,ACTIVE
-EMP-10004,Sameer,Jain,sameer.jain@acme-hr.example,+919845010004,1996-07-08,2023-03-01,HR,HR Generalist,PART_TIME,EMP-10001,MUM-01,ON_LEAVE
+EMP-10001,Nandini,Rao,nandini.rao@acme-hr.example,+919845010001,1985-01-01,2015-01-01,ENG,Senior Engineer,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-10002,Farhan,Ali,farhan.ali@acme-hr.example,+919845010002,1986-02-02,2016-06-08,ENG,Engineer II,FULL_TIME,EMP-10001,HYD-01,ACTIVE
+EMP-10003,Leela,Krishnan,leela.krishnan@acme-hr.example,+919845010003,1987-03-03,2017-11-15,SALES,Regional Head,FULL_TIME,EMP-10001,MUM-01,ACTIVE
+EMP-10004,Sameer,Jain,sameer.jain@acme-hr.example,+919845010004,1988-04-04,2018-04-22,FIN,Financial Analyst,PART_TIME,EMP-10001,REMOTE,ACTIVE
+EMP-10005,Arjun,Nair,arjun.nair@acme-hr.example,+919845010005,1989-05-05,2019-09-02,HR,HR Business Partner,CONTRACT,EMP-10001,BLR-HQ,ON_LEAVE
+EMP-10006,Kavya,Reddy,kavya.reddy@acme-hr.example,+919845010006,1990-06-06,2020-02-09,TECHOPS,Platform Engineer,INTERN,EMP-10001,HYD-01,ACTIVE
+EMP-10007,Rohan,Bose,rohan.bose@acme-hr.example,+919845010007,1991-07-07,2021-07-16,ENG,Engineering Manager,FULL_TIME,,MUM-01,ACTIVE
+EMP-10008,Ishita,Shah,ishita.shah@acme-hr.example,+919845010008,1992-08-08,2022-12-23,ENG,Staff Engineer,FULL_TIME,EMP-10007,REMOTE,ACTIVE
+EMP-10009,Vivek,Kulkarni,vivek.kulkarni@acme-hr.example,+919845010009,1993-09-09,2023-05-03,SALES,Regional Head,FULL_TIME,EMP-10007,BLR-HQ,ACTIVE
+EMP-10010,Meera,Iyer,meera.iyer@acme-hr.example,+919845010010,1994-10-10,2015-10-10,FIN,Financial Analyst,PART_TIME,EMP-10007,HYD-01,ACTIVE
+EMP-10011,Aditya,Ghosh,aditya.ghosh@acme-hr.example,+919845010011,1995-11-11,2016-03-17,HR,HR Business Partner,CONTRACT,EMP-10007,MUM-01,ON_LEAVE
+EMP-10012,Sneha,Menon,sneha.menon@acme-hr.example,+919845010012,1996-12-12,2017-08-24,TECHOPS,Platform Engineer,INTERN,EMP-10007,REMOTE,ACTIVE
+EMP-10013,Karthik,Pillai,karthik.pillai@acme-hr.example,+919845010013,1997-01-13,2018-01-04,ENG,Senior Engineer,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-10014,Pooja,Desai,pooja.desai@acme-hr.example,+919845010014,1998-02-14,2019-06-11,ENG,Engineer II,FULL_TIME,EMP-10013,HYD-01,ACTIVE
+EMP-10015,Rahul,Verma,rahul.verma@acme-hr.example,+919845010015,1985-03-15,2020-11-18,SALES,Regional Head,FULL_TIME,EMP-10013,MUM-01,ACTIVE
+EMP-10016,Ananya,Sinha,ananya.sinha@acme-hr.example,+919845010016,1986-04-16,2021-04-25,FIN,Financial Analyst,PART_TIME,EMP-10013,REMOTE,ACTIVE
+EMP-10017,Siddharth,Kapoor,siddharth.kapoor@acme-hr.example,+919845010017,1987-05-17,2022-09-05,HR,HR Business Partner,CONTRACT,EMP-10013,BLR-HQ,ON_LEAVE
+EMP-10018,Divya,Chawla,divya.chawla@acme-hr.example,+919845010018,1988-06-18,2023-02-12,TECHOPS,Platform Engineer,INTERN,EMP-10013,HYD-01,ACTIVE
+EMP-10019,Manish,Malhotra,manish.malhotra@acme-hr.example,+919845010019,1989-07-19,2015-07-19,ENG,Engineering Manager,FULL_TIME,,MUM-01,ACTIVE
+EMP-10020,Shruti,Joshi,shruti.joshi@acme-hr.example,+919845010020,1990-08-20,2016-12-26,ENG,Staff Engineer,FULL_TIME,EMP-10019,REMOTE,ACTIVE
+EMP-10021,Nikhil,Banerjee,nikhil.banerjee@acme-hr.example,+919845010021,1991-09-21,2017-05-06,SALES,Regional Head,FULL_TIME,EMP-10019,BLR-HQ,ACTIVE
+EMP-10022,Tara,Prakash,tara.prakash@acme-hr.example,+919845010022,1992-10-22,2018-10-13,FIN,Financial Analyst,PART_TIME,EMP-10019,HYD-01,ACTIVE
+EMP-10023,Gaurav,Gupta,gaurav.gupta@acme-hr.example,+919845010023,1993-11-23,2019-03-20,HR,HR Business Partner,CONTRACT,EMP-10019,MUM-01,ON_LEAVE
+EMP-10024,Ritika,Farooq,ritika.farooq@acme-hr.example,+919845010024,1994-12-24,2020-08-27,TECHOPS,Platform Engineer,INTERN,EMP-10019,REMOTE,ACTIVE

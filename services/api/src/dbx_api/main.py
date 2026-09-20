@@ -280,14 +280,19 @@ def get_schema(run_id: str) -> dict[str, Any]:
     if run is None:
         raise HTTPException(404, "no such run")
     approved = store.approved_schema(run_id)
-    active = None
-    if approved:
-        active = json.loads(approved["body"])
-    elif run["schema_json"]:
-        active = json.loads(run["schema_json"])
+    draft = store.latest_draft(run_id)
+
+    # Show the newest draft when nothing is approved yet. Without this a proposal the
+    # agent just made is invisible — the version exists but nothing renders it, which
+    # looks exactly like the agent having done nothing.
+    showing = approved or draft
     return {
-        "active": active,
+        "active": json.loads(showing["body"]) if showing else None,
+        "showing_version": showing["version"] if showing else None,
+        "showing_state": showing["state"] if showing else None,
+        "origin": showing["origin"] if showing else None,
         "approved_version": approved["version"] if approved else None,
+        "draft_version": draft["version"] if draft else None,
         "versions": store.schema_versions(run_id),
     }
 

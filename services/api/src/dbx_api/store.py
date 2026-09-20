@@ -180,6 +180,15 @@ class Store:
             ).fetchone()
         return dict(row) if row else None
 
+    def latest_draft(self, run_id: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM schema_versions WHERE run_id = ? AND state = 'draft'"
+                " ORDER BY version DESC LIMIT 1",
+                (run_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
     def schema_versions(self, run_id: str) -> list[dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute(

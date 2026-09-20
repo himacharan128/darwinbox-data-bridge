@@ -7,6 +7,7 @@ sent under the old one.
 """
 from __future__ import annotations
 
+import json
 import socket
 import threading
 import time
@@ -145,6 +146,42 @@ def test_uploaded_files_are_reported_before_any_schema_is_chosen(client, run):
     assert files["total_columns"] > 50
     assert all("name" in f and "kind" in f for f in files["files"])
     assert any(f["kind"] == "pdf" for f in files["files"])
+
+
+def test_a_fresh_proposal_is_visible_immediately(client, run):
+    """The editor has to have something to show, or the agent looks like it did nothing.
+
+    Regression: `active` was derived only from an *approved* schema, so a draft the
+    agent had just written rendered as an empty editor.
+    """
+    before = client.get(f"/api/runs/{run}/schema").json()
+    assert before["active"] is None and before["draft_version"] is None
+
+    client.post(f"/api/runs/{run}/schema/recommend")
+
+    after = client.get(f"/api/runs/{run}/schema").json()
+    assert after["active"] is not None, "a proposal must render without being approved"
+    assert after["showing_state"] == "draft"
+    assert after["origin"] == "recommended"
+    assert after["approved_version"] is None
+    assert len(after["active"]["fields"]) >= 8
+
+
+def test_the_editor_can_post_json_and_have_it_accepted(client, run):
+    """What the field editor sends is JSON, not YAML. Both must normalise the same."""
+    client.post(f"/api/runs/{run}/schema/recommend")
+    proposal = client.get(f"/api/runs/{run}/schema").json()["active"]
+
+    edited = {**proposal, "fields": [*proposal["fields"],
+                                     {"name": "cost_centre", "type": "string"}]}
+    saved = client.post(
+        f"/api/runs/{run}/schema", json={"body": json.dumps(edited), "origin": "edited"}
+    )
+    assert saved.status_code == 200
+    assert saved.json()["fields"] == len(proposal["fields"]) + 1
+
+    shown = client.get(f"/api/runs/{run}/schema").json()
+    assert "cost_centre" in {f["name"] for f in shown["active"]["fields"]}
 
 
 def test_delivered_records_keep_the_version_they_were_sent_under(client, run):

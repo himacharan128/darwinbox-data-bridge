@@ -1,0 +1,147 @@
+{
+  "payload": {
+    "entity": "employee",
+    "fields": [
+      {
+        "name": "emp_id",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Emp ID' present in all rows (filled 24/24) with unique employee identifiers"
+      },
+      {
+        "name": "first_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'First Name' populated for every record"
+      },
+      {
+        "name": "last_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Last Name' populated for every record"
+      },
+      {
+        "name": "email",
+        "type": "email",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Email' contains valid email addresses for all rows"
+      },
+      {
+        "name": "mobile",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Mobile' holds phone numbers (sample includes '+') for all rows"
+      },
+      {
+        "name": "dob",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'DOB' contains date values for every employee"
+      },
+      {
+        "name": "date_of_joining",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Date of Joining' is filled for all records"
+      },
+      {
+        "name": "dept_code",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "ENG",
+          "SALES",
+          "FIN",
+          "HR",
+          "OPS"
+        ],
+        "format": null,
+        "reason": "Column 'Dept Code' with a small set of department identifiers (5 distinct values)"
+      },
+      {
+        "name": "designation",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Designation' present for every employee"
+      },
+      {
+        "name": "employment_type",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "FULL_TIME",
+          "PART_TIME",
+          "CONTRACT",
+          "TEMP"
+        ],
+        "format": null,
+        "reason": "Column 'Employment Type' has a limited set of employment categories"
+      },
+      {
+        "name": "manager_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Manager ID' is optional (filled 20/24) and references another employee"
+      },
+      {
+        "name": "location",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Location' populated for all rows"
+      },
+      {
+        "name": "status",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "ACTIVE",
+          "ON_LEAVE"
+        ],
+        "format": null,
+        "reason": "Column 'Status' has two possible values indicating employment state"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "schema/v1",
+    "latency_ms": 1817,
+    "input_tokens": 1798,
+    "output_tokens": 926,
+    "cached": false
+  }
+}

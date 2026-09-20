@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Employment Type",
+    "votes": [
+      {
+        "target_field": "employment_type",
+        "vote": 0.8,
+        "reason": "Column name matches and values are enum-like; most values correspond to allowed categories (FULL_TIME, PART_TIME, CONTRACT) though 'INTERN' is not in target list"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1401,
+    "input_tokens": 1091,
+    "output_tokens": 154,
+    "cached": false
+  }
+}

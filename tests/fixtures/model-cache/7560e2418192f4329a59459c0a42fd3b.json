@@ -1,0 +1,139 @@
+{
+  "payload": {
+    "entity": "employee",
+    "fields": [
+      {
+        "name": "employee_id",
+        "type": "string",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Emp ID' present in all rows with distinct values"
+      },
+      {
+        "name": "first_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'First Name' present in all rows"
+      },
+      {
+        "name": "last_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Last Name' present in all rows"
+      },
+      {
+        "name": "email",
+        "type": "email",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Email' present in all rows with email format"
+      },
+      {
+        "name": "mobile",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Mobile' present in all rows; values are phone numbers stored as strings"
+      },
+      {
+        "name": "date_of_birth",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": "YYYY-MM-DD",
+        "reason": "Column 'DOB' present in all rows with date values"
+      },
+      {
+        "name": "date_of_joining",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": "YYYY-MM-DD",
+        "reason": "Column 'Date of Joining' present in all rows with date values"
+      },
+      {
+        "name": "department_code",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Dept Code' present in all rows"
+      },
+      {
+        "name": "designation",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Designation' present in all rows"
+      },
+      {
+        "name": "employment_type",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "FULL_TIME",
+          "PART_TIME"
+        ],
+        "format": null,
+        "reason": "Column 'Employment Type' has two distinct values across all rows"
+      },
+      {
+        "name": "manager_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Manager ID' missing in one of four rows"
+      },
+      {
+        "name": "location",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column 'Location' present in all rows"
+      },
+      {
+        "name": "status",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "ACTIVE",
+          "ON_LEAVE"
+        ],
+        "format": null,
+        "reason": "Column 'Status' has two distinct values across all rows"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "schema/v1",
+    "latency_ms": 2562,
+    "input_tokens": 1778,
+    "output_tokens": 883,
+    "cached": false
+  }
+}

@@ -1,4 +1,17 @@
 staff_code,fname,lname,email_id,mobile,birth_date,joining_dt,department,grade,emp_type,reports_to,site,state
-EMP-20001,Priyanka,Das,priyanka.das@acme-hr.example,+919845020001,1991-03-19,2018-05-14,ENG,Director of Engineering,FULL_TIME,,BLR-HQ,ACTIVE
-EMP-20002,Rohit,Malhotra,rohit.malhotra@acme-hr.example,+919845020002,1989-08-22,2016-11-01,SALES,Regional Head,FULL_TIME,,MUM-01,ACTIVE
-EMP-20099,Priyanka,Das,p.das@contractor.example,+919845020099,1991-03-19,2023-01-09,ENG,Contract Engineer,CONTRACT,EMP-20001,REMOTE,ACTIVE
+EMP-20001,Arjun,Nair,arjun.nair@acme-hr.example,+919845020001,1986-01-01,2016-01-01,ENG,Senior Engineer,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-20002,Kavya,Reddy,kavya.reddy@acme-hr.example,+919845020002,1987-02-02,2017-04-06,ENG,Engineer II,FULL_TIME,,HYD-01,ACTIVE
+EMP-20003,Rohan,Bose,rohan.bose@acme-hr.example,+919845020003,1988-03-03,2018-07-11,SALES,Director of Engineering,FULL_TIME,,MUM-01,ACTIVE
+EMP-20004,Ishita,Shah,ishita.shah@acme-hr.example,+919845020004,1989-04-04,2019-10-16,FIN,Financial Analyst,FULL_TIME,,MUM-01,ACTIVE
+EMP-20005,Vivek,Kulkarni,vivek.kulkarni@acme-hr.example,+919845020005,1990-05-05,2021-05-15,HR,HR Business Partner,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-20006,Meera,Iyer,meera.iyer@acme-hr.example,+919845020006,1991-06-06,2021-04-26,TECHOPS,VP Sales,FULL_TIME,,HYD-01,ACTIVE
+EMP-20007,Aditya,Ghosh,aditya.ghosh@acme-hr.example,+919845020007,1992-07-07,2022-07-05,ENG,Engineering Manager,FULL_TIME,,MUM-01,ACTIVE
+EMP-20008,Sneha,Menon,sneha.menon@acme-hr.example,+919845020008,1993-08-08,2023-10-10,ENG,Staff Engineer,FULL_TIME,,REMOTE,ACTIVE
+EMP-20009,Karthik,Pillai,karthik.pillai@acme-hr.example,+919845020009,1994-09-09,2016-01-15,SALES,Head of Finance,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-20010,Pooja,Desai,pooja.desai@acme-hr.example,+919845020010,1995-10-10,2020-01-15,FIN,Financial Analyst,FULL_TIME,,HYD-01,ACTIVE
+EMP-20011,Rahul,Verma,rahul.verma@acme-hr.example,+919845020011,1996-11-11,2018-07-25,HR,HR Business Partner,FULL_TIME,,MUM-01,ACTIVE
+EMP-20012,Ananya,Sinha,ananya.sinha@acme-hr.example,+919845020012,1997-12-12,2019-10-04,TECHOPS,Platform Engineer,FULL_TIME,,REMOTE,ACTIVE
+EMP-20013,Siddharth,Kapoor,siddharth.kapoor@acme-hr.example,+919845020013,1986-01-13,2020-01-09,ENG,Senior Engineer,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-20014,Divya,Chawla,divya.chawla@acme-hr.example,+919845020014,1987-02-14,2021-04-14,ENG,Engineer II,FULL_TIME,,HYD-01,ACTIVE
+EMP-20099,Arjun,Nair,p.das@contractor.example,+919845020099,1986-01-01,2023-01-09,ENG,Contract Engineer,CONTRACT,EMP-20001,REMOTE,ACTIVE
+EMP-20098,Ishita,Shah,contract@vendor.example,+919845020098,1989-04-04,2023-04-18,SALES,Contract Analyst,CONTRACT,EMP-20004,HYD-01,ACTIVE

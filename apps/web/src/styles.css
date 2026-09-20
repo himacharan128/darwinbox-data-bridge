@@ -185,3 +185,64 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 
 .app[data-layout="mobile"] .samples,
 .app[data-layout="mobile"] .choices { grid-template-columns: 1fr; }
+
+
+/* ---------------------------------------------------------- schema editor --- */
+
+.editor-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 6px; }
+
+.editor { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+.field-row {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel-2); padding: 10px 12px;
+}
+.field-row.expanded { border-color: var(--accent); }
+.field-row.header-row {
+  display: flex; align-items: flex-end; gap: 12px; background: none; border-style: dashed;
+}
+
+.field-main { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.field-main .grow { flex: 1 1 180px; }
+
+.editor label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.editor label.full { margin-top: 10px; }
+.editor .lbl { color: var(--muted); font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: .05em; }
+.editor input[type=text], .editor input[type=number], .editor select {
+  font: inherit; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); min-height: 38px; width: 100%;
+}
+.editor input.mono { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+
+.editor label.tick { flex-direction: row; align-items: center; gap: 7px;
+  white-space: nowrap; padding-bottom: 8px; }
+.editor label.tick input { width: 17px; height: 17px; accent-color: var(--accent); }
+.editor label.tick span { font-size: 13px; }
+
+.row-actions { display: flex; gap: 4px; padding-bottom: 4px; }
+button.icon {
+  min-height: 34px; padding: 5px 10px; font-size: 12.5px;
+  background: var(--panel); border: 1px solid var(--line);
+}
+button.icon.danger { color: var(--bad); border-color: color-mix(in oklab, var(--bad) 35%, var(--line)); }
+
+.field-row .summary { margin: 8px 0 0; font-size: 12.5px; }
+.more { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.more .pair { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;
+  margin-top: 10px; }
+
+.add-field {
+  align-self: flex-start; border-style: dashed; background: none; margin-top: 4px;
+}
+
+.steplink {
+  background: none; border: 0; padding: 0; min-height: 0; color: var(--ok);
+  font: inherit; text-decoration: underline; text-underline-offset: 3px;
+}
+.steps li:has(.steplink) { border-color: color-mix(in oklab, var(--ok) 40%, transparent); }
+
+.app[data-layout="mobile"] .field-main { flex-direction: column; align-items: stretch; }
+.app[data-layout="mobile"] .row-actions { flex-wrap: wrap; }
+.app[data-layout="mobile"] .row-actions button { flex: 1 1 44%; }

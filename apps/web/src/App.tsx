@@ -328,6 +328,9 @@ function Schema({ runId }: { runId: string }) {
   };
 
   if (!data) return <div className="panel empty">Loading the target schema…</div>;
+  if (!data.active) {
+    return <div className="panel empty">No schema has been agreed for this run yet.</div>;
+  }
   const pending = data.versions.filter((v) => v.state === "draft");
 
   return (
