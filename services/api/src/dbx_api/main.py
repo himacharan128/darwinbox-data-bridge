@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import yaml
+from dbx_agent import build_provider, recommend_schema
 from dbx_contracts import Action, Actor, MigrationSchema
 from dbx_extraction import confidence_for, crop, is_sidecar, read
 from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
@@ -22,7 +23,7 @@ from pydantic import BaseModel
 
 from .delivery import DestinationClient, Outcome
 from .jobs import jobs
-from .runtime import case_key, replay
+from .runtime import case_key, replay, source_profiles
 from .store import Store, now
 
 DATA = Path(os.environ.get("DBX_DATA_DIR", ".artifacts"))
@@ -137,6 +138,141 @@ def create_run_from_fixtures(
     destination.register_schema(_schema_for_destination(schema))
     jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
     return {"run_id": run_id}
+
+
+class SchemaUpload(BaseModel):
+    """A schema supplied as JSON or YAML text, or as an already-parsed object."""
+
+    body: str | None = None
+    schema_obj: dict[str, Any] | None = None
+    origin: str = "supplied"
+
+
+def _parse_schema(upload: SchemaUpload) -> tuple[MigrationSchema, str]:
+    """Normalise a form, a JSON upload and a YAML upload into one representation.
+
+    The original text is kept alongside, because a consultant who uploaded YAML
+    should be able to see what they uploaded, not our re-rendering of it.
+    """
+    if upload.schema_obj is not None:
+        raw = upload.schema_obj
+    elif upload.body:
+        try:
+            raw = yaml.safe_load(upload.body)   # YAML is a superset of JSON
+        except yaml.YAMLError as exc:
+            raise HTTPException(422, f"could not parse the schema: {exc}") from exc
+    else:
+        raise HTTPException(422, "no schema supplied")
+
+    try:
+        return MigrationSchema.model_validate(raw), (upload.body or json.dumps(raw, indent=2))
+    except Exception as exc:
+        raise HTTPException(422, f"that is not a usable schema: {exc}") from exc
+
+
+@app.get("/api/runs/{run_id}/schema")
+def get_schema(run_id: str) -> dict[str, Any]:
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(404, "no such run")
+    approved = store.approved_schema(run_id)
+    active = json.loads(approved["body"]) if approved else json.loads(run["schema_json"])
+    return {
+        "active": active,
+        "approved_version": approved["version"] if approved else None,
+        "versions": store.schema_versions(run_id),
+    }
+
+
+@app.post("/api/runs/{run_id}/schema")
+def put_schema(run_id: str, upload: Annotated[SchemaUpload, Body()]) -> dict[str, Any]:
+    """Record a draft. Drafts do not affect processing until they are approved."""
+    if store.get_run(run_id) is None:
+        raise HTTPException(404, "no such run")
+    schema, original = _parse_schema(upload)
+    version = store.add_schema_version(
+        run_id, schema.model_dump_json(), origin=upload.origin, original=original
+    )
+    store.append_audit(run_id, [{
+        "actor": Actor.HUMAN.value, "action": "schema.drafted",
+        "summary": f"Draft schema v{version} ({upload.origin}), {len(schema.fields)} fields",
+        "at": now(),
+    }])
+    return {"version": version, "state": "draft", "fields": len(schema.fields)}
+
+
+@app.post("/api/runs/{run_id}/schema/recommend")
+def recommend(run_id: str) -> dict[str, Any]:
+    """Mode B: propose a destination shape from the source data.
+
+    The common engagement is a client with a pile of exports and no target defined.
+    The result is a draft a human edits and approves, never a contract.
+    """
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(404, "no such run")
+
+    profiles = source_profiles(store, run_id)
+    if not profiles:
+        raise HTTPException(422, "no readable source columns to learn from")
+
+    provider = build_provider(Path("tests/fixtures/model-cache"))
+    try:
+        proposal, call = recommend_schema(provider, profiles)
+    except Exception as exc:
+        raise HTTPException(503, f"the model could not propose a schema: {exc}") from exc
+
+    draft = {
+        "schema_version": 1,
+        "entity": proposal.entity,
+        "description": "Proposed by the agent from the uploaded files. Edit before approving.",
+        "fields": [
+            {k: v for k, v in {
+                "name": f.name, "type": f.type, "required": f.required,
+                "unique": f.unique, "allowed": f.allowed or None, "format": f.format,
+                "description": f.reason,
+            }.items() if v not in (None, [], False) or k in ("required", "name", "type")}
+            for f in proposal.fields
+        ],
+    }
+    schema = MigrationSchema.model_validate(draft)
+    version = store.add_schema_version(
+        run_id, schema.model_dump_json(), origin="recommended",
+        original=json.dumps(draft, indent=2),
+    )
+    store.append_audit(run_id, [{
+        "actor": Actor.AGENT.value, "action": "schema.recommended",
+        "summary": f"Proposed a {len(schema.fields)}-field schema for {schema.entity}",
+        "at": now(), "provider": call.provider, "model": call.model,
+        "prompt_version": call.prompt_version, "latency_ms": call.latency_ms,
+    }])
+    return {"version": version, "state": "draft", "schema": draft}
+
+
+@app.post("/api/runs/{run_id}/schema/{version}/approve")
+def approve_schema(run_id: str, version: int) -> dict[str, Any]:
+    """Approval freezes a version and reprocesses everything not yet delivered."""
+    body = store.schema_body(run_id, version)
+    if body is None:
+        raise HTTPException(404, "no such schema version")
+
+    delivered = len(store.accepted_keys(run_id))
+    store.approve_schema(run_id, version)
+    with store.connect() as conn:
+        conn.execute("UPDATE runs SET schema_json = ? WHERE id = ?", (body, run_id))
+
+    store.append_audit(run_id, [{
+        "actor": Actor.HUMAN.value, "action": "schema.approved",
+        "summary": (
+            f"Approved schema v{version}"
+            + (f"; {delivered} already-delivered record(s) keep the version they were "
+               "sent under" if delivered else "")
+        ),
+        "at": now(),
+    }])
+    jobs.invalidate(run_id)
+    jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
+    return {"approved": version, "delivered_unchanged": delivered}
 
 
 @app.get("/api/runs")

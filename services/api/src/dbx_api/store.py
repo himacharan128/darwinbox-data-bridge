@@ -31,6 +31,18 @@ CREATE TABLE IF NOT EXISTS runs (
     status       TEXT NOT NULL DEFAULT 'processing',
     label        TEXT
 );
+CREATE TABLE IF NOT EXISTS schema_versions (
+    id          TEXT PRIMARY KEY,
+    run_id      TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    version     INTEGER NOT NULL,
+    state       TEXT NOT NULL,          -- draft | approved | superseded
+    origin      TEXT NOT NULL,          -- supplied | recommended | edited
+    body        TEXT NOT NULL,
+    original    TEXT,                   -- the upload exactly as received
+    approved_by TEXT,
+    created_at  TEXT NOT NULL,
+    UNIQUE (run_id, version)
+);
 CREATE TABLE IF NOT EXISTS decisions (
     id          TEXT PRIMARY KEY,
     run_id      TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
@@ -120,6 +132,70 @@ class Store:
     def delete_run(self, run_id: str) -> None:
         with self.connect() as conn:
             conn.execute("DELETE FROM runs WHERE id = ?", (run_id,))
+
+    # ---------------------------------------------------------- schema versions
+
+    def add_schema_version(
+        self, run_id: str, body: str, *, origin: str, state: str = "draft",
+        original: str | None = None,
+    ) -> int:
+        """Append a version. Approved versions are never edited in place.
+
+        A delivered record was shaped by a particular version of the schema, and
+        rewriting that version afterwards would make the audit trail describe a
+        payload that was never sent.
+        """
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT COALESCE(MAX(version), 0) AS v FROM schema_versions WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+            version = row["v"] + 1
+            conn.execute(
+                "INSERT INTO schema_versions (id, run_id, version, state, origin, body,"
+                " original, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                (str(uuid.uuid4()), run_id, version, state, origin, body, original, now()),
+            )
+        return version
+
+    def approve_schema(self, run_id: str, version: int, actor: str = "consultant") -> None:
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE schema_versions SET state = 'superseded'"
+                " WHERE run_id = ? AND state = 'approved'",
+                (run_id,),
+            )
+            conn.execute(
+                "UPDATE schema_versions SET state = 'approved', approved_by = ?"
+                " WHERE run_id = ? AND version = ?",
+                (actor, run_id, version),
+            )
+
+    def approved_schema(self, run_id: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM schema_versions WHERE run_id = ? AND state = 'approved'"
+                " ORDER BY version DESC LIMIT 1",
+                (run_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def schema_versions(self, run_id: str) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT id, version, state, origin, approved_by, created_at"
+                " FROM schema_versions WHERE run_id = ? ORDER BY version",
+                (run_id,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def schema_body(self, run_id: str, version: int) -> str | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT body FROM schema_versions WHERE run_id = ? AND version = ?",
+                (run_id, version),
+            ).fetchone()
+        return row["body"] if row else None
 
     # -------------------------------------------------------------- decisions
 

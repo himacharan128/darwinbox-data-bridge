@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, PHRASE, type Case, type RunState } from "./api";
+import { api, PHRASE, type Case, type RunState, type SchemaState } from "./api";
 
 const say = (k: string) => PHRASE[k] ?? k.replace(/_/g, " ").toLowerCase();
 
@@ -290,6 +290,120 @@ function Mappings({ state }: { state: RunState }) {
   );
 }
 
+function Schema({ runId }: { runId: string }) {
+  const [data, setData] = useState<SchemaState | null>(null);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    api.schema(runId).then(setData).catch((e) => setNote(String(e)));
+  }, [runId]);
+  useEffect(load, [load]);
+
+  const act = async (fn: () => Promise<unknown>, message: string) => {
+    setBusy(true); setNote(null);
+    try { await fn(); setNote(message); load(); }
+    catch (e) { setNote(String(e).replace("Error: ", "")); }
+    finally { setBusy(false); }
+  };
+
+  if (!data) return <div className="panel empty">Loading the target schema…</div>;
+  const pending = data.versions.filter((v) => v.state === "draft");
+
+  return (
+    <>
+      <div className="panel" style={{ marginBottom: 14 }}>
+        <h2>Target schema — {data.active.entity}</h2>
+        <p className="change" style={{ marginTop: 0 }}>
+          {data.approved_version
+            ? `Version ${data.approved_version} is approved. Records already sent keep the version they were sent under.`
+            : "No version approved yet."}
+        </p>
+        <div className="scroll">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Rules</th></tr></thead>
+            <tbody>
+              {data.active.fields.map((f) => (
+                <tr key={f.name}>
+                  <td className="mono">{f.name}</td>
+                  <td>{f.type}</td>
+                  <td>{f.required ? "yes" : "—"}</td>
+                  <td className="change">
+                    {[f.unique && "unique", f.pattern && `matches ${f.pattern}`,
+                      f.allowed?.length && `one of ${f.allowed.join(", ")}`,
+                      f.reference && `references ${f.reference}`]
+                      .filter(Boolean).join(" · ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginBottom: 14 }}>
+        <h2>Versions</h2>
+        <table>
+          <thead><tr><th>Version</th><th>State</th><th>Where it came from</th><th></th></tr></thead>
+          <tbody>
+            {data.versions.map((v) => (
+              <tr key={v.version}>
+                <td className="mono">v{v.version}</td>
+                <td><span className={`pill ${v.state === "approved" ? "ok" : ""}`}>
+                  <i className="dot" />{v.state}</span></td>
+                <td className="change">
+                  {v.origin}{v.approved_by ? ` · approved by ${v.approved_by}` : ""}
+                </td>
+                <td>
+                  {v.state === "draft" && (
+                    <button disabled={busy}
+                            onClick={() => void act(() => api.approveSchema(runId, v.version),
+                                                    `Approved v${v.version}`)}>
+                      Approve
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {!data.versions.length && (
+              <tr><td colSpan={4} className="change">No versions recorded yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="panel">
+        <h2>Change the schema</h2>
+        <p className="change" style={{ marginTop: 0 }}>
+          Paste YAML or JSON, or let the agent propose one from the uploaded files.
+          Either way it becomes a draft you approve.
+        </p>
+        <textarea value={draft} onChange={(e) => setDraft(e.target.value)}
+          aria-label="Schema as YAML or JSON" rows={8}
+          placeholder={"entity: employee\nfields:\n  - name: employee_id\n    type: string\n    required: true"}
+          style={{ width: "100%", font: "12.5px ui-monospace, Menlo, monospace",
+                   background: "var(--panel-2)", color: "var(--ink)", padding: 10,
+                   border: "1px solid var(--line)", borderRadius: 8 }} />
+        <div className="actions" style={{ marginTop: 12 }}>
+          <button className="primary" disabled={busy || !draft.trim()}
+                  onClick={() => void act(() => api.putSchema(runId, draft), "Draft saved")}>
+            Save as draft
+          </button>
+          <button disabled={busy}
+                  onClick={() => void act(() => api.recommendSchema(runId),
+                                          "The agent proposed a schema")}>
+            Ask the agent to propose one
+          </button>
+          {!!pending.length && <span className="pill warn"><i className="dot" />
+            {pending.length} draft awaiting approval</span>}
+        </div>
+        {note && <p className="change" style={{ marginTop: 10 }} role="status">{note}</p>}
+      </div>
+    </>
+  );
+}
+
 function Destination({ runId }: { runId: string }) {
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -441,7 +555,8 @@ export default function App() {
 
           <div className="tabs" role="tablist">
             {[["review", `Needs you (${counts.open_cases})`], ["records", "Records"],
-              ["mappings", "How it mapped"], ["destination", "Destination"]].map(([id, label]) => (
+              ["mappings", "How it mapped"], ["schema", "Target schema"],
+              ["destination", "Destination"]].map(([id, label]) => (
               <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
                 {label}
               </button>
@@ -453,6 +568,7 @@ export default function App() {
               {tab === "review" && <ReviewQueue state={state} onDone={refresh} />}
               {tab === "records" && <Records state={state} />}
               {tab === "mappings" && <Mappings state={state} />}
+              {tab === "schema" && <Schema runId={state.run_id} />}
               {tab === "destination" && <Destination runId={state.run_id} />}
             </div>
             <aside className="panel">

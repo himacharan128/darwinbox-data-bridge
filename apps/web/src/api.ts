@@ -33,6 +33,15 @@ const json = async (r: Response) => {
   return r.json();
 };
 
+export type SchemaState = {
+  active: { entity: string; fields: { name: string; type: string; required?: boolean;
+    unique?: boolean; allowed?: string[]; pattern?: string; reference?: string;
+    description?: string }[] };
+  approved_version: number | null;
+  versions: { version: number; state: string; origin: string; approved_by: string | null;
+    created_at: string }[];
+};
+
 export const api = {
   runs: () => fetch("/api/runs").then(json),
   run: (id: string): Promise<RunState> => fetch(`/api/runs/${id}`).then(json),
@@ -55,6 +64,16 @@ export const api = {
   rollback: (run: string) => fetch(`/api/runs/${run}/rollback`, { method: "POST" }).then(json),
   destination: (run: string) => fetch(`/api/runs/${run}/destination`).then(json),
   audit: (run: string) => fetch(`/api/runs/${run}/audit`).then(json),
+  schema: (run: string): Promise<SchemaState> => fetch(`/api/runs/${run}/schema`).then(json),
+  recommendSchema: (run: string) =>
+    fetch(`/api/runs/${run}/schema/recommend`, { method: "POST" }).then(json),
+  putSchema: (run: string, body: string) =>
+    fetch(`/api/runs/${run}/schema`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ body, origin: "edited" }),
+    }).then(json),
+  approveSchema: (run: string, version: number) =>
+    fetch(`/api/runs/${run}/schema/${version}/approve`, { method: "POST" }).then(json),
 };
 
 /** Plain language, because the reader is an implementation consultant, not an engineer. */

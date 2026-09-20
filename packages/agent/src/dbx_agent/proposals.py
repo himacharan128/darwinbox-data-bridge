@@ -47,3 +47,22 @@ class InvestigationResult(BaseModel):
     chosen_field: str | None = None
     steps: list[InvestigationStep] = Field(default_factory=list)
     conclusion: str
+
+
+class ProposedField(BaseModel):
+    """One field the agent thinks the destination should have."""
+
+    name: str = Field(description="snake_case field name")
+    type: str = Field(description="one of: string, integer, number, boolean, date, email, enum")
+    required: bool = Field(description="true only if every source row supplies it")
+    unique: bool = False
+    allowed: list[str] = Field(default_factory=list, description="for enum only")
+    format: str | None = Field(default=None, description="for date only, e.g. YYYY-MM-DD")
+    reason: str = Field(description="which source columns led to this, in one sentence")
+
+
+class ProposedSchema(BaseModel):
+    """A destination shape inferred from the data, for a human to edit and approve."""
+
+    entity: str = Field(description="what one record describes, singular and lowercase")
+    fields: list[ProposedField] = Field(max_length=30)

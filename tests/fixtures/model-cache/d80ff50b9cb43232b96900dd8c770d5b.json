@@ -1,0 +1,225 @@
+{
+  "payload": {
+    "entity": "employee",
+    "fields": [
+      {
+        "name": "employee_id",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Emp ID, code, strEmployeeCode, staff_code, emp_ref all contain unique employee identifiers"
+      },
+      {
+        "name": "first_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns First Name, given_name, strFirstNm, fname, legal_first, First Name. represent the employee's given name"
+      },
+      {
+        "name": "last_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Last Name, surname, strLastNm, lname, legal_last, Last Nam\u00e9 represent the employee's family name"
+      },
+      {
+        "name": "email",
+        "type": "email",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Email, strEmailAddr, email_id, corp_email (and contact when it holds an email) store the corporate email address"
+      },
+      {
+        "name": "mobile_phone",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Mobile, strMobileNo, cell, contact (when phone) hold the employee's mobile number"
+      },
+      {
+        "name": "date_of_birth",
+        "type": "date",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns DOB, dtDateOfBirth, birth_date, birth_dt represent the employee's birth date"
+      },
+      {
+        "name": "date_of_joining",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Date of Joining, doj, dtDateOfJoin, joining_dt, hire_dt capture when the employee started"
+      },
+      {
+        "name": "department_code",
+        "type": "enum",
+        "required": false,
+        "unique": false,
+        "allowed": [
+          "ENG",
+          "SALES",
+          "FIN",
+          "HR",
+          "TECHOPS"
+        ],
+        "format": null,
+        "reason": "Columns Dept Code, dept, strDeptCd, department, div_code hold department identifiers"
+      },
+      {
+        "name": "job_title",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Designation, strDesignation, job_title, grade represent the employee's role or title"
+      },
+      {
+        "name": "employment_type",
+        "type": "enum",
+        "required": false,
+        "unique": false,
+        "allowed": [
+          "FULL_TIME",
+          "PART_TIME",
+          "INTERN",
+          "CONTRACT"
+        ],
+        "format": null,
+        "reason": "Columns Employment Type, strEmpType, emp_type, worker_class, Employment describe contract type"
+      },
+      {
+        "name": "manager_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Manager ID, mgr, strReportingMgr, reports_to, supervisor_ref, Type -Manager ID reference the employee's manager"
+      },
+      {
+        "name": "location_code",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Location, loc, strLocCd, office, site indicate the employee's work location"
+      },
+      {
+        "name": "grade_band",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column strGradeBand stores the employee's grade band"
+      },
+      {
+        "name": "cost_centre",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column cost_centre stores the cost centre code"
+      },
+      {
+        "name": "is_active",
+        "type": "boolean",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column is_active_flag indicates if the employee is currently active"
+      },
+      {
+        "name": "is_deleted",
+        "type": "boolean",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column bIsDeleted flags logical deletion"
+      },
+      {
+        "name": "probation_end_date",
+        "type": "date",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column dtProbationEnd stores the end date of the probation period"
+      },
+      {
+        "name": "last_modified_timestamp",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column last_modified_ts records when the record was last updated"
+      },
+      {
+        "name": "created_by",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column created_by records the ETL user that created the record"
+      },
+      {
+        "name": "source_system",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column strSourceSystem identifies the originating source system"
+      },
+      {
+        "name": "version_number",
+        "type": "integer",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column intVersionNo stores the version of the employee record"
+      },
+      {
+        "name": "remarks",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column strRemarks holds free\u2011form remarks about the employee"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "schema/v1",
+    "latency_ms": 6813,
+    "input_tokens": 8059,
+    "output_tokens": 1924,
+    "cached": false
+  }
+}

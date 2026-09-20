@@ -140,3 +140,41 @@ def replay(
         if case_key(case) in answered:
             case.state = CaseState.RESOLVED
     return result, overrides
+
+
+def source_profiles(store: Store, run_id: str) -> list:
+    """Profile every source column in a run, for the schema recommender."""
+    from collections import defaultdict
+
+    from dbx_contracts import SourceRef
+    from dbx_migration_core.profiling import profile_column
+
+    run = store.get_run(run_id)
+    if run is None:
+        return []
+    paths = json.loads(run["files_json"])
+    lookups = load_lookups(paths)
+
+    out = []
+    for raw in paths:
+        path = Path(raw)
+        if not path.exists() or is_sidecar(path) or _is_lookup(path, lookups):
+            continue
+        try:
+            records = read(path)
+        except UnsupportedInput:
+            continue
+        if not records:
+            continue
+        columns: dict[str, list] = defaultdict(list)
+        for record in records:
+            for key, value in record.values.items():
+                columns[key].append(value)
+        src = records[0].source
+        out.extend(
+            profile_column(
+                SourceRef(file=src.file, sheet=src.sheet, column=header), header, values
+            )
+            for header, values in columns.items()
+        )
+    return out
