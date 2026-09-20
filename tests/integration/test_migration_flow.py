@@ -80,9 +80,10 @@ def test_agent_processes_without_asking_about_everything(run):
     client, rid = run
     state = client.get(f"/api/runs/{rid}").json()
     applied = [m for m in state["mappings"] if m["decision"] == "auto_apply"]
-    assert len(applied) >= 25, "the agent should map most columns unaided"
-    assert state["counts"]["records"] == 28
-    assert 0 < state["counts"]["open_cases"] < 25, "a boundary, not a queue of everything"
+    assert len(applied) >= 40, "the agent should map most columns unaided"
+    assert state["counts"]["records"] >= 35
+    # A boundary, not a queue: far fewer cases than records, across five source files.
+    assert 0 < state["counts"]["open_cases"] < state["counts"]["records"]
 
 
 def test_one_answer_unblocks_many_records(run):
@@ -111,13 +112,14 @@ def test_rollback_returns_records_without_erasing_history(run):
     _answer(client, rid, "no column for status", "constant:ACTIVE")
     client.post(f"/api/runs/{rid}/deliver")
 
+    before = client.get(f"/api/runs/{rid}").json()["counts"]["records"]
     result = client.post(f"/api/runs/{rid}/rollback").json()
     assert result["succeeded"] == result["attempted"] > 0
     assert result["partial"] is False
 
     after = client.get(f"/api/runs/{rid}").json()
     assert after["counts"]["delivered"] == 0
-    assert after["counts"]["records"] == 28, "rollback must not touch source data"
+    assert after["counts"]["records"] == before, "rollback must not touch source data"
     assert len(client.get(f"/api/runs/{rid}/audit").json()) > 0
 
 

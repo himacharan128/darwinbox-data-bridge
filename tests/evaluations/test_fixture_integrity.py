@@ -182,7 +182,13 @@ def test_corpus_ids_are_unique(corpus):
 def test_mapping_corpus_is_mostly_auto(corpus):
     """Criterion 3 is a boundary, not a queue: the corpus must reflect that."""
     cases = corpus["mapping_decisions"]["cases"]
-    auto = sum(1 for c in cases if c["expected_outcome"] == "auto")
-    # 0.75 after six cases were honestly relabelled to escalate: their target fields
-    # declare no discriminating constraint, so only the capped model vote could decide.
-    assert auto / len(cases) > 0.75, "too many mapping cases expect escalation"
+    mappable = [c for c in cases if c["expected_outcome"] != "no_map"]
+    auto = sum(1 for c in mappable if c["expected_outcome"] == "auto")
+    assert auto / len(mappable) > 0.90, "too many mapping cases expect escalation"
+
+
+def test_corpus_includes_columns_that_must_not_map(corpus):
+    """Restraint is the half of the boundary a mappable-only corpus cannot measure."""
+    cases = corpus["mapping_decisions"]["cases"]
+    negatives = [c for c in cases if c["expected_outcome"] == "no_map"]
+    assert len(negatives) >= 15
