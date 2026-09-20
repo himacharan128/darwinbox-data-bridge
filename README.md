@@ -257,14 +257,3 @@ Named here because they are real gaps, not oversights.
   graph, leases and dead-letter queues described in `MASTER_PLAN.md`.
 
 ---
-
-## Notes
-
-The brief suggests roughly 4–6 hours. This is deliberately the production-shaped
-version — the ~4-hour core is the vertical slice in `packages/` plus `services/`, and
-everything around it (the labelled corpus, the threshold sweep, the recorded replays,
-the integration suite) exists to make the autonomy boundary *defensible* rather than
-merely demonstrable.
-
-`MASTER_PLAN.md` carries the full design record, including the decisions that were
-reversed and why.
