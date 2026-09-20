@@ -52,7 +52,9 @@ so everything above works offline. Set `OPENAI_API_KEY` and `AWS_REGION` (see
    columns it found. Either way it is a draft you edit.
 4. **Approve it.** That is what starts the migration; a run against a schema nobody
    agreed to makes every decision after it unaccountable.
-5. **Supervise** — live activity, an escalation queue, delivery with retry and rollback.
+5. **Supervise** — live activity and a queue of what it could not settle. Records that
+   pass with nothing open against them are **sent automatically**; rollback undoes a
+   delivery and pauses sending so the undo sticks.
 
 ## What it does
 
@@ -65,8 +67,13 @@ so everything above works offline. Set `OPENAI_API_KEY` and `AWS_REGION` (see
    normalised, duplicates removed, whitespace trimmed, enums canonicalised.
 3. **Escalates only what it cannot settle**, with the evidence and the question
    together, so a case is resolvable without opening the source file.
-4. **Delivers to a real stub API** with per-record outcomes, retry, rollback, and an
-   append-only audit trail.
+4. **Delivers to a real stub API as records become ready**, with per-record outcomes,
+   retry, rollback, and an append-only audit trail.
+
+The four numbers on screen are **rows read**, **employees found**, **sent to
+destination** and **needs review** — the first two side by side because 46 rows
+becoming 40 people is reconciliation doing its job. Excluded and destination-refused
+appear only when they are not zero.
 
 ## The autonomy boundary
 
