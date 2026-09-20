@@ -406,6 +406,28 @@ def recommend(run_id: str) -> dict[str, Any]:
 
     by_raw = {p.raw_name.strip().casefold(): p for p in profiles}
 
+    def _aliases_for(field: Any, known: dict[str, Any]) -> list[str]:
+        """The columns the agent says fed this field become the field's aliases.
+
+        The agent named 'job_title' only because it read a column called
+        'Designation'. Without writing that down, mapping has to rediscover a
+        synonym it cannot measure, and scores it 0.31. Recording it makes the
+        match exact and deterministic — and it lands in the draft schema, which
+        a human reads and edits before anything runs.
+        """
+        out: list[str] = []
+        for raw in field.sources:
+            name = raw.strip()
+            if not name or name.casefold() not in known:
+                continue
+            if _key(name) == _key(field.name) or name in out:
+                continue
+            out.append(name)
+        return out
+
+    def _key(text: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "", text.casefold())
+
     def feeding(field: Any) -> list[Any]:
         """The profiled columns a proposed field says it came from."""
         found = [by_raw[c.strip().casefold()] for c in field.sources
@@ -472,6 +494,7 @@ def recommend(run_id: str) -> dict[str, Any]:
         "fields": [
             {k: v for k, v in {
                 "name": f.name, "type": f.type, "required": f.required,
+                "aliases": _aliases_for(f, by_raw),
                 "unique": f.unique, "allowed": f.allowed or None, "format": f.format,
                 "pattern": getattr(f, "pattern", None),
                 "reference": getattr(f, "reference", None),

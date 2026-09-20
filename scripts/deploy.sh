@@ -37,7 +37,24 @@ PY
 echo "==> rolling out"
 aws ecs update-service --cluster dbx-data-bridge --service dbx-console \
   --task-definition dbx-data-bridge --force-new-deployment \
-  --region "$REGION" --query 'service.status' --output text
+  --region "$REGION" --query 'service.status' --output text >/dev/null
+
+# The service reports ACTIVE the moment the new task is registered, while the old
+# one is still serving. Reporting success there means the next request can still
+# reach the previous build.
+echo "==> waiting for the new task to take over"
+for _ in $(seq 1 60); do
+  STATE=$(aws ecs describe-services --cluster dbx-data-bridge --service dbx-console \
+          --region "$REGION" \
+          --query 'services[0].deployments[?status==`PRIMARY`].rolloutState' \
+          --output text)
+  case "$STATE" in
+    COMPLETED) echo "    rollout complete"; break ;;
+    FAILED) echo "    rollout FAILED" >&2; exit 1 ;;
+  esac
+  sleep 10
+done
+[ "$STATE" = "COMPLETED" ] || { echo "    rollout did not settle in 10 minutes" >&2; exit 1; }
 
 DNS=$(aws elbv2 describe-load-balancers --names dbx-console-alb \
       --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null || true)
