@@ -98,6 +98,40 @@ model carry a column on its own.
 The margin is insensitive between 0.25 and 0.45 — identical results across that
 whole range — so 0.35 sits in the middle of a flat region rather than on a cliff.
 
+## Where the model's knowledge does belong
+
+A synonym has no measurable evidence at all. `Designation` and `job_title` share
+no tokens, no shape and no values in common with the field name; `role` scores
+0.047 against `designation`. No deterministic signal can ever connect them,
+because the connection is meaning, and meaning is the one thing the model has
+that the code does not.
+
+So the model is asked — but at schema time, not at mapping time, and the answer
+is a list a person ticks rather than a score that decides. That is the same gate
+a proposed schema already goes through.
+
+Asking it to is not optional, and neither is the gate. Measured on the corpus:
+
+| the model's claim | vote | measured fit | correct? |
+|---|---|---|---|
+| `dob` → `date_of_birth` | 1.00 | — | yes |
+| `role` → `designation` | 1.00 | 0.047 | yes |
+| `strAuditUser` → `designation` | 1.00 | 0.061 | **no** |
+| `cost_centre` → `department_code` | 1.00 | 0.052 | **no** |
+| `dtProbationEnd` → `date_of_joining` | 1.00 | 0.613 | **no** |
+
+**Neither number separates them.** The vote is 1.00 for every row, right and
+wrong alike, so raising the threshold to 1.00 still admits all three mistakes.
+Measured fit does not separate them either — the correct `role` sits *below* the
+incorrect `strAuditUser`, and the incorrect `dtProbationEnd` sits above most
+correct ones. Filtering on either number would hide the two suggestions worth
+having and keep the one that corrupts data.
+
+What separates them is looking at the values, which is a person's job. So every
+suggestion is shown with its samples and the file it came from, nothing is
+ticked to begin with, and nothing reaches the schema that a person did not put
+there.
+
 ## Two things that would raise the rate, and demonstrably must not be done
 
 The remaining escalations are four near-ties and two pure synonyms. Both of the

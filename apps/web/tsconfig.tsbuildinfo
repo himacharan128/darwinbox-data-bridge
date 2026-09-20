@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/loading.tsx","./src/review.tsx","./src/schemaeditor.tsx","./src/wizard.tsx","./src/api.ts","./src/main.tsx"],"version":"5.9.3"}
+{"root":["./src/aliasoffers.tsx","./src/app.tsx","./src/loading.tsx","./src/review.tsx","./src/schemaeditor.tsx","./src/wizard.tsx","./src/api.ts","./src/main.tsx"],"version":"5.9.3"}

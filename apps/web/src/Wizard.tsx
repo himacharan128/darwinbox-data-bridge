@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type RunFiles, type Sample, type SchemaState } from "./api";
+import { api, type AliasOffer, type RunFiles, type Sample, type SchemaState } from "./api";
 import SchemaEditor, { blankField, type Schema } from "./SchemaEditor";
 import Loading from "./Loading";
+import AliasOffers from "./AliasOffers";
 
 /**
  * Getting a run started: upload files, then agree a target schema.
@@ -114,6 +115,7 @@ function ChooseSchema({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [offers, setOffers] = useState<AliasOffer[] | null>(null);
 
   const load = useCallback(async () => {
     api.runFiles(runId).then(setFiles).catch(() => {});
@@ -293,6 +295,35 @@ function ChooseSchema({
             <p className="empty">Nothing to edit yet.</p>
           )}
 
+          {offers && (
+            <div style={{ marginTop: 14 }}>
+              <AliasOffers
+                offers={offers}
+                busy={busy}
+                onDismiss={() => setOffers(null)}
+                onApply={(chosen) => {
+                  if (!working) return;
+                  const extra = new Map<string, string[]>();
+                  for (const o of chosen) {
+                    extra.set(o.field, [...(extra.get(o.field) ?? []), o.column]);
+                  }
+                  setWorking({
+                    ...working,
+                    fields: working.fields.map((f) => {
+                      const add = extra.get(f.name);
+                      return add
+                        ? { ...f, aliases: [...(f.aliases ?? []), ...add] }
+                        : f;
+                    }),
+                  });
+                  setDirty(true);
+                  setOffers(null);
+                  setNote(`Added ${chosen.length} other name(s). Save when you're happy.`);
+                }}
+              />
+            </div>
+          )}
+
           {error && <p style={{ color: "var(--bad)" }} role="alert">{error}</p>}
           {note && <p className="change" role="status">{note}</p>}
 
@@ -301,6 +332,19 @@ function ChooseSchema({
                     onClick={() => void act(() => api.recommendSchema(runId),
                                             "The agent proposed a schema.")}>
               {schema?.active ? "Ask the agent again" : "Ask the agent to propose one"}
+            </button>
+            <button disabled={busy || !working} onClick={() => void act(async () => {
+              // Suggestions are read against a saved version, so save first if
+              // there are unsaved edits.
+              const version = dirty
+                ? (await saveDraft()).version
+                : (schema?.draft_version ?? schema?.approved_version);
+              if (!version) return;
+              const out = await api.suggestAliases(runId, version);
+              setOffers(out.suggestions);
+              return out;
+            }, "")}>
+              Find other names for my fields
             </button>
             <button disabled={busy || !dirty}
                     onClick={() => void act(() => saveDraft(),

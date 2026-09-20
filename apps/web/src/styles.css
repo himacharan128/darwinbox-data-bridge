@@ -546,6 +546,27 @@ details.why .reasons { margin-top: 8px; }
   .choice:hover:not(:disabled) { transform: none; }
 }
 
+/* --------------------------------------------------------- alias offers */
+
+.offers { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.offers li { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
+.offers li.on { border-color: var(--violet); background: var(--violet-50); }
+.offers label {
+  display: flex; gap: 11px; align-items: flex-start; padding: 11px 13px;
+  cursor: pointer; margin: 0;
+}
+.offers input[type="checkbox"] { margin-top: 2px; flex: 0 0 auto; }
+.offer-body { display: grid; gap: 3px; min-width: 0; }
+.offer-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 14px; }
+.offer-head span { color: var(--ink-3); }
+.offer-values { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.offer-values em {
+  font-style: normal; font-size: 12px; font-family: ui-monospace, Menlo, monospace;
+  background: var(--raised); border: 1px solid var(--line); border-radius: 5px;
+  padding: 1px 7px; color: var(--ink-2); max-width: 30ch; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* ------------------------------------------------- phone preview on desktop */
 
 /* Choosing "Mobile" on a wide screen means "show me the phone", so the app is

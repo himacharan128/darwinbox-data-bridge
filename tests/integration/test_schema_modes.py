@@ -8,6 +8,7 @@ sent under the old one.
 from __future__ import annotations
 
 import json
+import re
 import socket
 import threading
 import time
@@ -255,3 +256,60 @@ def test_a_proposed_schema_can_actually_reconcile(client, run):
     assert counts["records"] < counts["rows_read"], (
         "the same people appear across these files and should have been merged"
     )
+
+
+def test_agent_offers_other_names_for_a_schema_you_supplied(client):
+    """A synonym has no measurable evidence. The model is what knows.
+
+    'Designation' and 'job_title' share no tokens and no shape, so nothing in the
+    deterministic signals can connect them. The model is asked, and the answer is
+    offered rather than applied.
+    """
+    run_id = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+
+    body = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
+    # Strip every declared alias: this is a schema someone wrote without them.
+    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.M)
+    version = client.post(f"/api/runs/{run_id}/schema", json={"body": bare}).json()["version"]
+
+    out = client.post(f"/api/runs/{run_id}/schema/{version}/aliases")
+    assert out.status_code == 200, out.text
+    offers = out.json()["suggestions"]
+
+    found = {(o["column"], o["field"]) for o in offers}
+    assert ("role", "designation") in found, "a pure synonym is what this is for"
+    assert all(o["samples"] for o in offers), "a person cannot judge without values"
+
+
+def test_suggested_aliases_are_never_applied_on_their_own(client):
+    """The model votes 1.00 on suggestions that are flatly wrong, so it cannot be
+    the gate. Nothing may reach the schema without a person putting it there."""
+    run_id = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    body = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
+    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.M)
+    version = client.post(f"/api/runs/{run_id}/schema", json={"body": bare}).json()["version"]
+
+    before = client.get(f"/api/runs/{run_id}/schema").json()
+    client.post(f"/api/runs/{run_id}/schema/{version}/aliases")
+    after = client.get(f"/api/runs/{run_id}/schema").json()
+
+    assert after == before, "suggesting aliases must not write a schema version"
+
+
+def test_every_suggestion_carries_the_values_behind_it(client):
+    """The list is known to contain wrong suggestions and no number finds them.
+
+    `role -> designation` is right and `strAuditUser -> designation` is wrong, and
+    they score the same on both the model's vote and measured fit. What separates
+    them is looking at the values, so every row must carry some.
+    """
+    run_id = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    body = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
+    bare = re.sub(r"^\s*aliases:.*\n", "", body, flags=re.M)
+    version = client.post(f"/api/runs/{run_id}/schema", json={"body": bare}).json()["version"]
+
+    offers = client.post(f"/api/runs/{run_id}/schema/{version}/aliases").json()["suggestions"]
+    assert offers, "the fixtures contain several renamed columns"
+    for o in offers:
+        assert o["samples"], f"{o['column']} was offered with nothing to judge it by"
+        assert o["seen_in"], f"{o['column']} was offered without saying which file"

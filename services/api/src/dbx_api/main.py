@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -14,7 +15,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import yaml
-from dbx_agent import build_provider, recommend_schema
+from dbx_agent import build_provider, recommend_schema, vote_on_column
 from dbx_contracts import Action, Actor, EscalationClass, MigrationSchema
 from dbx_extraction import (
     UnsupportedInput,
@@ -25,6 +26,7 @@ from dbx_extraction import (
     sniff,
 )
 from dbx_migration_core import mask_to_pattern
+from dbx_migration_core.scoring import score_pair
 from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
@@ -35,6 +37,8 @@ from .delivery import DestinationClient, Outcome
 from .jobs import jobs
 from .runtime import case_key, load_lookups, lookup_columns, replay, source_profiles
 from .store import Store, now
+
+log = logging.getLogger("dbx.api")
 
 DATA = Path(os.environ.get("DBX_DATA_DIR", ".artifacts"))
 UPLOADS = DATA / "uploads"
@@ -426,7 +430,7 @@ def recommend(run_id: str) -> dict[str, Any]:
         return out
 
     def _key(text: str) -> str:
-        return re.sub(r"[^a-z0-9]+", "", text.casefold())
+        return _norm(text)
 
     def feeding(field: Any) -> list[Any]:
         """The profiled columns a proposed field says it came from."""
@@ -530,6 +534,92 @@ def recommend(run_id: str) -> dict[str, Any]:
     return {"version": version, "state": "draft", "schema": draft}
 
 
+#: The model has to be fairly sure before a column is worth showing at all.
+#:
+#: Nothing stronger is available, and that is the finding rather than a gap. On
+#: the labelled corpus the model votes 1.00 on `strAuditUser` meaning `designation`
+#: and 1.00 on `dob` meaning `date_of_birth`, so its confidence separates nothing.
+#: Measured fit does not separate them either: `role -> designation` is correct at
+#: 0.047 and `strAuditUser -> designation` is wrong at 0.061, while the wrong
+#: `dtProbationEnd -> date_of_joining` sits at 0.613, above most correct ones.
+#: Filtering on either number would hide the two suggestions worth having. So the
+#: list is shown with values attached, and a person decides.
+ALIAS_VOTE_FLOOR = 0.80
+
+
+@app.post("/api/runs/{run_id}/schema/{version}/aliases")
+def suggest_aliases(run_id: str, version: int) -> dict[str, Any]:
+    """Offer the source columns that mean the same as each field.
+
+    'Designation' and 'job_title' are the same thing and nothing measurable says
+    so - no shared tokens, no shared shape. Only meaning connects them, and the
+    model is the only thing here that holds meaning.
+
+    Nothing is applied. On this corpus the model votes 1.00 on suggestions that
+    are flatly wrong - `dtProbationEnd` is not `date_of_joining` - and raising the
+    vote threshold does not separate them, because it votes 1.00 on the correct
+    ones too. So its confidence cannot be the gate. What can: the data must agree
+    the column could hold that field, and then a person ticks the ones that are
+    right.
+    """
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(404, "no such run")
+    body = store.schema_body(run_id, version)
+    if body is None:
+        raise HTTPException(404, f"no schema version {version}")
+
+    schema = MigrationSchema.model_validate(json.loads(body))
+    by_name = {f.name: f for f in schema.fields}
+    spoken_for = {
+        _norm(name) for field in schema.fields for name in (field.name, *field.aliases)
+    }
+
+    provider = build_provider(Path("tests/fixtures/model-cache"))
+    offers: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for profile in source_profiles(store, run_id):
+        raw = profile.raw_name.strip()
+        key = _norm(raw)
+        if not raw or key in spoken_for or key in seen:
+            continue
+        seen.add(key)
+        try:
+            votes, _ = vote_on_column(provider, profile, schema)
+        except Exception as exc:  # noqa: BLE001 - one bad column must not lose the rest
+            log.warning("alias vote failed for %s: %s", raw, exc)
+            continue
+        best = max(votes.items(), key=lambda kv: kv[1], default=None)
+        if not best or best[1] < ALIAS_VOTE_FLOOR:
+            continue
+        field = by_name.get(best[0])
+        if field is None:
+            continue
+        # A veto is a hard impossibility rather than a low opinion - the column
+        # cannot hold this field's type at all - so it is the one automatic filter
+        # that is safe here.
+        evidence = score_pair(profile, field, llm_vote=None)
+        if evidence.vetoes:
+            continue
+        offers.append({
+            "field": field.name,
+            "column": raw,
+            "seen_in": profile.source.label(),
+            "samples": [v.value for v in profile.top_values[:3]] or profile.sample[:3],
+            "why": evidence.explain()[:2],
+        })
+
+    store.append_audit(run_id, [{
+        "actor": Actor.AGENT.value, "action": "schema.aliases",
+        "summary": (
+            f"Found {len(offers)} column(s) that may be other names for a field "
+            "already in the schema. None applied - each needs a person to confirm."
+        ),
+        "at": now(),
+    }])
+    return {"version": version, "suggestions": offers}
+
+
 @app.post("/api/runs/{run_id}/schema/{version}/approve")
 def approve_schema(run_id: str, version: int) -> dict[str, Any]:
     """Approval freezes a version and reprocesses everything not yet delivered."""
@@ -590,6 +680,10 @@ def list_runs() -> list[dict[str, Any]]:
             "delivered": delivered, "counts": counts,
         })
     return out
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", text.casefold())
 
 
 def _fingerprint(run_id: str, run: Any) -> str:

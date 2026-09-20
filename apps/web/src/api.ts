@@ -118,11 +118,22 @@ export const api = {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ body, origin: "edited" }),
     }).then(json) as Promise<{ version: number; state: string; fields: number }>,
+  suggestAliases: (run: string, version: number) =>
+    fetch(`/api/runs/${run}/schema/${version}/aliases`, { method: "POST" })
+      .then(json) as Promise<{ version: number; suggestions: AliasOffer[] }>,
   approveSchema: (run: string, version: number) =>
     fetch(`/api/runs/${run}/schema/${version}/approve`, { method: "POST" }).then(json),
 };
 
 /** Plain language, because the reader is an implementation consultant, not an engineer. */
+export type AliasOffer = {
+  field: string;
+  column: string;
+  seen_in: string;
+  samples: string[];
+  why: string[];
+};
+
 export const PHRASE: Record<string, string> = {
   awaiting_schema: "Waiting for a target schema",
   awaiting_review: "Needs your decision",
