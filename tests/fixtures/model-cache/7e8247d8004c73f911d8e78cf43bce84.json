@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strReportingMgr",
+    "votes": [
+      {
+        "target_field": "manager_id",
+        "vote": 1.0,
+        "reason": "Column name strReportingMgr and values like EMP-00002 match manager identifier referencing employee codes"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 551,
+    "input_tokens": 1313,
+    "output_tokens": 139,
+    "cached": false
+  }
+}

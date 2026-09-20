@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "contact",
+    "votes": [
+      {
+        "target_field": "work_email",
+        "vote": 0.8,
+        "reason": "Column name 'contact' and sample values include email addresses like 'nikhil.verma@acme-hr.example'"
+      },
+      {
+        "target_field": "mobile_phone",
+        "vote": 0.8,
+        "reason": "Column also contains phone numbers such as '+91 98450 11016' indicating mobile contact info"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 598,
+    "input_tokens": 1555,
+    "output_tokens": 182,
+    "cached": false
+  }
+}

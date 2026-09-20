@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strLocCd",
+    "votes": [
+      {
+        "target_field": "location_code",
+        "vote": 1.0,
+        "reason": "Column name strLocCd matches location code column and values like 'MUM-01' represent office/location identifiers"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1014,
+    "input_tokens": 1311,
+    "output_tokens": 156,
+    "cached": false
+  }
+}

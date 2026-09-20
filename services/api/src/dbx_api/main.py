@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 from typing import Annotated, Any
@@ -339,6 +340,66 @@ def recommend(run_id: str) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(503, f"the model could not propose a schema: {exc}") from exc
 
+    # The model reliably names the fields and rarely marks any of them unique — and a
+    # schema with nothing unique has no blocking keys, so reconciliation never runs and
+    # the same person arrives several times. The data already says which columns are
+    # unique, so say it in the schema rather than hoping the model does.
+    #: A column of values that happen to be distinct is not an identifier. In a
+    #: 24-row sample every first name is different too, and marking that unique would
+    #: reject two people called Priya. So a field qualifies only if it also *looks*
+    #: like an identifier: an email, a coded value, or a name that says so.
+    id_name = re.compile(r"(^|_)(id|code|ref|reference|number|no|key|uid)$")
+    profiles_by_key: dict[str, Any] = {}
+    for profile in profiles:
+        # A four-row file makes anything look distinct. Judge on a real sample.
+        if profile.non_null >= 8:
+            key = re.sub(r"[^a-z0-9]+", "", profile.raw_name.casefold())
+            best = profiles_by_key.get(key)
+            if best is None or profile.cardinality_ratio > best.cardinality_ratio:
+                profiles_by_key[key] = profile
+
+    def _looks_like_a_lookup_value(name: str, by_key: dict[str, Any]) -> bool:
+        """Does a small set of values repeat across the run? Then it is a category."""
+        key = re.sub(r"[^a-z0-9]+", "", name.casefold())
+        ratios = [
+            p.cardinality_ratio for column, p in by_key.items()
+            if (column == key or column.endswith(key) or key.endswith(column))
+        ]
+        return bool(ratios) and min(ratios) < 0.9
+
+    def identifier_like(name: str, field_type: str) -> bool:
+        key = re.sub(r"[^a-z0-9]+", "", name.casefold())
+        for column, profile in profiles_by_key.items():
+            if not (column == key or column.endswith(key) or key.endswith(column)):
+                continue
+            if profile.cardinality_ratio < 0.99:
+                continue
+            if field_type == "email" or id_name.search(name):
+                return True
+            mask = profile.dominant_mask()
+            # A coded value: one consistent shape, with both letters and digits in it.
+            if mask and mask.coverage >= 0.9 and "#" in mask.mask and (
+                "A" in mask.mask or "a" in mask.mask
+            ):
+                return True
+        return False
+
+    marked = 0
+    for field in proposal.fields:
+        if field.unique or not field.required:
+            continue
+        # A field that points into a lookup is shared by many records by design —
+        # a department code identifies a department, not the person in it.
+        # A value drawn from a lookup is shared by many records by design: a
+        # department code identifies a department, not the person in it.
+        if any(f.name == field.name and f.allowed for f in proposal.fields):
+            continue
+        if _looks_like_a_lookup_value(field.name, profiles_by_key):
+            continue
+        if identifier_like(field.name, field.type):
+            field.unique = True
+            marked += 1
+
     draft = {
         "schema_version": 1,
         "entity": proposal.entity,
@@ -359,7 +420,11 @@ def recommend(run_id: str) -> dict[str, Any]:
     )
     store.append_audit(run_id, [{
         "actor": Actor.AGENT.value, "action": "schema.recommended",
-        "summary": f"Proposed a {len(schema.fields)}-field schema for {schema.entity}",
+        "summary": (
+            f"Proposed a {len(schema.fields)}-field schema for {schema.entity}"
+            + (f"; marked {marked} field(s) unique because their values are all different"
+               if marked else "")
+        ),
         "at": now(), "provider": call.provider, "model": call.model,
         "prompt_version": call.prompt_version, "latency_ms": call.latency_ms,
     }])

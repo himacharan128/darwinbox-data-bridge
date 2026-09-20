@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "intSeqNo",
+    "votes": [
+      {
+        "target_field": "source_record_id",
+        "vote": 1.0,
+        "reason": "Column name intSeqNo and integer sequential values (1,2,3,4) match source_record_id which stores a sequential identifier from the source system"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 896,
+    "input_tokens": 1355,
+    "output_tokens": 162,
+    "cached": false
+  }
+}

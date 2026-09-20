@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "created_by",
+    "votes": [
+      {
+        "target_field": "source_system",
+        "vote": 0.6,
+        "reason": "Column name 'created_by' holds a system identifier like 'svc_etl', which could indicate the source system that generated the record"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1095,
+    "input_tokens": 1221,
+    "output_tokens": 199,
+    "cached": false
+  }
+}

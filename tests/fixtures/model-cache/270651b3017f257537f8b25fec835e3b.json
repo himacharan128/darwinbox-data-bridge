@@ -1,0 +1,201 @@
+{
+  "payload": {
+    "entity": "employee",
+    "fields": [
+      {
+        "name": "employee_id",
+        "type": "string",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Emp ID, staff_code, code, strEmployeeCode, emp_ref, emp_ref all contain the employee identifier"
+      },
+      {
+        "name": "first_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns First Name, given_name, fname, strFirstNm, legal_first, First Name. all represent the employee's given name"
+      },
+      {
+        "name": "last_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Last Name, surname, lname, strLastNm, legal_last, Last Nam\u00e9 all represent the employee's family name"
+      },
+      {
+        "name": "work_email",
+        "type": "email",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Email, strEmailAddr, email_id, corp_email, contact (when email) hold the employee's corporate email address"
+      },
+      {
+        "name": "mobile_phone",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Mobile, strMobileNo, cell, contact (when phone) contain the employee's mobile number"
+      },
+      {
+        "name": "date_of_birth",
+        "type": "date",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": "YYYY-MM-DD",
+        "reason": "Columns DOB, dtDateOfBirth, birth_date, birth_dt all store the employee's birth date"
+      },
+      {
+        "name": "date_of_joining",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": "YYYY-MM-DD",
+        "reason": "Columns Date of Joining, doj, dtDateOfJoin, joining_dt, hire_dt all capture the employee's start date"
+      },
+      {
+        "name": "department_code",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Dept Code, dept, strDeptCd, div_code represent the department identifier"
+      },
+      {
+        "name": "location_code",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Location, loc, office, site, strLocCd hold the office/location code"
+      },
+      {
+        "name": "job_title",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Designation, strDesignation, grade, job_title all describe the employee's role or title"
+      },
+      {
+        "name": "employment_type",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "FULL_TIME",
+          "PART_TIME",
+          "INTERN",
+          "CONTRACT"
+        ],
+        "format": null,
+        "reason": "Columns Employment Type, emp_type, strEmpType, worker_class, Employment capture the contract type"
+      },
+      {
+        "name": "manager_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns Manager ID, mgr, reports_to, supervisor_ref, strReportingMgr, Type -Manager ID reference the employee's manager"
+      },
+      {
+        "name": "grade_band",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column strGradeBand stores the employee's grade band (e.g., B1, B2, C1)"
+      },
+      {
+        "name": "cost_centre",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column cost_centre holds the cost centre code for the employee"
+      },
+      {
+        "name": "is_active",
+        "type": "boolean",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column is_active_flag indicates whether the employee is currently active"
+      },
+      {
+        "name": "is_deleted",
+        "type": "boolean",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column bIsDeleted flags soft\u2011deletion of a record"
+      },
+      {
+        "name": "source_record_id",
+        "type": "integer",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Columns intSeqNo, record_no provide a sequential identifier from the source system"
+      },
+      {
+        "name": "legacy_system_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column legacy_sys_id stores the identifier from the legacy HR system"
+      },
+      {
+        "name": "source_system",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column strSourceSystem indicates which source system the row originated from"
+      },
+      {
+        "name": "last_sync_timestamp",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Column dtLastSync records when the record was last synchronized"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "schema/v1",
+    "latency_ms": 6943,
+    "input_tokens": 8103,
+    "output_tokens": 1820,
+    "cached": false
+  }
+}

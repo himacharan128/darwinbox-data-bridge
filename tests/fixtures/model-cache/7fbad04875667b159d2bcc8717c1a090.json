@@ -1,0 +1,144 @@
+{
+  "payload": {
+    "entity": "employee",
+    "fields": [
+      {
+        "name": "employee_id",
+        "type": "string",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "reason": "Emp ID and staff_code columns both contain unique employee identifiers like EMP-20001"
+      },
+      {
+        "name": "first_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "First Name and fname columns provide the given name of each employee"
+      },
+      {
+        "name": "last_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Last Name and lname columns provide the family name of each employee"
+      },
+      {
+        "name": "email",
+        "type": "email",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "reason": "Email and email_id columns contain work email addresses, one per employee"
+      },
+      {
+        "name": "mobile_number",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "mobile column (present in two files) stores the employee's mobile phone number"
+      },
+      {
+        "name": "date_of_birth",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "DOB and birth_date columns both represent the employee's birth date"
+      },
+      {
+        "name": "date_of_joining",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Date of Joining and joining_dt columns capture when the employee started"
+      },
+      {
+        "name": "department_code",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "ENG",
+          "SALES",
+          "FIN"
+        ],
+        "format": null,
+        "reason": "Dept Code and department columns hold a short code for the employee's department"
+      },
+      {
+        "name": "job_title",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Designation and grade columns describe the employee's role or grade"
+      },
+      {
+        "name": "employment_type",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "FULL_TIME",
+          "CONTRACT"
+        ],
+        "format": null,
+        "reason": "Employment Type and emp_type columns indicate full\u2011time vs contract status"
+      },
+      {
+        "name": "manager_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Manager ID and reports_to columns reference the employee_id of the manager"
+      },
+      {
+        "name": "location",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "BLR-HQ",
+          "HYD-01",
+          "MUM-01"
+        ],
+        "format": null,
+        "reason": "Location and site columns store the office/site code where the employee works"
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Status and state columns both contain the employment status (e.g., ACTIVE)"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "schema/v1",
+    "latency_ms": 3640,
+    "input_tokens": 2874,
+    "output_tokens": 1113,
+    "cached": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Designation",
+    "votes": [
+      {
+        "target_field": "job_title",
+        "vote": 1.0,
+        "reason": "Column name 'Designation' directly maps to job title and sample values are role titles like Engineer I, VP Engineering"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 448,
+    "input_tokens": 1491,
+    "output_tokens": 146,
+    "cached": false
+  }
+}

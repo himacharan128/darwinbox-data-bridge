@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "legacy_sys_id",
+    "votes": [
+      {
+        "target_field": "legacy_system_id",
+        "vote": 1.0,
+        "reason": "Column name matches and values are string IDs like LEG-88120, typical legacy system identifiers"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 621,
+    "input_tokens": 1335,
+    "output_tokens": 138,
+    "cached": false
+  }
+}

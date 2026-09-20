@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "grade",
+    "votes": [
+      {
+        "target_field": "job_title",
+        "vote": 1.0,
+        "reason": "Column name 'grade' but values are job titles like 'VP Engineering', indicating role description"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 905,
+    "input_tokens": 1372,
+    "output_tokens": 141,
+    "cached": false
+  }
+}

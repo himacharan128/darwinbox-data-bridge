@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "Manager ID",
+    "votes": [
+      {
+        "target_field": "manager_id",
+        "vote": 1.0,
+        "reason": "Column name 'Manager ID' directly matches target field and values look like employee IDs used for manager references"
+      },
+      {
+        "target_field": "employee_id",
+        "vote": 0.0,
+        "reason": "Values are employee codes, but column name indicates they refer to a manager rather than the primary employee identifier"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1424,
+    "input_tokens": 1276,
+    "output_tokens": 214,
+    "cached": false
+  }
+}

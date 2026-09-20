@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "grade",
+    "votes": [
+      {
+        "target_field": "job_title",
+        "vote": 1.0,
+        "reason": "Values are job titles like 'VP Engineering' and 'Engineer II', matching job_title field"
+      },
+      {
+        "target_field": "grade_band",
+        "vote": 0.0,
+        "reason": "Column name 'grade' could map to grade_band, but values are titles not band codes"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1465,
+    "input_tokens": 1378,
+    "output_tokens": 191,
+    "cached": false
+  }
+}

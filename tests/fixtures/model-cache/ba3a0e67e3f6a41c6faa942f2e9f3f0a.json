@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "role",
+    "votes": [
+      {
+        "target_field": "job_title",
+        "vote": 1.0,
+        "reason": "Column name 'role' and values like 'Contract Engineer' are typical job titles"
+      },
+      {
+        "target_field": "employment_type",
+        "vote": 0.0,
+        "reason": "Values include 'Contract' but represent role titles, not contract type"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1517,
+    "input_tokens": 1487,
+    "output_tokens": 262,
+    "cached": false
+  }
+}

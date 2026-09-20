@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "last_modified_ts",
+    "votes": [
+      {
+        "target_field": "last_sync_timestamp",
+        "vote": 1.0,
+        "reason": "Column name and ISO timestamp values indicate this is the record's last synchronization timestamp"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1044,
+    "input_tokens": 1436,
+    "output_tokens": 138,
+    "cached": false
+  }
+}

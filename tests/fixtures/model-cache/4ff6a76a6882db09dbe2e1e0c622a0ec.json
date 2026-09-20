@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Employment Type",
+    "votes": [
+      {
+        "target_field": "employment_type",
+        "vote": 1.0,
+        "reason": "Column name matches and values like 'FULL TIME' correspond to allowed enum values"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 813,
+    "input_tokens": 1219,
+    "output_tokens": 135,
+    "cached": false
+  }
+}

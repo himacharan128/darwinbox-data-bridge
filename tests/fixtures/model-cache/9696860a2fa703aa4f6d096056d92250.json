@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "legal_first",
+    "votes": [
+      {
+        "target_field": "first_name",
+        "vote": 1.0,
+        "reason": "Column name 'legal_first' and sample values are typical given names, matching first_name"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 710,
+    "input_tokens": 1309,
+    "output_tokens": 117,
+    "cached": false
+  }
+}

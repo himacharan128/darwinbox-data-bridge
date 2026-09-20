@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "job_title",
+    "votes": [
+      {
+        "target_field": "job_title",
+        "vote": 1.0,
+        "reason": "Column name and sample values like 'Engineer II' clearly represent employee role titles"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 779,
+    "input_tokens": 1377,
+    "output_tokens": 127,
+    "cached": false
+  }
+}

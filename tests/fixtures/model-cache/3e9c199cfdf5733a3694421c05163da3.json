@@ -1,0 +1,41 @@
+{
+  "payload": {
+    "source_column": "birth_date",
+    "votes": [
+      {
+        "target_field": "date_of_birth",
+        "vote": 1.0,
+        "reason": "Column name 'birth_date' and ISO date values clearly indicate employee birth date"
+      },
+      {
+        "target_field": "date_of_joining",
+        "vote": 0.0,
+        "reason": "Name suggests birth, not joining; unlikely to be start date"
+      },
+      {
+        "target_field": "employee_id",
+        "vote": 0.0,
+        "reason": "Values are dates, not identifiers"
+      },
+      {
+        "target_field": "mobile_phone",
+        "vote": 0.0,
+        "reason": "Values are dates, not phone numbers"
+      },
+      {
+        "target_field": "work_email",
+        "vote": 0.0,
+        "reason": "Values are dates, not email addresses"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 652,
+    "input_tokens": 1417,
+    "output_tokens": 292,
+    "cached": false
+  }
+}

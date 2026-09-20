@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Designation",
+    "votes": [
+      {
+        "target_field": "job_title",
+        "vote": 1.0,
+        "reason": "Column name matches target field and sample values are job titles like 'Account Executive'"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 542,
+    "input_tokens": 1326,
+    "output_tokens": 133,
+    "cached": false
+  }
+}

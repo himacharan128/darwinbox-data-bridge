@@ -1,0 +1,140 @@
+{
+  "payload": {
+    "entity": "employee",
+    "fields": [
+      {
+        "name": "emp_id",
+        "type": "string",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "reason": "Emp ID column present in source, fully populated, distinct per row"
+      },
+      {
+        "name": "first_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "First Name column, fully populated"
+      },
+      {
+        "name": "last_name",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Last Name column, fully populated"
+      },
+      {
+        "name": "email",
+        "type": "email",
+        "required": true,
+        "unique": true,
+        "allowed": [],
+        "format": null,
+        "reason": "Email column, fully populated, distinct per employee"
+      },
+      {
+        "name": "mobile",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Mobile column, fully populated; values include '+' sign so treat as string"
+      },
+      {
+        "name": "date_of_birth",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "DOB column, fully populated, date values"
+      },
+      {
+        "name": "date_of_joining",
+        "type": "date",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Date of Joining column, fully populated, date values"
+      },
+      {
+        "name": "dept_code",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Dept Code column, fully populated"
+      },
+      {
+        "name": "designation",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Designation column, fully populated"
+      },
+      {
+        "name": "employment_type",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "FULL_TIME",
+          "PART_TIME",
+          "CONTRACT"
+        ],
+        "format": null,
+        "reason": "Employment Type column, fully populated, limited distinct values"
+      },
+      {
+        "name": "manager_id",
+        "type": "string",
+        "required": false,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Manager ID column, partially populated (20/24)"
+      },
+      {
+        "name": "location",
+        "type": "string",
+        "required": true,
+        "unique": false,
+        "allowed": [],
+        "format": null,
+        "reason": "Location column, fully populated"
+      },
+      {
+        "name": "status",
+        "type": "enum",
+        "required": true,
+        "unique": false,
+        "allowed": [
+          "ACTIVE",
+          "ON_LEAVE"
+        ],
+        "format": null,
+        "reason": "Status column, fully populated, limited distinct values"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "schema/v1",
+    "latency_ms": 2062,
+    "input_tokens": 1842,
+    "output_tokens": 839,
+    "cached": false
+  }
+}

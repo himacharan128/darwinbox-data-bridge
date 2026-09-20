@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strGradeBand",
+    "votes": [
+      {
+        "target_field": "grade_band",
+        "vote": 1.0,
+        "reason": "Column name and values like B2, B1, C1 match grade band codes"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 642,
+    "input_tokens": 1287,
+    "output_tokens": 120,
+    "cached": false
+  }
+}

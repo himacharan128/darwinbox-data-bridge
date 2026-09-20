@@ -1,0 +1,41 @@
+{
+  "payload": {
+    "source_column": "Designation",
+    "votes": [
+      {
+        "target_field": "job_title",
+        "vote": 1.0,
+        "reason": "Column name matches target field and sample values are job titles like 'Account Executive'"
+      },
+      {
+        "target_field": "employment_type",
+        "vote": 0.0,
+        "reason": "Values are job titles, not contract types"
+      },
+      {
+        "target_field": "department_code",
+        "vote": 0.0,
+        "reason": "No indication of department identifiers in values"
+      },
+      {
+        "target_field": "first_name",
+        "vote": 0.0,
+        "reason": "Values are multi-word titles, not personal names"
+      },
+      {
+        "target_field": "last_name",
+        "vote": 0.0,
+        "reason": "Values are not surnames"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 860,
+    "input_tokens": 1328,
+    "output_tokens": 279,
+    "cached": false
+  }
+}

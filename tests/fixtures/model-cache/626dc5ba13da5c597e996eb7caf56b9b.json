@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "lname",
+    "votes": [
+      {
+        "target_field": "last_name",
+        "vote": 1.0,
+        "reason": "Column name 'lname' and sample values are typical family names, matching the last_name field"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 886,
+    "input_tokens": 1243,
+    "output_tokens": 129,
+    "cached": false
+  }
+}

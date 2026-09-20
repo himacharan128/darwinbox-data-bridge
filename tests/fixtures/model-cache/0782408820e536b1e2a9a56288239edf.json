@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "loc",
+    "votes": [
+      {
+        "target_field": "location_code",
+        "vote": 1.0,
+        "reason": "Column name 'loc' matches target field 'location_code' and values are location identifiers like 'MUM-01', 'HYD-01', 'BLR-HQ', 'REMOTE'"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1084,
+    "input_tokens": 1353,
+    "output_tokens": 157,
+    "cached": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "corp_email",
+    "votes": [
+      {
+        "target_field": "work_email",
+        "vote": 1.0,
+        "reason": "Column name corp_email and email type with corporate domain indicate employee's work email address"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 782,
+    "input_tokens": 1521,
+    "output_tokens": 119,
+    "cached": false
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "source_column": "dtProbationEnd",
+    "votes": []
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 844,
+    "input_tokens": 1385,
+    "output_tokens": 151,
+    "cached": false
+  }
+}

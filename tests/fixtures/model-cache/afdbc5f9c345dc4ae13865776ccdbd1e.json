@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "Type -Manager ID",
+    "votes": [
+      {
+        "target_field": "manager_id",
+        "vote": 1.0,
+        "reason": "Column name includes 'Manager ID' and values look like employee codes (e.g., EMP-00004) typical for manager references"
+      },
+      {
+        "target_field": "employee_id",
+        "vote": 0.0,
+        "reason": "Values resemble employee identifiers but column name specifically indicates manager relationship"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 566,
+    "input_tokens": 1282,
+    "output_tokens": 217,
+    "cached": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "bIsDeleted",
+    "votes": [
+      {
+        "target_field": "is_deleted",
+        "vote": 1.0,
+        "reason": "Column name bIsDeleted and boolean values (N) directly indicate soft\u2011deletion flag"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 622,
+    "input_tokens": 1238,
+    "output_tokens": 138,
+    "cached": false
+  }
+}

@@ -134,6 +134,9 @@ Rules:
 something emp_id, staff_code, code, emp_ref and strEmployeeCode is one field.
 - Mark a field `required` ONLY if essentially every record supplies it. A column being \
 populated in one file is not enough.
+- Mark `unique` on any field that identifies one record — the employee code, the work \
+email. Without at least one unique field nothing can tell two people apart, and the \
+same person will be loaded several times.
 - Use `enum` with `allowed` only when the values are a small closed set.
 - Ignore columns that are not part of the entity: row numbers, checksums, audit \
 timestamps, sync markers, internal notes, bank details.

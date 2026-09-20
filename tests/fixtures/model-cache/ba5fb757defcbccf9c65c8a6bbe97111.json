@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strEmailAddr",
+    "votes": [
+      {
+        "target_field": "work_email",
+        "vote": 1.0,
+        "reason": "Column name and email type clearly indicate corporate email address"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1155,
+    "input_tokens": 1478,
+    "output_tokens": 135,
+    "cached": false
+  }
+}

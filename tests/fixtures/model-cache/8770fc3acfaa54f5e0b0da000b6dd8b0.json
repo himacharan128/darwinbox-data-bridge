@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "intVersionNo",
+    "votes": [
+      {
+        "target_field": "source_record_id",
+        "vote": 1.0,
+        "reason": "Column name suggests an integer identifier and values are unique integers, matching source_record_id semantics"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 830,
+    "input_tokens": 1353,
+    "output_tokens": 180,
+    "cached": false
+  }
+}

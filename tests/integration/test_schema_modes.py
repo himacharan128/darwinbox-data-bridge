@@ -232,3 +232,26 @@ def test_delivered_records_keep_the_version_they_were_sent_under(client, run):
         assert "cost_centre" not in record["payload"], (
             "a delivered payload must not gain a field it was never sent with"
         )
+
+
+def test_a_proposed_schema_can_actually_reconcile(client, run):
+    """A schema with nothing unique has no blocking keys, so nothing ever merges.
+
+    The model names fields well and rarely marks one unique, which quietly turned
+    multi-file reconciliation off: the same person arrived once per file with no
+    duplicate ever detected.
+    """
+    client.post(f"/api/runs/{run}/schema/recommend")
+    proposal = client.get(f"/api/runs/{run}/schema").json()
+    unique = [f["name"] for f in proposal["active"]["fields"] if f.get("unique")]
+    assert unique, "something has to identify a person"
+
+    # …but only things that actually identify one.
+    assert not any(n in ("first_name", "last_name", "designation", "department_code")
+                   for n in unique), f"over-marked: {unique}"
+
+    client.post(f"/api/runs/{run}/schema/{proposal['draft_version']}/approve")
+    counts = client.get(f"/api/runs/{run}?wait=true").json()["counts"]
+    assert counts["records"] < counts["rows_read"], (
+        "the same people appear across these files and should have been merged"
+    )

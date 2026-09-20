@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "strDeptCd",
+    "votes": [
+      {
+        "target_field": "department_code",
+        "vote": 1.0,
+        "reason": "Column name strDeptCd and sample values like ENG, SALES, FIN, HR indicate department identifiers"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 476,
+    "input_tokens": 1332,
+    "output_tokens": 138,
+    "cached": false
+  }
+}

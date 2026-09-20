@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "reports_to",
+    "votes": [
+      {
+        "target_field": "manager_id",
+        "vote": 1.0,
+        "reason": "Column name 'reports_to' and values like 'EMP-00002' clearly reference another employee's ID, matching manager_id"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 566,
+    "input_tokens": 1278,
+    "output_tokens": 149,
+    "cached": false
+  }
+}

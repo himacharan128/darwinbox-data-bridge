@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "div_code",
+    "votes": [
+      {
+        "target_field": "department_code",
+        "vote": 1.0,
+        "reason": "Column name 'div_code' is listed as a synonym for department_code and values are department abbreviations like ENG, SALES"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 688,
+    "input_tokens": 1347,
+    "output_tokens": 152,
+    "cached": false
+  }
+}

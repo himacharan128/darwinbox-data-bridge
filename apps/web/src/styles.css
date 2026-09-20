@@ -326,40 +326,39 @@ details.collapse > *:not(summary) { padding: 0 18px 18px; }
 
 /* ---------------------------------------------------------------- mobile */
 
-@media (max-width: 860px) {
-  .app { padding: 0 14px 56px; }
-  .grid { grid-template-columns: minmax(0, 1fr); }
-  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .stat { min-width: 0; padding: 11px 13px; }
-  .stat b { font-size: 21px; }
-  .stats > button, .stats > .spacer { grid-column: 1 / -1; width: 100%; }
-  .facts { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .facts dt { margin-top: 8px; }
-  .facts dt:first-child { margin-top: 0; }
-  .actions button, .options button { flex: 1 1 100%; min-height: 44px; }
-  .nav button { flex: 1 1 40%; min-height: 42px; }
-  .choices, .samples { grid-template-columns: minmax(0, 1fr); }
-  .kv { grid-template-columns: minmax(0, 1fr); gap: 1px 0; }
-  .kv dt { margin-top: 8px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; }
-  .feed { max-height: 300px; }
-  .case h3 { font-size: 17px; }
+  .shell[data-layout="mobile"] .app { padding: 0 14px 56px; }
+  .shell[data-layout="mobile"] .grid { grid-template-columns: minmax(0, 1fr); }
+  .shell[data-layout="mobile"] .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .shell[data-layout="mobile"] .stat { min-width: 0; padding: 11px 13px; }
+  .shell[data-layout="mobile"] .stat b { font-size: 21px; }
+  .shell[data-layout="mobile"] .stats > button, .shell[data-layout="mobile"] .stats > .spacer { grid-column: 1 / -1; width: 100%; }
+  .shell[data-layout="mobile"] .facts { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .shell[data-layout="mobile"] .facts dt { margin-top: 8px; }
+  .shell[data-layout="mobile"] .facts dt:first-child { margin-top: 0; }
+  .shell[data-layout="mobile"] .actions button, .shell[data-layout="mobile"] .options button { flex: 1 1 100%; min-height: 44px; }
+  .shell[data-layout="mobile"] .nav button { flex: 1 1 40%; min-height: 42px; }
+  .shell[data-layout="mobile"] .choices, .shell[data-layout="mobile"] .samples { grid-template-columns: minmax(0, 1fr); }
+  .shell[data-layout="mobile"] .kv { grid-template-columns: minmax(0, 1fr); gap: 1px 0; }
+  .shell[data-layout="mobile"] .kv dt { margin-top: 8px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .shell[data-layout="mobile"] .feed { max-height: 300px; }
+  .shell[data-layout="mobile"] .case h3 { font-size: 17px; }
 
   /* A twelve-column row is unreadable at 380px, so rows become cards. */
   table.responsive, table.responsive thead, table.responsive tbody,
-  table.responsive tr, table.responsive td { display: block; width: 100%; }
-  table.responsive thead { display: none; }
-  table.responsive tr {
+  .shell[data-layout="mobile"] table.responsive tr, .shell[data-layout="mobile"] table.responsive td { display: block; width: 100%; }
+  .shell[data-layout="mobile"] table.responsive thead { display: none; }
+  .shell[data-layout="mobile"] table.responsive tr {
     border: 1px solid var(--line); border-radius: var(--r-sm);
     padding: 10px 12px; margin-bottom: 10px; background: var(--surface);
   }
-  table.responsive tbody tr:hover td { background: none; }
-  table.responsive td { border: 0; padding: 4px 0; display: flex; gap: 10px; align-items: baseline; }
-  table.responsive td::before {
+  .shell[data-layout="mobile"] table.responsive tbody tr:hover td { background: none; }
+  .shell[data-layout="mobile"] table.responsive td { border: 0; padding: 4px 0; display: flex; gap: 10px; align-items: baseline; }
+  .shell[data-layout="mobile"] table.responsive td::before {
     content: attr(data-label); flex: 0 0 96px; color: var(--ink-3);
     font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600;
   }
-  .scroll { margin: 0; padding: 0; }
-}
+  .shell[data-layout="mobile"] .scroll { margin: 0; padding: 0; }
+
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
@@ -511,9 +510,8 @@ details.why .reasons { margin-top: 8px; }
 
 /* ============================================================== mobile === */
 
-@media (max-width: 860px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .sidebar {
+  .shell[data-layout="mobile"] .sidebar {
     position: fixed; inset: 0 auto 0 0; width: 272px; z-index: 40;
     transform: translateX(-100%); transition: transform .2s ease;
     box-shadow: var(--shadow-md);
@@ -523,14 +521,14 @@ details.why .reasons { margin-top: 8px; }
     display: block; position: fixed; inset: 0; z-index: 30;
     background: rgba(16, 24, 40, .38);
   }
-  .menu { display: inline-flex; }
-  .work { padding: 0 14px 56px; }
-  .topbar { padding: 12px 0; }
-  .work-title { font-size: 15.5px; }
-  .compare { grid-template-columns: minmax(0, 1fr); }
-  .typeit { flex-direction: column; }
-  .typeit button { width: 100%; min-height: 44px; }
-  .resolve .options button { flex: 1 1 100%; }
-  .subject-name { font-size: 14px; }
-  .callout-value { font-size: 15.5px; }
-}
+  .shell[data-layout="mobile"] .menu { display: inline-flex; }
+  .shell[data-layout="mobile"] .work { padding: 0 14px 56px; }
+  .shell[data-layout="mobile"] .topbar { padding: 12px 0; }
+  .shell[data-layout="mobile"] .work-title { font-size: 15.5px; }
+  .shell[data-layout="mobile"] .compare { grid-template-columns: minmax(0, 1fr); }
+  .shell[data-layout="mobile"] .typeit { flex-direction: column; }
+  .shell[data-layout="mobile"] .typeit button { width: 100%; min-height: 44px; }
+  .shell[data-layout="mobile"] .resolve .options button { flex: 1 1 100%; }
+  .shell[data-layout="mobile"] .subject-name { font-size: 14px; }
+  .shell[data-layout="mobile"] .callout-value { font-size: 15.5px; }
+

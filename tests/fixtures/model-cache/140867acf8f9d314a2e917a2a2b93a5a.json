@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Mobile",
+    "votes": [
+      {
+        "target_field": "mobile_phone",
+        "vote": 1.0,
+        "reason": "Column name 'Mobile' and phone-like string patterns indicate employee's mobile number"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 851,
+    "input_tokens": 1400,
+    "output_tokens": 129,
+    "cached": false
+  }
+}
