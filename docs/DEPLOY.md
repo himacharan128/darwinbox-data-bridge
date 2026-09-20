@@ -164,9 +164,13 @@ scales to zero, though the balancer still bills. `make teardown` removes everyth
 
 ### Two things worth knowing
 
-- **State is ephemeral.** Runs live on the task's own disk, so a restart loses run
-  history. Deliberate: EFS is more moving parts than a demo justifies, and any run can
-  be recreated from its files. For anything real, mount EFS or point `DATABASE_URL`
+- **State is ephemeral and per-task.** Runs live on the task's own disk. A restart
+  loses run history, and — the part that bites — **two tasks do not share it**. During
+  a rolling deploy there are briefly two, so an upload can land on one task and the
+  next request on the other, which answers `404 no such run`. Harmless here because the
+  service runs a single task and settles within a minute, but it is the reason this
+  cannot be scaled out as-is. The fix is shared state, not stickiness: a replaced task
+  takes its disk with it whatever the balancer does. Mount EFS, or point `DATABASE_URL`
   at RDS.
 - **The load balancer is what makes the URL stable.** Without one the task's public IP
   changes on every restart, quietly breaking a link you have already shared.

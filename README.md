@@ -42,6 +42,18 @@ The model runs from **recorded replays** committed under `tests/fixtures/model-c
 so everything above works offline. Set `OPENAI_API_KEY` and `AWS_REGION` (see
 `.env.example`) to call the live model instead.
 
+## The flow
+
+1. **Upload the client's files** — or pick one of five bundled sample sets. CSV, Excel,
+   JSON, YAML, PDF and scans.
+2. **See what was read** — file by file, with anything unreadable named and explained.
+   Nothing has been mapped yet.
+3. **Agree a target schema** — paste your own, or have the agent propose one from the
+   columns it found. Either way it is a draft you edit.
+4. **Approve it.** That is what starts the migration; a run against a schema nobody
+   agreed to makes every decision after it unaccountable.
+5. **Supervise** — live activity, an escalation queue, delivery with retry and rollback.
+
 ## What it does
 
 1. **Reads seven files in seven shapes** — CSV, Excel, JSON, YAML, pasted text, a
