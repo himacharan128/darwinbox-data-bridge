@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Designation",
+    "votes": [
+      {
+        "target_field": "designation",
+        "vote": 1.0,
+        "reason": "Column name and values like 'Engineer' clearly represent the employee's designation"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1046,
+    "input_tokens": 878,
+    "output_tokens": 126,
+    "cached": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "joining_dt",
+    "votes": [
+      {
+        "target_field": "date_of_joining",
+        "vote": 1.0,
+        "reason": "Column name 'joining_dt' and ISO date values clearly indicate employee joining date"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 748,
+    "input_tokens": 1019,
+    "output_tokens": 139,
+    "cached": false
+  }
+}

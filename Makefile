@@ -1,4 +1,4 @@
-.PHONY: help setup web db-up db-down fmt lint test eval sweep run demo stack stack-down
+.PHONY: help setup web db-up db-down fmt lint test eval sweep run demo samples stack stack-down
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1 | sed 's/^/  make /'
@@ -27,6 +27,9 @@ eval:           ## measure the escalation boundary against the labelled corpus
 
 sweep:          ## show how the boundary moves with the thresholds
 	uv run python scripts/eval_mapping.py --sweep
+
+samples:        ## run every sample set and report what each produced
+	uv run python scripts/run_samples.py
 
 demo:           ## run one migration in the terminal
 	uv run python scripts/run_migration.py

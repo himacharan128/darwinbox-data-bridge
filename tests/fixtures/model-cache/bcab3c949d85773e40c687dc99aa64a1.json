@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Designation",
+    "votes": [
+      {
+        "target_field": "designation",
+        "vote": 1.0,
+        "reason": "Column name 'Designation' and sample value 'Engineer' directly correspond to the target field designation."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 548,
+    "input_tokens": 878,
+    "output_tokens": 135,
+    "cached": false
+  }
+}

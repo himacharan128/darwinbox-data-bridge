@@ -1,0 +1,6 @@
+record_no,emp_ref,legal_first,legal_last,corp_email,cell,birth_dt,hire_dt,div_code,job_title,worker_class,supervisor_ref,office,last_modified_ts,created_by,internal_notes,is_active_flag,cost_centre,row_checksum,legacy_sys_id
+1,EMP-00030,Priya,Menon,priya.menon@acme-hr.example,+91 98450 11030,1992-02-17,2021-03-08,ENG,Engineer II,FULL_TIME,EMP-00002,BLR-HQ,2024-01-15T09:12:44Z,svc_etl,transferred from contractor pool,Y,CC-4401,a81f3c,LEG-88120
+2,EMP-00031,Rahul,Deshpande,rahul.deshpande@acme-hr.example,+91 98450 11031,1987-11-05,2019-07-22,SALES,Sales Manager,FULL_TIME,EMP-00004,HYD-01,2024-01-15T09:12:45Z,svc_etl,,Y,CC-2210,b92e4d,LEG-88121
+3,EMP-00032,Sneha,Kulkarni,sneha.kulkarni@acme-hr.example,+91 98450 11032,1995-06-29,2022-09-12,HR,HR Generalist,PART_TIME,EMP-00006,MUM-01,2024-01-15T09:12:46Z,svc_etl,part-time since Aug,Y,CC-3302,c03f5e,LEG-88122
+4,EMP-00033,Karan,Bhatia,karan.bhatia@acme-hr.example,+91 98450 11033,1990-04-14,2020-11-30,FIN,Financial Controller,FULL_TIME,EMP-00007,MUM-01,2024-01-15T09:12:47Z,svc_etl,,Y,CC-5501,d14a6f,LEG-88123
+5,EMP-00034,Divya,Raman,divya.raman@acme-hr.example,+91 98450 11034,1998-08-03,2023-05-18,TECHOPS,SRE I,FULL_TIME,EMP-00028,BLR-HQ,2024-01-15T09:12:48Z,svc_etl,on probation,Y,CC-4402,e25b70,LEG-88124

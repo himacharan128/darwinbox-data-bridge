@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "Date of Joining",
+    "votes": [
+      {
+        "target_field": "date_of_joining",
+        "vote": 1.0,
+        "reason": "Column name and ISO date values match the required joining date field"
+      },
+      {
+        "target_field": "date_of_birth",
+        "vote": 0.0,
+        "reason": "Values are recent dates typical for joining, not birth dates"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 683,
+    "input_tokens": 1052,
+    "output_tokens": 176,
+    "cached": false
+  }
+}

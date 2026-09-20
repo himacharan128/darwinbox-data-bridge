@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Manager ID",
+    "votes": [
+      {
+        "target_field": "manager_employee_id",
+        "vote": 1.0,
+        "reason": "Column name 'Manager ID' and values like 'EMP-99999' match the required EMP-##### pattern for manager_employee_id."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 696,
+    "input_tokens": 888,
+    "output_tokens": 150,
+    "cached": false
+  }
+}

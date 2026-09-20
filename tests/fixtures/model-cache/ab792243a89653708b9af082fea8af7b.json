@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "reports_to",
+    "votes": [
+      {
+        "target_field": "manager_employee_id",
+        "vote": 1.0,
+        "reason": "Values follow EMP-##### pattern and column name suggests a manager reference"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 848,
+    "input_tokens": 888,
+    "output_tokens": 152,
+    "cached": false
+  }
+}

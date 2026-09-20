@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Designation",
+    "votes": [
+      {
+        "target_field": "designation",
+        "vote": 0.0,
+        "reason": "Column name suggests designation but sample values are malicious strings, not actual job titles"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 995,
+    "input_tokens": 1154,
+    "output_tokens": 224,
+    "cached": false
+  }
+}

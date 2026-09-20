@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "DOB",
+    "votes": [
+      {
+        "target_field": "date_of_birth",
+        "vote": 1.0,
+        "reason": "Column name 'DOB' and ISO date values indicate date of birth"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 682,
+    "input_tokens": 986,
+    "output_tokens": 118,
+    "cached": false
+  }
+}

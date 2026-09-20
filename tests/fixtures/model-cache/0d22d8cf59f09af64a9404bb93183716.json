@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "source_column": "This sheet is prose, not a table.",
+    "votes": []
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 244,
+    "input_tokens": 913,
+    "output_tokens": 81,
+    "cached": false
+  }
+}

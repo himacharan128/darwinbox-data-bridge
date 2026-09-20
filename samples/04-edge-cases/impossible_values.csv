@@ -1,0 +1,4 @@
+Emp ID,First Name,Last Name,Email,Mobile,DOB,Date of Joining,Dept Code,Designation,Employment Type,Manager ID,Location,Status
+EMP-30030,Zero,Date,zero@acme-hr.example,+919845030030,0000-00-00,2020-13-45,ENG,Engineer,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-30031,Future,Birth,future@acme-hr.example,+919845030031,2099-01-01,1899-01-01,ENG,Engineer,FULL_TIME,EMP-99999,NOWHERE,UNKNOWN
+emp-30032,Lower,Case,lower@acme-hr.example,9845030032,1990-01-01,2020-01-01,ENG,Engineer,FTE,,BLR-HQ,ACTIVE

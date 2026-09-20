@@ -47,6 +47,9 @@ MAX_VALIDATION_ATTEMPTS = 2
 #: A value read below this is worth doubting when it also fails its field's rules.
 LOW_READ_CONFIDENCE = 0.80
 
+#: Below this share of required fields, a file is not the entity at all.
+UNRECOGNISED_FILE_RATIO = 0.30
+
 
 class VoteSource(Protocol):
     def __call__(self, profile: ColumnProfile, schema: MigrationSchema) -> dict[str, float]: ...
@@ -251,6 +254,17 @@ class Pipeline:
         identical ones and buries the cases that genuinely differ.
         """
         everywhere = {field for cols in applied.values() for field in cols.values()}
+        required = {f.name for f in self.schema.required_fields}
+
+        # A file supplying almost none of the required fields is not an employee export
+        # that is missing a column — it is a different kind of file. Asking about each
+        # missing field separately turns one judgement into a dozen identical prompts.
+        unusable = set()
+        for origin in files:
+            supplied = set(applied.get(origin, {}).values()) & required
+            if required and len(supplied) / len(required) < UNRECOGNISED_FILE_RATIO:
+                unusable.add(origin)
+                self._unrecognised_file(origin, supplied, required)
 
         for spec in self.schema.required_fields:
             if spec.name in everywhere:
@@ -258,6 +272,7 @@ class Pipeline:
                     f for f in files
                     if spec.name not in set(applied.get(f, {}).values())
                     and (f, spec.name) not in self.field_case
+                    and f not in unusable
                 ]
             elif (None, spec.name) in self.field_case:
                 continue
@@ -267,7 +282,34 @@ class Pipeline:
             for origin in missing_from:
                 if origin is not None and (origin, spec.name) in self.field_case:
                     continue
+                if origin in unusable:
+                    continue
                 self._raise_unmapped(spec, origin)
+
+    def _unrecognised_file(
+        self, origin: str, supplied: set[str], required: set[str]
+    ) -> None:
+        """One case for a file that does not look like the entity at all."""
+        missing = sorted(required - supplied)
+        case = self._case(
+            EscalationClass.UNMAPPED_REQUIRED,
+            headline=f"{origin} does not look like {self.schema.entity} data",
+            detail=(
+                f"Only {len(supplied)} of {len(required)} required fields could be "
+                f"matched to a column in this file. It may be a lookup table, an export "
+                f"of something else, or the wrong file."
+            ),
+            source_refs=[SourceRef(file=origin)],
+            evidence={
+                "matched": sorted(supplied) or ["nothing"],
+                "missing": missing[:10],
+            },
+            actions=[Action.CORRECT, Action.REJECT],
+            options=[Option(label="Ignore this file", value="exclude", recommended=True)],
+        )
+        # Every required field defers to this one case rather than asking again.
+        for name in required:
+            self.field_case.setdefault((origin, name), case.id)
 
     def _raise_unmapped(self, spec: FieldSpec, origin: str | None) -> None:
         near = sorted(

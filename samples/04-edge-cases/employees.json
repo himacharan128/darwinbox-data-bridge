@@ -1,0 +1,16 @@
+{
+ "data": [
+  {
+   "employee_id": "EMP-30060",
+   "first_name": "Json",
+   "last_name": "Flat",
+   "work_email": "json@acme-hr.example",
+   "department_code": "ENG",
+   "date_of_joining": "2022-08-15",
+   "employment_type": "FULL_TIME",
+   "location_code": "MUM-01",
+   "status": "ACTIVE",
+   "date_of_birth": "1994-02-02"
+  }
+ ]
+}

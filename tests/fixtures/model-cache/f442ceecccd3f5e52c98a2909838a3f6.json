@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "date_of_birth",
+    "votes": [
+      {
+        "target_field": "date_of_birth",
+        "vote": 1.0,
+        "reason": "Column name matches and values are ISO dates (YYYY-MM-DD) suitable for birth date."
+      },
+      {
+        "target_field": "date_of_joining",
+        "vote": 0.0,
+        "reason": "Same date format but column name indicates birth date, not joining date."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 646,
+    "input_tokens": 956,
+    "output_tokens": 209,
+    "cached": false
+  }
+}

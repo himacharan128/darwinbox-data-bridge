@@ -393,6 +393,9 @@ def _status(result: Any, records: list[dict], accepted: dict[str, int]) -> str:
         return "completed_with_exclusions" if excluded else "completed"
     if delivered:
         return "partially_delivered"
+    if deliverable:
+        # Nothing blocked, nothing sent: the agent is finished and waiting on a click.
+        return "ready_to_send"
     return "processing"
 
 

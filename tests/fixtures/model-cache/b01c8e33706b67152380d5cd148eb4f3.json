@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "mobile",
+    "votes": [
+      {
+        "target_field": "mobile_number",
+        "vote": 1.0,
+        "reason": "Column name 'mobile' and values like '+919845020001' match the required E.164 India mobile pattern"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 640,
+    "input_tokens": 1017,
+    "output_tokens": 134,
+    "cached": false
+  }
+}

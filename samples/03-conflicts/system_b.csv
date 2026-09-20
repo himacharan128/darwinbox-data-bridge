@@ -1,0 +1,4 @@
+staff_code,fname,lname,email_id,mobile,birth_date,joining_dt,department,grade,emp_type,reports_to,site,state
+EMP-20001,Priyanka,Das,priyanka.das@acme-hr.example,+919845020001,1991-03-19,2018-05-14,ENG,Director of Engineering,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-20002,Rohit,Malhotra,rohit.malhotra@acme-hr.example,+919845020002,1989-08-22,2016-11-01,SALES,Regional Head,FULL_TIME,,MUM-01,ACTIVE
+EMP-20099,Priyanka,Das,p.das@contractor.example,+919845020099,1991-03-19,2023-01-09,ENG,Contract Engineer,CONTRACT,EMP-20001,REMOTE,ACTIVE

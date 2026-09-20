@@ -1,0 +1,21 @@
+Emp ID,First Name,Last Name,Email,Mobile,DOB,Date of Joining,Dept Code,Designation,Employment Type,Manager ID,Location
+EMP-00001,Aarav,Sharma,aarav.sharma@acme-hr.example,+91 98450 11001,14/03/1985,01/04/2015,ENG,VP Engineering,Full Time,,BLR-HQ
+EMP-00002,Diya  ,  Patel,diya.patel@acme-hr.example,+91-98450-11002,22/07/1990,15/06/2018,ENG,Staff Engineer,Full Time,EMP-00001,BLR-HQ
+EMP-00003,Vihaan,Reddy,VIHAAN.REDDY@Acme-HR.Example,+919845011003,09/11/1992,20/01/2019,ENG,Senior Engineer,full-time,EMP-00002,BLR-HQ
+EMP-00004,Ananya,Iyer,ananya.iyer@acme-hr.example,+91 98450 11004,30/05/1988,05/09/2016,SALES,Regional Sales Head,FTE,,HYD-01
+EMP-00005,Kabir,Nair,kabir.nair@acme-hr.example,+91 98450 11005,17/02/1995,11/11/2020,SALES,Account Executive,Full Time,EMP-00004,HYD-01
+EMP-00006,Ishaan,Menon,ishaan.menon@acme-hr.example,N/A,25/08/1991,03/03/2019,HR,HR Business Partner,Full Time,EMP-00001,MUM-01
+EMP-00007,Saanvi,Kulkarni,saanvi.kulkarni@acme-hr.example,+91 98450 11007,12/12/1993,18/07/2021,FIN,Financial Analyst,Full Time,EMP-00001,MUM-01
+EMP-00008,Arjun,Desai,arjun.desai@acme-hr.example,+91 98450 11008,04/06/1987,22/02/2017,TECH,Principal Architect,Full Time,EMP-00001,BLR-HQ
+EMP-00009,Myra,Joshi,myra.joshi@acme-hr.example,+91 98450 11009,19/09/1994,30/08/2022,ENG,Engineer II,Full Time,EMP-00002,REMOTE
+EMP-00010,Reyansh,Bose,reyansh.bose@acme-hr.example,+91 98450 11010,27/01/1996,14/05/2023,ENG,Engineer I,Intern,EMP-00003,REMOTE
+EMP-00010,Reyansh,Bose,reyansh.bose@acme-hr.example,+91 98450 11010,27/01/1996,14/05/2023,ENG,Engineer I,Intern,EMP-00003,REMOTE
+EMP-00011,Aditya,Ghosh,aditya.ghosh@acme-hr.example,+91 98450 11011,,08/08/2021,FIN,Accountant,Full Time,EMP-00007,MUM-01
+EMP-00021,Kavya,Nambiar,kavya.nambiar@acme-hr,+91 98450 11021,08/04/1992,12/09/2022,ENG,Engineer II,Full Time,EMP-00002,BLR-HQ
+EMP-00022,Rhea,Banerjee,rhea.banerjee@acme-hr.example,+91 98450 11022,21/06/1990,19/03/2019,ENG,Engineer III,Full Time,EMP-00002,BLR-HQ
+EMP-00023,Ved,Prakash,ved.prakash@acme-hr.example,+91 98450 11023,02/10/1986,26/04/2018,FIN,Finance Manager,Full Time,EMP-00007,MUM-01
+EMP-00024,Nisha,Gupta,nisha.gupta@acme-hr.example,+91 98450 11024,13/01/1997,17/10/2022,HR,HR Generalist,Full Time,EMP-00006,MUM-01
+EMP-00025,Omar,Farooq,omar.farooq@acme-hr.example,+91 98450 11025,28/11/1989,23/05/2020,SALES,Sales Manager,Full Time,EMP-00004,HYD-01
+EMP-00026,Lakshmi,Pillai,lakshmi.pillai@acme-hr.example,+91 98450 11026,07/07/1991,29/01/2021,ENG,Engineering Manager,Full Time,EMP-00026,BLR-HQ
+EMP-00027,Tanvi,Shah,tanvi.shah@acme-hr.example,+91 98450 11027,16/02/1998,04/07/2023,ENG,Engineer I,Full Time,EMP-00026,REMOTE
+EMP-00028,Yash,Thakur,yash.thakur@acme-hr.example,+91 98450 11028,24/09/1995,09/02/2022,TECHOPS,SRE II,Full Time,EMP-00008,BLR-HQ

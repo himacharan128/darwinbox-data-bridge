@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "source_column": "grade",
+    "votes": [
+      {
+        "target_field": "designation",
+        "vote": 1.0,
+        "reason": "Values are job titles like 'Director of Engineering' indicating the employee's designation"
+      },
+      {
+        "target_field": "employment_type",
+        "vote": 0.0,
+        "reason": "One value contains 'Contract' suggesting employment type, but most values are titles, not type enums"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 613,
+    "input_tokens": 990,
+    "output_tokens": 202,
+    "cached": false
+  }
+}

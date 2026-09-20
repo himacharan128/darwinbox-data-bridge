@@ -1,0 +1,12 @@
+employees:
+- contact:
+    email: yaml@acme-hr.example
+  dept: ENG
+  id: EMP-30050
+  joined: '2021-04-01'
+  loc: BLR-HQ
+  name:
+    first: Yaml
+    last: Nested
+  state: ACTIVE
+  type: FULL_TIME

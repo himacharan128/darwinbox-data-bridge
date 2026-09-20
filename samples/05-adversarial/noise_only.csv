@@ -1,0 +1,3 @@
+row_id,checksum,synced_at,etl_batch,is_deleted,internal_note,bank_acct
+1,a81f3c,2024-01-15T09:12:44Z,B-8891,N,reviewed,XXXX4412
+2,b92e4d,2024-01-15T09:12:45Z,B-8891,N,,XXXX7781

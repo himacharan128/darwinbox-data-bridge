@@ -1,0 +1,5 @@
+Emp ID,First Name,Last Name,Email,Mobile,DOB,Date of Joining,Dept Code,Designation,Employment Type,Manager ID,Location,Status
+EMP-10001,Nandini,Rao,nandini.rao@acme-hr.example,+919845010001,1990-04-12,2019-06-03,ENG,Senior Engineer,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-10002,Farhan,Ali,farhan.ali@acme-hr.example,+919845010002,1993-09-27,2021-02-15,SALES,Account Executive,FULL_TIME,EMP-10001,HYD-01,ACTIVE
+EMP-10003,Leela,Krishnan,leela.krishnan@acme-hr.example,+919845010003,1988-01-30,2017-11-20,FIN,Finance Manager,FULL_TIME,EMP-10001,MUM-01,ACTIVE
+EMP-10004,Sameer,Jain,sameer.jain@acme-hr.example,+919845010004,1996-07-08,2023-03-01,HR,HR Generalist,PART_TIME,EMP-10001,MUM-01,ON_LEAVE

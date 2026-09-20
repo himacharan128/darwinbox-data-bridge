@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "department_code",
+    "votes": [
+      {
+        "target_field": "department_code",
+        "vote": 1.0,
+        "reason": "Column name and 3-letter codes like 'ENG' clearly correspond to department_code field"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 573,
+    "input_tokens": 879,
+    "output_tokens": 121,
+    "cached": false
+  }
+}

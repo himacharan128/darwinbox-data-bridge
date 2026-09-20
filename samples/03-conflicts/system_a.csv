@@ -1,0 +1,3 @@
+Emp ID,First Name,Last Name,Email,Mobile,DOB,Date of Joining,Dept Code,Designation,Employment Type,Manager ID,Location,Status
+EMP-20001,Priyanka,Das,priyanka.das@acme-hr.example,+919845020001,1991-03-19,2018-05-14,ENG,Engineering Manager,FULL_TIME,,BLR-HQ,ACTIVE
+EMP-20002,Rohit,Malhotra,rohit.malhotra@acme-hr.example,+919845020002,1989-08-22,2016-09-05,SALES,Regional Head,FULL_TIME,,HYD-01,ACTIVE

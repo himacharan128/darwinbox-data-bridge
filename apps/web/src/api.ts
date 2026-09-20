@@ -79,6 +79,7 @@ export const api = {
 /** Plain language, because the reader is an implementation consultant, not an engineer. */
 export const PHRASE: Record<string, string> = {
   awaiting_review: "Needs your decision",
+  ready_to_send: "Ready to send",
   partially_delivered: "Partly sent",
   completed: "All sent",
   completed_with_exclusions: "Sent, some excluded",

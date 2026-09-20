@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "date_of_joining",
+    "votes": [
+      {
+        "target_field": "date_of_joining",
+        "vote": 1.0,
+        "reason": "Column name and ISO date values (e.g., 2022-08-15) directly match the required date_of_joining field."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 578,
+    "input_tokens": 957,
+    "output_tokens": 148,
+    "cached": false
+  }
+}
