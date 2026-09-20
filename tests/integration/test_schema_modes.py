@@ -172,16 +172,31 @@ def test_the_editor_can_post_json_and_have_it_accepted(client, run):
     client.post(f"/api/runs/{run}/schema/recommend")
     proposal = client.get(f"/api/runs/{run}/schema").json()["active"]
 
+    existing = {f["name"] for f in proposal["fields"]}
+    new_field = next(
+        n for n in ("secondment_note", "payroll_ref", "badge_number") if n not in existing
+    )
     edited = {**proposal, "fields": [*proposal["fields"],
-                                     {"name": "cost_centre", "type": "string"}]}
+                                     {"name": new_field, "type": "string"}]}
     saved = client.post(
         f"/api/runs/{run}/schema", json={"body": json.dumps(edited), "origin": "edited"}
     )
-    assert saved.status_code == 200
+    assert saved.status_code == 200, saved.json()
     assert saved.json()["fields"] == len(proposal["fields"]) + 1
 
     shown = client.get(f"/api/runs/{run}/schema").json()
-    assert "cost_centre" in {f["name"] for f in shown["active"]["fields"]}
+    assert new_field in {f["name"] for f in shown["active"]["fields"]}
+
+
+def test_a_duplicate_field_name_is_refused(client, run):
+    """Two fields called the same thing is a schema that cannot be satisfied."""
+    client.post(f"/api/runs/{run}/schema/recommend")
+    proposal = client.get(f"/api/runs/{run}/schema").json()["active"]
+    doubled = {**proposal, "fields": [*proposal["fields"], proposal["fields"][0]]}
+
+    response = client.post(f"/api/runs/{run}/schema", json={"body": json.dumps(doubled)})
+    assert response.status_code == 422
+    assert "duplicate" in response.json()["detail"].lower()
 
 
 def test_delivered_records_keep_the_version_they_were_sent_under(client, run):
