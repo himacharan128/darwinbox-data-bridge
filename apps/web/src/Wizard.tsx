@@ -49,8 +49,7 @@ function PickFiles({ onUploaded }: { onUploaded: (runId: string) => void }) {
       <div className="panel">
         <h2>Step 1 — the client's files</h2>
         <p className="change" style={{ marginTop: 0 }}>
-          CSV, Excel, JSON, YAML or PDF, including scans. Send lookup tables
-          (departments, locations) along with them and they will be recognised.
+          Add everything they sent you. Spreadsheets, exports, even scanned pages.
         </p>
 
         <label className={`dropzone${dragging ? " over" : ""}`}
@@ -66,9 +65,7 @@ function PickFiles({ onUploaded }: { onUploaded: (runId: string) => void }) {
                  onChange={(e) => e.target.files?.length &&
                    void send(() => api.upload(e.target.files!))} />
           <strong>Drop files here</strong>
-          <span className="change">
-            or click to choose · nothing starts until you approve a schema
-          </span>
+          <span className="change">or click to choose</span>
         </label>
 
         {busy && <p className="change" role="status">Uploading…</p>}
@@ -76,23 +73,24 @@ function PickFiles({ onUploaded }: { onUploaded: (runId: string) => void }) {
       </div>
 
       {!!samples.length && (
-        <div className="panel" style={{ marginTop: 14 }}>
-          <h2>Sample files</h2>
-          <p className="change" style={{ marginTop: 0 }}>
-            Bundled sets for trying it without files of your own. Each is aimed at a
-            different behaviour — start with <b>02-messy</b>.
-          </p>
-          <div className="samples">
+        <details className="panel collapse" style={{ marginTop: 14 }}>
+          <summary>
+            <span>Sample files</span>
+            <span className="change">
+              — don't have files to hand? Try one of these
+            </span>
+          </summary>
+          <div className="samples" style={{ marginTop: 14 }}>
             {samples.map((s) => (
               <button key={s.name} disabled={busy} className="sample"
                       onClick={() => void send(() => api.startFromSample(s.name))}>
-                <b>{s.name}</b>
+                <b>{s.name.replace(/^\d+-/, "").replace(/-/g, " ")}</b>
                 <span className="change">{s.description}</span>
                 <span className="pill">{s.files} files</span>
               </button>
             ))}
           </div>
-        </div>
+        </details>
       )}
     </>
   );
@@ -213,8 +211,8 @@ function ChooseSchema({
         <div className="panel">
           <h2>Step 2 — where should this data land?</h2>
           <p className="change" style={{ marginTop: 0 }}>
-            The target schema is the contract everything is measured against. Nothing is
-            mapped or sent until you approve one.
+            The list of fields the data should end up as. Nothing is moved until you
+            approve it.
           </p>
           <div className="choices">
             <button className="choice" disabled={busy} onClick={() => {
@@ -222,10 +220,9 @@ function ChooseSchema({
               setWorking({ entity: "employee", fields: [blankField(1)] });
               setDirty(true);
             }}>
-              <b>I have a target schema</b>
+              <b>I know what the fields should be</b>
               <span className="change">
-                Build it field by field, or paste YAML or JSON under Advanced. It is
-                validated before you can approve it.
+                Build the list yourself, one field at a time.
               </span>
             </button>
             <button className="choice primary-choice" disabled={busy} onClick={() => {
@@ -233,10 +230,10 @@ function ChooseSchema({
               void act(() => api.recommendSchema(runId),
                        "The agent read your columns and proposed this. Edit anything.");
             }}>
-              <b>Propose one from my files</b>
+              <b>Suggest it from my files</b>
               <span className="change">
-                The agent reads the columns and suggests fields, types and rules. You
-                edit and approve.
+                Reads the columns and drafts a list for you. You change anything you
+                like before approving.
               </span>
             </button>
           </div>
@@ -246,7 +243,7 @@ function ChooseSchema({
       {busy && mode === "propose" && !schema?.active && (
         <div className="panel" role="status">
           <h2>Reading your columns…</h2>
-          <p className="change">Working out what the destination should look like.</p>
+          <p className="change">Working out what the fields should be.</p>
         </div>
       )}
 
@@ -274,9 +271,7 @@ function ChooseSchema({
             </button>
           </div>
 
-          <p className="change">
-            Nothing is mapped or sent until you approve this.
-          </p>
+          <p className="change">Nothing is moved until you approve this.</p>
 
           {raw ? (
             <textarea value={draft}

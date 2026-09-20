@@ -1,0 +1,21 @@
+{
+  "payload": {
+    "source_column": "Emp ID",
+    "votes": [
+      {
+        "target_field": "employee_id",
+        "vote": 1.0,
+        "reason": "Column name 'Emp ID' and values like 'EMP-10001' match the required pattern ^EMP-[0-9]{5}$"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 881,
+    "input_tokens": 1154,
+    "output_tokens": 114,
+    "cached": false
+  }
+}

@@ -188,7 +188,12 @@ function ReviewQueue({ state, onDone }: { state: RunState; onDone: () => void })
             <dd>{c.attempts.map((a) => <div key={a}>{a}</div>)}</dd></>
         )}
         {c.blocks > 1 && (
-          <><dt>Effect</dt><dd>{c.blocks} records are waiting on this one answer.</dd></>
+          <><dt>Effect</dt>
+            <dd>
+              {c.blocks} records are waiting on this one answer
+              {c.children > 0 && `, ${c.children} of them only because a record they `
+                + `reference is blocked`}.
+            </dd></>
         )}
       </dl>
 
@@ -248,12 +253,15 @@ function Records({ state }: { state: RunState }) {
           <tbody>
             {rows.map((r) => {
               const changed = Object.entries(r.provenance).filter(([, p]) => p.changes.length);
-              const tone = r.state === "delivered" ? "ok" : r.state === "blocked" ? "warn" : "";
+              const tone = r.state === "delivered" ? "ok"
+                : r.state === "blocked" ? "warn" : "";
+              const label = r.state === "blocked" && r.waiting_on_another
+                ? "Waiting on another record" : say(r.state);
               return (
                 <tr key={r.key}>
                   <td data-label="Record" className="mono">{r.key}</td>
                   <td data-label="Status">
-                    <span className={`pill ${tone}`}><i className="dot" />{say(r.state)}</span>
+                    <span className={`pill ${tone}`}><i className="dot" />{label}</span>
                   </td>
                   <td data-label="Name">
                     {[r.values.first_name, r.values.last_name].filter(Boolean).join(" ") || "—"}
@@ -305,6 +313,42 @@ function Mappings({ state }: { state: RunState }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function Failures({
+  state, onRetry, busy,
+}: { state: RunState; onRetry: () => void; busy: boolean }) {
+  const failures = state.failures ?? [];
+  if (!failures.length) {
+    return <div className="panel empty">The destination has refused nothing.</div>;
+  }
+  return (
+    <div className="panel">
+      <h2>The destination refused these</h2>
+      <p className="change" style={{ marginTop: 0 }}>
+        Not a question the agent is asking — the receiving system rejected them. Fix the
+        data or the schema, then try again.
+      </p>
+      <div className="scroll">
+        <table>
+          <thead><tr><th>Record</th><th>What the destination said</th></tr></thead>
+          <tbody>
+            {failures.map((f) => (
+              <tr key={f.record}>
+                <td data-label="Record" className="mono">{f.record}</td>
+                <td data-label="Reason" className="change">{f.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="actions" style={{ marginTop: 12 }}>
+        <button className="primary" disabled={busy} onClick={onRetry}>
+          Try sending these again
+        </button>
+      </div>
     </div>
   );
 }
@@ -612,27 +656,41 @@ export default function App() {
         && state.status !== "processing" && state.status !== "awaiting_schema" && (
         <>
           <div className="stats">
+            <Stat n={counts.rows_read} label="rows read" />
             <Stat n={counts.records} label="employees found" />
-            <Stat n={counts.open_cases} label="need your decision" tone={counts.open_cases ? "warn" : undefined} />
-            <Stat n={counts.ready} label="ready to send" />
-            <Stat n={counts.delivered} label="sent successfully" tone="ok" />
-            <Stat n={counts.blocked} label="waiting" />
-            {!!counts.excluded && <Stat n={counts.excluded} label="excluded" />}
+            <Stat n={counts.delivered} label="sent to destination" tone="ok" />
+            <Stat n={counts.needs_review} label="needs review"
+                  tone={counts.needs_review ? "warn" : undefined} />
+            {/* Only when they exist, so the usual four stay clean but nothing is hidden. */}
+            {!!counts.excluded && <Stat n={counts.excluded} label="excluded by you" />}
+            {!!counts.failed && <Stat n={counts.failed} label="destination refused" tone="bad" />}
             <span className="spacer" />
-            <button className="primary" disabled={busy || !counts.ready}
-                    onClick={() => void act(() => api.deliver(state.run_id))}>
-              Send {counts.ready} ready record{counts.ready === 1 ? "" : "s"}
-            </button>
-            <button className="danger" disabled={busy || !counts.delivered}
-                    onClick={() => void act(() => api.rollback(state.run_id))}>
-              Undo delivery
-            </button>
+            {state.delivery_paused ? (
+              <button className="primary" disabled={busy}
+                      onClick={() => void act(() => api.deliver(state.run_id))}>
+                Resume sending
+              </button>
+            ) : (
+              <button className="danger" disabled={busy || !counts.delivered}
+                      onClick={() => void act(() => api.rollback(state.run_id))}>
+                Undo delivery
+              </button>
+            )}
           </div>
+
+          {state.delivery_paused && (
+            <div className="panel notice" role="status">
+              <b>Sending is paused.</b> You undid a delivery, so nothing is being sent
+              automatically. Press <b>Resume sending</b> when you are ready.
+            </div>
+          )}
 
           <div className="tabs" role="tablist">
             {[["review", `Needs you (${counts.open_cases})`], ["records", "Records"],
               ["mappings", "How it mapped"], ["schema", "Target schema"],
-              ["destination", "Destination"]].map(([id, label]) => (
+              ["destination", "Destination"],
+              ...(counts.failed ? [["failures", `Failures (${counts.failed})`]] : []),
+            ].map(([id, label]) => (
               <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
                 {label}
               </button>
@@ -645,6 +703,8 @@ export default function App() {
               {tab === "records" && <Records state={state} />}
               {tab === "mappings" && <Mappings state={state} />}
               {tab === "schema" && <Schema runId={state.run_id} />}
+              {tab === "failures" && <Failures state={state} onRetry={() =>
+                void act(() => api.deliver(state.run_id))} busy={busy} />}
               {tab === "destination" && <Destination runId={state.run_id} />}
             </div>
             <aside className="panel">

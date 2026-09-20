@@ -9,7 +9,7 @@ accepted by a destination are different facts and are recorded separately.
 """
 from __future__ import annotations
 
-import uuid
+import hashlib
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field as dc_field
@@ -33,6 +33,7 @@ from dbx_contracts import (
     ReviewCase,
     SourceRef,
     Transformation,
+    ValidationResult,
 )
 
 from .cleanup import ColumnPlan, UnsafeValue, clean, plan_column
@@ -82,6 +83,9 @@ class Overrides:
 
 @dataclass
 class RunResult:
+    #: Raw rows read from the files, before anything is reconciled. Showing this beside
+    #: the employee count is what makes reconciliation visible.
+    rows_read: int = 0
     records: list[CanonicalRecord] = dc_field(default_factory=list)
     mappings: list[ColumnMapping] = dc_field(default_factory=list)
     cases: list[ReviewCase] = dc_field(default_factory=list)
@@ -121,9 +125,15 @@ class Pipeline:
     # ---------------------------------------------------------------- audit
 
     def _log(self, action: str, summary: str, *, actor: Actor = Actor.AGENT, **kw) -> None:
+        # Identity comes from content, not from a fresh uuid. A run is replayed on every
+        # read, and random ids would append the same history again each time.
+        seq = len(self.result.audit)
+        digest = hashlib.sha256(
+            f"{self.run_id}|{seq}|{action}|{summary}|{kw.get('record_id')}".encode()
+        ).hexdigest()[:32]
         self.result.audit.append(
             AuditEvent(
-                id=str(uuid.uuid4()), run_id=self.run_id, actor=actor,
+                id=digest, run_id=self.run_id, actor=actor,
                 action=action, summary=summary, **kw,
             )
         )
@@ -147,7 +157,11 @@ class Pipeline:
         self, sources: dict[str, list[ExtractedRecord]], lookups: dict[str, set[str]]
     ) -> RunResult:
         self.result.lookups = lookups
-        self._log("run.started", f"Reading {len(sources)} file(s)")
+        self.result.rows_read = sum(len(records) for records in sources.values())
+        self._log(
+            "run.started",
+            f"Reading {len(sources)} file(s), {self.result.rows_read} rows",
+        )
         self.value_case: dict[tuple[str, str], str] = {}
 
         mappings = self._map(sources)
@@ -620,6 +634,9 @@ class Pipeline:
         }}
         dupes = check_uniqueness([(r.id, r.values) for r in records], self.schema)
 
+        # Validate everything first, so a record referencing another can be told apart
+        # from a record with a problem of its own.
+        findings: dict[str, ValidationResult] = {}
         for record in records:
             record.validation_attempts = 1
             result = validate_record(
@@ -627,22 +644,41 @@ class Pipeline:
             )
             result.issues.extend(dupes.get(record.id, []))
             record.validation = result
+            findings[record.id] = result
+
+        # A record is troubled if it has a problem of its own, or is already held by a
+        # case raised earlier (an unclean value, an uncertain identity).
+        troubled = {
+            r.id for r in records if not findings[r.id].ok or r.open_cases
+        }
+        by_key = {
+            str(r.values.get(identity)): r for r in records if r.values.get(identity)
+        }
+
+        for record in records:
+            result = findings[record.id]
             if result.ok:
                 continue
 
             # One bounded correction cycle, then stop. Repeating an identical failed
             # check is not a second attempt, it is a loop.
             record.validation_attempts = MAX_VALIDATION_ATTEMPTS
-            origin = record.contributing[0].file if record.contributing else None
+
+            if self._adopt_as_child(record, result, by_key, troubled, identity):
+                record.state = RecordState.BLOCKED
+                continue
+
             for issue in result.errors:
                 if issue.rule == "required" and issue.target_field:
                     if (record.id, issue.target_field) in self.value_case:
                         continue
+                    origin = record.contributing[0].file if record.contributing else None
                     existing = self.field_case.get((origin, issue.target_field)) or \
                         self.field_case.get((None, issue.target_field))
                     if existing:
                         self._attach(record, existing)
                         continue
+
                 klass = {
                     "required": EscalationClass.MISSING_REQUIRED,
                     "reference:missing": EscalationClass.UNRESOLVED_REFERENCE,
@@ -677,6 +713,49 @@ class Pipeline:
                 )
                 record.open_cases.append(case.id)
             record.state = RecordState.BLOCKED
+
+    def _adopt_as_child(
+        self,
+        record: CanonicalRecord,
+        result: ValidationResult,
+        by_key: dict[str, CanonicalRecord],
+        troubled: set[str],
+        identity: str,
+    ) -> bool:
+        """Hang a record off its neighbour's case when it has nothing of its own.
+
+        A report whose manager is blocked has no decision to offer — the manager is the
+        decision. Raising a case for it produces a queue entry nobody can act on, and
+        two answers where one will do. It still counts as needing review, so it is
+        visible from the first screen rather than appearing once the parent clears.
+        """
+        parents: set[str] = set()
+        for issue in result.errors:
+            if issue.rule != "reference:missing" or not issue.value:
+                return False
+            neighbour = by_key.get(issue.value)
+            if neighbour is None or neighbour.id not in troubled:
+                return False
+            parents.update(neighbour.open_cases)
+        if not parents:
+            return False
+
+        for case_id in parents:
+            case = next((c for c in self.result.cases if c.id == case_id), None)
+            if case is None:
+                continue
+            if record.id not in case.child_records:
+                case.child_records.append(record.id)
+            if case_id not in record.open_cases:
+                record.open_cases.append(case_id)
+        self._log(
+            "record.waiting_on_another",
+            f"{record.values.get(identity, record.id)} is waiting on "
+            f"{', '.join(sorted(parents))}",
+            record_id=record.id,
+            reason="its reference points at a record that is itself unresolved",
+        )
+        return bool(record.open_cases)
 
     def _attach(self, record: CanonicalRecord, case_id: str) -> None:
         """Block a record on an existing case rather than raising a duplicate."""

@@ -67,14 +67,21 @@ def env(tmp_path, monkeypatch):
         thread.join(timeout=5)
 
 
-def start_run(client, folder: str = "run1", schema: str | None = None) -> str:
-    """Upload files and approve a schema — the two steps before anything is processed."""
-    run_id = client.post(
-        "/api/runs/from-fixtures", json={"folder": folder}
-    ).json()["run_id"]
-    body = schema or (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
+def upload(client, folder: str = "run1") -> str:
+    """Files only. Nothing is processed or delivered until a schema is approved."""
+    return client.post("/api/runs/from-fixtures", json={"folder": folder}).json()["run_id"]
+
+
+def approve(client, run_id: str) -> None:
+    """Approving is what starts processing — and delivery now rides along with it."""
+    body = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
     version = client.post(f"/api/runs/{run_id}/schema", json={"body": body}).json()["version"]
     client.post(f"/api/runs/{run_id}/schema/{version}/approve")
+
+
+def start_run(client, folder: str = "run1") -> str:
+    run_id = upload(client, folder)
+    approve(client, run_id)
     return run_id
 
 
@@ -101,15 +108,15 @@ def test_a_restart_preserves_decisions_and_recomputes_the_same_queue(env):
     assert after == before, "reopening a run must recompute exactly the same state"
 
 
-def test_a_restart_mid_delivery_does_not_resend_what_landed(env):
+def test_a_restart_does_not_resend_what_already_landed(env):
     boot, target = env
     client = boot()
     run = start_run(client)
     _answer(client, run, "no column for status", "constant:ACTIVE")
+    client.get(f"/api/runs/{run}?wait=true")
 
-    first = client.post(f"/api/runs/{run}/deliver").json()
-    delivered = first["sent"]["accepted"]
-    assert delivered > 0
+    delivered = len(target.get("/records", params={"run_id": run}).json())
+    assert delivered > 0, "records ready with no open case deliver on their own"
 
     restarted = boot()
     again = restarted.post(f"/api/runs/{run}/deliver").json()
@@ -127,11 +134,12 @@ def test_an_uncertain_outcome_is_reconciled_rather_than_blindly_retried(env):
     """
     boot, target = env
     client = boot()
+    # The failure has to be armed before the work starts, because delivery is part of
+    # processing now rather than a button pressed afterwards.
+    target.post("/admin/failure-mode", json={"mode": "uncertain", "remaining": 1})
     run = start_run(client)
     _answer(client, run, "no column for status", "constant:ACTIVE")
-
-    target.post("/admin/failure-mode", json={"mode": "uncertain", "remaining": 1})
-    result = client.post(f"/api/runs/{run}/deliver").json()
+    client.get(f"/api/runs/{run}?wait=true")
 
     stored = target.get("/records", params={"run_id": run}).json()
     keys = [r["natural_key"] for r in stored]
@@ -139,7 +147,7 @@ def test_an_uncertain_outcome_is_reconciled_rather_than_blindly_retried(env):
 
     attempts = client.get(f"/api/runs/{run}/destination").json()["attempts"]
     assert any(a["outcome"] == "uncertain" for a in attempts), "the uncertainty is audited"
-    assert result["sent"]["accepted"] + result["sent"]["duplicate"] > 0
+    assert len(stored) > 0, "the record is present exactly once, not lost and not doubled"
 
 
 def test_a_permanent_rejection_is_never_retried(env):
@@ -159,11 +167,10 @@ def test_a_permanent_rejection_is_never_retried(env):
 def test_retry_recovers_from_a_transient_failure_without_duplicating(env):
     boot, target = env
     client = boot()
+    target.post("/admin/failure-mode", json={"mode": "transient", "remaining": 2})
     run = start_run(client)
     _answer(client, run, "no column for status", "constant:ACTIVE")
-
-    target.post("/admin/failure-mode", json={"mode": "transient", "remaining": 2})
-    client.post(f"/api/runs/{run}/deliver")
+    client.get(f"/api/runs/{run}?wait=true")
 
     stored = target.get("/records", params={"run_id": run}).json()
     keys = [r["natural_key"] for r in stored]
@@ -183,7 +190,7 @@ def test_rolling_back_one_run_leaves_another_untouched(env):
     for _ in range(2):
         run = start_run(client)
         _answer(client, run, "no column for status", "constant:ACTIVE")
-        client.post(f"/api/runs/{run}/deliver")
+        client.get(f"/api/runs/{run}?wait=true")
         runs.append(run)
 
     held = {r: len(target.get("/records", params={"run_id": r}).json()) for r in runs}
@@ -202,7 +209,7 @@ def test_the_same_employee_in_two_runs_is_processed_independently(env):
     client = boot()
     first = start_run(client)
     _answer(client, first, "no column for status", "constant:ACTIVE")
-    client.post(f"/api/runs/{first}/deliver")
+    client.get(f"/api/runs/{first}?wait=true")
 
     second = start_run(client, folder="run2")
     state = client.get(f"/api/runs/{second}?wait=true").json()

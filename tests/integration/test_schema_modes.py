@@ -215,10 +215,9 @@ def test_delivered_records_keep_the_version_they_were_sent_under(client, run):
         f"/api/runs/{run}/cases/{case['key']}/decide",
         json={"action": "correct", "value": "constant:ACTIVE"},
     )
-    sent = client.post(f"/api/runs/{run}/deliver").json()
-    assert sent["sent"]["accepted"] > 0
-
+    client.get(f"/api/runs/{run}?wait=true")
     before = client.get(f"/api/runs/{run}/destination").json()["records"]
+    assert before, "records with no open case deliver on their own"
     versions_before = {r["natural_key"]: r["schema_version"] for r in before}
 
     edited = yaml.safe_load(SCHEMA_YAML.read_text())

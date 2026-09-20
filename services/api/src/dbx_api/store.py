@@ -29,7 +29,10 @@ CREATE TABLE IF NOT EXISTS runs (
     schema_json  TEXT NOT NULL,
     files_json   TEXT NOT NULL,
     status       TEXT NOT NULL DEFAULT 'processing',
-    label        TEXT
+    label        TEXT,
+    -- Set by a rollback. Automatic delivery follows readiness, so without this an undo
+    -- would be undone by the very next processing pass.
+    delivery_paused INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS schema_versions (
     id          TEXT PRIMARY KEY,
@@ -124,6 +127,15 @@ class Store:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM runs ORDER BY created_at DESC").fetchall()
         return [dict(r) for r in rows]
+
+    def pause_delivery(self, run_id: str, paused: bool = True) -> None:
+        with self.connect() as conn:
+            conn.execute("UPDATE runs SET delivery_paused = ? WHERE id = ?",
+                         (1 if paused else 0, run_id))
+
+    def delivery_paused(self, run_id: str) -> bool:
+        run = self.get_run(run_id)
+        return bool(run and run["delivery_paused"])
 
     def set_status(self, run_id: str, status: str) -> None:
         with self.connect() as conn:

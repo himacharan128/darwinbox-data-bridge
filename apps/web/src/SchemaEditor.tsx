@@ -71,7 +71,7 @@ export default function SchemaEditor({
     <div className="editor">
       <div className="field-row header-row">
         <label>
-          <span className="lbl">What does one record describe?</span>
+          <span className="lbl">Each row is one…</span>
           <input type="text" value={schema.entity}
                  onChange={(e) => onChange({ ...schema, entity: e.target.value })}
                  aria-label="Entity name" placeholder="employee" />
@@ -154,8 +154,8 @@ export default function SchemaEditor({
             {expanded && (
               <div className="more">
                 <p className="change">
-                  Everything here is evidence the agent can use. The more you tell it,
-                  the fewer questions it has to ask you later.
+                  Optional. The more you fill in here, the fewer questions you get asked
+                  later.
                 </p>
 
                 <label className="full">
@@ -165,8 +165,9 @@ export default function SchemaEditor({
                          aria-label={`Pattern for ${f.name}`}
                          onChange={(e) => patch(i, { pattern: e.target.value || null })} />
                   <span className="change">
-                    A regular expression. Values that do not match are queried, never
-                    silently reshaped.
+                    A pattern, like <span className="mono">^EMP-[0-9]{5}$</span> for
+                    codes such as EMP-00042. Anything that does not fit is queried, never
+                    quietly changed.
                   </span>
                 </label>
 
@@ -182,8 +183,7 @@ export default function SchemaEditor({
                       ))}
                     </select>
                     <span className="change">
-                      The strongest signal there is: values that are actually in that
-                      table map themselves.
+                      Check each value appears in one of your lookup files.
                     </span>
                   </label>
                 )}
@@ -213,8 +213,8 @@ export default function SchemaEditor({
                            aliases: e.target.value.split(",").map((v) => v.trim()).filter(Boolean),
                          })} />
                   <span className="change">
-                    What the client's systems call this. Naming them here turns a
-                    question into an automatic match.
+                    Other names the client's files use for this. Adding them here saves
+                    you being asked about it.
                   </span>
                 </label>
               </div>

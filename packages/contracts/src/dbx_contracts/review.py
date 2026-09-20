@@ -73,7 +73,16 @@ class ReviewCase(BaseModel):
 
     state: CaseState = CaseState.OPEN
     blocks_records: list[str] = Field(default_factory=list)
+    #: Records waiting only on THIS case being answered. They have nothing of their own
+    #: to decide — a report whose manager is blocked is waiting on the manager — so they
+    #: ride along rather than each becoming a question nobody can act on.
+    child_records: list[str] = Field(default_factory=list)
     created_at: dt.datetime = Field(default_factory=lambda: dt.datetime.now(dt.UTC))
+
+    @property
+    def waiting_count(self) -> int:
+        """Everything this one answer would release."""
+        return len({*self.blocks_records, *self.child_records})
 
     @property
     def has_proposal(self) -> bool:

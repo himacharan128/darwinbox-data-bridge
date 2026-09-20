@@ -104,24 +104,25 @@ def test_one_answer_unblocks_many_records(run):
     assert result["ready"] >= 10, "a field-level answer must release every record it blocked"
 
 
-def test_delivery_is_idempotent_and_destination_is_the_truth(run):
+def test_records_deliver_themselves_once_nothing_is_blocking_them(run):
+    """Delivery follows readiness. A click before the fact only delayed safe work."""
     client, rid = run
+    before = client.get(f"/api/runs/{rid}?wait=true").json()["counts"]["delivered"]
     _answer(client, rid, "no column for status", "constant:ACTIVE")
+    after = client.get(f"/api/runs/{rid}?wait=true").json()["counts"]
 
-    first = client.post(f"/api/runs/{rid}/deliver").json()
-    assert first["sent"]["accepted"] > 0
-
-    stored = client.get(f"/api/runs/{rid}/destination").json()
-    assert len(stored["records"]) == first["sent"]["accepted"]
+    assert after["delivered"] > before, "answering one case should send what it released"
+    stored = client.get(f"/api/runs/{rid}/destination").json()["records"]
+    assert len(stored) == after["delivered"], "the destination is the source of truth"
 
     again = client.post(f"/api/runs/{rid}/deliver").json()
-    assert sum(again["sent"].values()) == 0, "resuming a run must not resend"
+    assert sum(again["sent"].values()) == 0, "nothing outstanding means nothing resent"
 
 
 def test_rollback_returns_records_without_erasing_history(run):
     client, rid = run
     _answer(client, rid, "no column for status", "constant:ACTIVE")
-    client.post(f"/api/runs/{rid}/deliver")
+    client.get(f"/api/runs/{rid}?wait=true")
 
     before = client.get(f"/api/runs/{rid}?wait=true").json()["counts"]["records"]
     result = client.post(f"/api/runs/{rid}/rollback").json()
@@ -132,6 +133,14 @@ def test_rollback_returns_records_without_erasing_history(run):
     assert after["counts"]["delivered"] == 0
     assert after["counts"]["records"] == before, "rollback must not touch source data"
     assert len(client.get(f"/api/runs/{rid}/audit").json()) > 0
+
+    # An undo that the next processing pass undoes is not an undo.
+    assert after["delivery_paused"] is True
+    assert client.get(f"/api/runs/{rid}?wait=true").json()["counts"]["delivered"] == 0
+
+    resumed = client.post(f"/api/runs/{rid}/deliver").json()
+    assert sum(resumed["sent"].values()) > 0, "and resuming sends them again"
+    assert client.get(f"/api/runs/{rid}?wait=true").json()["delivery_paused"] is False
 
 
 def test_state_is_stable_across_replays(run):

@@ -4,7 +4,7 @@ export type Case = {
   evidence: Record<string, unknown>; rule: string | null; attempts: string[];
   actions: string[];
   options: { label: string; value: string | null; description: string | null; recommended: boolean }[];
-  blocks: number; state: string;
+  blocks: number; children: number; state: string;
 };
 
 export type Progress = {
@@ -16,11 +16,17 @@ export type RunState = {
   run_id: string;
   status: string;
   progress?: Progress;
-  counts: { records: number; ready: number; delivered: number; blocked: number; excluded: number; open_cases: number };
+  counts: {
+    rows_read: number; records: number; delivered: number; needs_review: number;
+    excluded: number; failed: number; open_cases: number;
+    ready: number; blocked: number;
+  };
+  delivery_paused?: boolean;
   cases: Case[];
+  failures?: { record: string; reason: string }[];
   records: {
     key: string; state: string; values: Record<string, string>; sources: string[];
-    issues: string[]; cases: string[];
+    issues: string[]; cases: string[]; waiting_on_another?: boolean;
     provenance: Record<string, { raw: string | null; value: string; from: string;
       changes: { rule: string; before: string | null; after: string | null; why: string }[] }>;
   }[];
@@ -102,7 +108,7 @@ export const api = {
 export const PHRASE: Record<string, string> = {
   awaiting_schema: "Waiting for a target schema",
   awaiting_review: "Needs your decision",
-  ready_to_send: "Ready to send",
+  ready_to_send: "Sending…",
   partially_delivered: "Partly sent",
   completed: "All sent",
   completed_with_exclusions: "Sent, some excluded",

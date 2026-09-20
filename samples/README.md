@@ -7,10 +7,11 @@ What each one should do — if it does something else, that is a bug worth repor
 
 ## `01-clean/` — the happy path
 
-Four employees, correct formats, every required field present.
+24 employees across five departments and six locations, correct formats, every
+required field present.
 
-**Expect:** 4 records, **0 cases**, status *Ready to send*. Press send; all four land
-in the destination.
+**Expect:** 24 records, **0 cases**, status *Ready to send*. Press send; all of them
+land in the destination.
 
 The point: an agent that escalates on clean data is useless. This is the control.
 
@@ -30,11 +31,11 @@ Worth doing in order:
 
 ## `03-conflicts/` — two systems that disagree
 
-The same two people in two exports, disagreeing on job title, joining date and
-location. Plus a **namesake**: same name, same birthday, different employee ID.
+14 people in two exports. Three disagree on job title, two on joining date, two on
+location. Plus **two namesakes**: same name, same birthday, different employee ID.
 
 **Expect:** conflicts escalate per field with both values and their sources. The
-namesake must **not** merge — identity and field conflicts are separate decisions,
+namesakes must **not** merge — identity and field conflicts are separate decisions,
 and matching names never justify an automatic merge.
 
 ## `04-edge-cases/` — things that should not crash it

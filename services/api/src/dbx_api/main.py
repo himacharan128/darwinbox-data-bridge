@@ -13,7 +13,7 @@ from typing import Annotated, Any
 
 import yaml
 from dbx_agent import build_provider, recommend_schema
-from dbx_contracts import Action, Actor, MigrationSchema
+from dbx_contracts import Action, Actor, EscalationClass, MigrationSchema
 from dbx_extraction import (
     UnsupportedInput,
     confidence_for,
@@ -77,7 +77,8 @@ def _case_payload(case: Any) -> dict[str, Any]:
         "attempts": case.attempts,
         "actions": [a.value for a in case.actions],
         "options": [o.model_dump() for o in case.options],
-        "blocks": len(case.blocks_records),
+        "blocks": case.waiting_count,
+        "children": len(case.child_records),
         "state": case.state.value,
     }
 
@@ -389,7 +390,7 @@ def approve_schema(run_id: str, version: int) -> dict[str, Any]:
         "at": now(),
     }])
     jobs.invalidate(run_id)
-    jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
+    jobs.start(run_id, lambda report: _process_run(run_id, report))
     return {
         "approved": version,
         "started": first,
@@ -416,8 +417,18 @@ def _ensure_processing(run_id: str) -> Any | None:
     if cached is not None:
         return cached
     if not jobs.running(run_id):
-        jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
+        jobs.start(run_id, lambda report: _process_run(run_id, report))
     return None
+
+
+def _process_run(run_id: str, report: Any) -> Any:
+    """Replay, then deliver whatever came out ready. One step, not two."""
+    result, _ = replay(store, run_id, report=report)
+    ready = len(result.ready)
+    if ready:
+        report("delivering", f"Sending {ready} record(s) to the destination", 0, ready)
+        deliver_ready(run_id, result)
+    return result
 
 
 EMPTY_COUNTS = {"records": 0, "ready": 0, "delivered": 0, "blocked": 0,
@@ -473,6 +484,10 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
             "sources": [r.label() for r in record.contributing],
             "issues": [i.message for i in record.validation.errors],
             "cases": record.open_cases,
+            "waiting_on_another": bool(record.open_cases) and not any(
+                c.record_key == (record.natural_key or record.id)
+                for c in result.cases if c.id in record.open_cases
+            ),
             "provenance": {
                 name: {
                     "raw": p.raw_value, "value": str(p.value),
@@ -486,20 +501,39 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
         })
 
     open_cases = [c for c in result.cases if case_key(c) not in decided]
-    ready = [r for r in records if r["state"] == "ready"]
+
+    # A destination rejection is the receiver refusing, not the agent asking. Different
+    # cause, different action, so it does not belong in the review queue.
+    failures = [
+        c for c in open_cases
+        if c.klass is EscalationClass.DELIVERY_PERMANENT_FAILURE
+    ]
+    review = [c for c in open_cases if c not in failures]
+    failed_keys = _failed_keys(run_id)
+
     return {
         "run_id": run_id,
         "status": _status(result, records, accepted),
         "progress": progress.as_dict(),
+        "delivery_paused": store.delivery_paused(run_id),
         "counts": {
+            # Raw rows before reconciliation, beside the employees they became. Showing
+            # both is what makes reconciliation legible.
+            "rows_read": result.rows_read,
             "records": len(records),
-            "ready": len(ready),
             "delivered": len([r for r in records if r["state"] == "delivered"]),
-            "blocked": len([r for r in records if r["state"] == "blocked"]),
+            "needs_review": len([r for r in records if r["state"] == "blocked"]),
             "excluded": len([r for r in records if r["state"] == "excluded"]),
-            "open_cases": len(open_cases),
+            "failed": len(failed_keys),
+            "open_cases": len(review),
+            # kept for the API's older callers
+            "ready": len([r for r in records if r["state"] == "ready"]),
+            "blocked": len([r for r in records if r["state"] == "blocked"]),
         },
-        "cases": [_case_payload(c) for c in open_cases],
+        "cases": [_case_payload(c) for c in review],
+        "failures": [
+            *({"record": k, "reason": v} for k, v in failed_keys.items()),
+        ],
         "records": records,
         "mappings": [
             {
@@ -509,12 +543,28 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
                 "evidence": m.best.evidence.explain() if m.best else [],
             } for m in result.mappings
         ],
+        # Read the durable history rather than only this replay's, so "what the agent
+        # did" includes what it sent — not just what it mapped and cleaned.
         "activity": [
-            {"actor": e.actor.value, "action": e.action, "summary": e.summary,
-             "reason": e.reason, "before": e.before, "after": e.after}
-            for e in result.audit
-        ][-60:],
+            {"actor": e.get("actor", "agent"), "action": e.get("action", ""),
+             "summary": e.get("summary", ""), "reason": e.get("reason"),
+             "before": e.get("before"), "after": e.get("after"), "at": e.get("at")}
+            for e in reversed(store.audit(run_id, limit=80))
+        ],
     }
+
+
+def _failed_keys(run_id: str) -> dict[str, str]:
+    """Records the destination permanently refused, with what it said."""
+    out: dict[str, str] = {}
+    for row in store.deliveries(run_id):
+        key = row["natural_key"]
+        if row["outcome"] == "rejected":
+            errors = (row["response"] or {}).get("errors") or []
+            out[key] = "; ".join(errors) or "the destination refused it"
+        elif row["outcome"] in ("accepted", "duplicate"):
+            out.pop(key, None)
+    return out
 
 
 def _status(result: Any, records: list[dict], accepted: dict[str, int]) -> str:
@@ -563,7 +613,7 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
 
     jobs.invalidate(run_id)
     after, _ = replay(store, run_id)
-    jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
+    jobs.start(run_id, lambda report: _process_run(run_id, report))
     jobs.wait(run_id, timeout=180)
     remaining = [c for c in after.cases
                  if case_key(c) not in {d["case_key"] for d in store.decisions(run_id)}]
@@ -575,8 +625,36 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
     }
 
 
+def deliver_ready(run_id: str, result: Any) -> dict[str, int]:
+    """Send everything that is ready, as soon as it is ready.
+
+    Waiting for a click only ever delayed work the agent had already decided was safe,
+    and it made "ready to send" a state records sat in for no reason. Rollback is the
+    undo; a gate before the fact is not.
+    """
+    run = store.get_run(run_id)
+    if run is None or not run["schema_json"]:
+        return {}
+    if store.delivery_paused(run_id):
+        # A human undid a delivery. Sending it straight back would make the undo a
+        # no-op, so it stays paused until they say otherwise.
+        return {}
+    schema = MigrationSchema.model_validate(json.loads(run["schema_json"]))
+    try:
+        destination.register_schema(_schema_for_destination(schema))
+    except Exception:  # noqa: BLE001 - a destination outage is reported, not fatal
+        return {}
+    return _push(run_id, result, schema)
+
+
 @app.post("/api/runs/{run_id}/deliver")
 def deliver(run_id: str) -> dict[str, Any]:
+    """Send what is outstanding, and resume automatic delivery if it was paused.
+
+    Normal delivery happens on its own; this is the button for after a rollback, or
+    for retrying what the destination refused.
+    """
+    store.pause_delivery(run_id, False)
     jobs.wait(run_id, timeout=180)
     result = jobs.result(run_id)
     if result is None:
@@ -587,9 +665,14 @@ def deliver(run_id: str) -> dict[str, Any]:
     schema = MigrationSchema.model_validate(json.loads(run["schema_json"]))
     destination.register_schema(_schema_for_destination(schema))
 
+    sent = _push(run_id, result, schema)
+    jobs.invalidate(run_id)
+    return {"sent": sent}
+
+
+def _push(run_id: str, result: Any, schema: MigrationSchema) -> dict[str, int]:
     already = store.accepted_keys(run_id)
     sent = {"accepted": 0, "duplicate": 0, "rejected": 0, "failed": 0, "uncertain": 0}
-    per_record = []
 
     for record in result.ready:
         key = record.natural_key or record.id
@@ -615,19 +698,22 @@ def deliver(run_id: str) -> dict[str, Any]:
             Outcome.REJECTED: "rejected", Outcome.UNCERTAIN: "uncertain",
         }.get(final.outcome, "failed")
         sent[bucket] += 1
-        per_record.append({
-            "record": key, "outcome": final.outcome.value,
-            "attempts": len(attempts),
-            "errors": (final.response or {}).get("errors", []) if final.response else [],
-        })
+        # What the agent did includes what it sent, not only what it mapped.
+        summary = {
+            "accepted": f"Sent {key} to the destination",
+            "duplicate": f"{key} was already at the destination",
+            "rejected": f"The destination refused {key}",
+        }.get(bucket, f"Could not send {key} ({final.outcome.value})")
         store.append_audit(run_id, [{
             "actor": Actor.MOCK_API.value, "action": f"delivery.{final.outcome.value}",
-            "summary": f"{key}: {final.outcome.value} after {len(attempts)} attempt(s)",
+            "summary": summary + (
+                f" after {len(attempts)} attempts" if len(attempts) > 1 else ""
+            ),
             "at": now(), "after": final.target_record_id,
+            "reason": "; ".join((final.response or {}).get("errors", []))
+            if final.response else None,
         }])
-
-    jobs.invalidate(run_id)
-    return {"sent": sent, "records": per_record}
+    return sent
 
 
 @app.post("/api/runs/{run_id}/rollback")
@@ -649,9 +735,13 @@ def rollback(run_id: str) -> dict[str, Any]:
         )
         results.append({"record": row["natural_key"], "ok": ok})
     succeeded = sum(1 for r in results if r["ok"])
+    store.pause_delivery(run_id, True)
     store.append_audit(run_id, [{
         "actor": Actor.HUMAN.value, "action": "delivery.rollback",
-        "summary": f"Rolled back {succeeded} of {len(results)} delivered record(s)",
+        "summary": (
+            f"Rolled back {succeeded} of {len(results)} delivered record(s). "
+            "Automatic sending is paused until you resume it."
+        ),
         "at": now(),
     }])
     jobs.invalidate(run_id)
