@@ -12,7 +12,7 @@ Built for the Darwinbox Forward Deployed Engineer take-home.
 
 **[One-page write-up](docs/WRITEUP.md)** · **[Why the line is there](docs/calibration.md)** ·
 **[Demo script](docs/DEMO.md)** · **[Deploying](docs/DEPLOY.md)** ·
-**[Test samples](samples/README.md)**
+**[Test samples](samples/README.md)** · **[How each piece works](docs/FUNCTIONALITY.md)**
 
 ## Run it
 
