@@ -44,6 +44,9 @@ from .validation import check_uniqueness, validate_record
 #: The bounded correction cycle: validate, apply one safe correction, validate again.
 MAX_VALIDATION_ATTEMPTS = 2
 
+#: A value read below this is worth doubting when it also fails its field's rules.
+LOW_READ_CONFIDENCE = 0.80
+
 
 class VoteSource(Protocol):
     def __call__(self, profile: ColumnProfile, schema: MigrationSchema) -> dict[str, float]: ...
@@ -102,11 +105,14 @@ class Pipeline:
         schema: MigrationSchema,
         votes: VoteSource | None = None,
         overrides: Overrides | None = None,
+        confidence: dict[str, dict[str, float]] | None = None,
     ):
         self.run_id = run_id
         self.schema = schema
         self.votes = votes
         self.overrides = overrides or Overrides()
+        # Per-cell read confidence, for values that came off a scan rather than a file.
+        self.confidence = confidence or {}
         self.result = RunResult()
 
     # ---------------------------------------------------------------- audit
@@ -338,7 +344,8 @@ class Pipeline:
                     raw = extracted.get(header)
                     ref = SourceRef(
                         file=extracted.source.file, sheet=extracted.source.sheet,
-                        row=extracted.source.row, column=header,
+                        row=extracted.source.row, page=extracted.source.page,
+                        column=header,
                     )
                     self._apply_value(record, spec, raw, ref, self.plans.get((name, header)))
                 self._apply_constants(record, name)
@@ -394,11 +401,29 @@ class Pipeline:
             value, steps = clean(raw, spec, plan)
         except UnsafeValue as unsafe:
             record.state = RecordState.BLOCKED
+            read_confidence = self.confidence.get(record.id, {}).get(ref.column or "", 1.0)
+            # Two-sided on purpose. Low confidence alone is not enough — OCR is
+            # routinely unsure about text it read correctly — and a bad value alone is
+            # not enough either, since the file may simply contain one. Both together
+            # say the problem is likely in the reading.
+            unreadable = read_confidence < LOW_READ_CONFIDENCE
+            klass = (
+                EscalationClass.LOW_CONFIDENCE_EXTRACTION if unreadable
+                else EscalationClass.AMBIGUOUS_VALUE if unsafe.alternatives
+                else EscalationClass.VALIDATION_UNRESOLVED
+            )
+            headline = (
+                f"{spec.name} was hard to read from the scan"
+                if unreadable else f"{spec.name} could not be cleaned safely"
+            )
+            detail = (
+                f"Read at {read_confidence:.0%} confidence, and the value does not fit "
+                f"{spec.name}. {unsafe.reason}" if unreadable else unsafe.reason
+            )
             case = self._case(
-                EscalationClass.AMBIGUOUS_VALUE if unsafe.alternatives
-                else EscalationClass.VALIDATION_UNRESOLVED,
-                headline=f"{spec.name} could not be cleaned safely",
-                detail=unsafe.reason,
+                klass,
+                headline=headline,
+                detail=detail,
                 record_key=self._record_key_for(record) or record.id,
                 target_field=spec.name,
                 source_refs=[ref],
@@ -407,6 +432,12 @@ class Pipeline:
                 actions=[Action.CORRECT, Action.REJECT],
                 options=[Option(label=alt, value=alt) for alt in unsafe.alternatives],
                 blocks_records=[record.id],
+                evidence=(
+                    {"read_confidence": round(read_confidence, 3),
+                     "crop": {"file": ref.file, "page": ref.page, "column": ref.column,
+                              "row": ref.row}}
+                    if unreadable else {}
+                ),
             )
             record.open_cases.append(case.id)
             # Remember it so validation does not report the same field as simply missing.

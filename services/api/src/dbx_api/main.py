@@ -13,9 +13,10 @@ from typing import Annotated, Any
 
 import yaml
 from dbx_contracts import Action, Actor, MigrationSchema
+from dbx_extraction import confidence_for, crop, is_sidecar, read
 from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -123,7 +124,11 @@ def create_run_from_fixtures(
     target.mkdir(parents=True, exist_ok=True)
     saved = []
     for path in sorted(source.iterdir()):
-        if path.suffix.lower() in (".csv", ".xlsx"):
+        if is_sidecar(path):
+            # Copy it so OCR replays, but never offer it as employee data.
+            shutil.copy(path, target / path.name)
+            continue
+        if path.suffix.lower() in (".csv", ".xlsx", ".json", ".yaml", ".yml", ".pdf"):
             shutil.copy(path, target / path.name)
             saved.append(str(target / path.name))
     with store.connect() as conn:
@@ -390,6 +395,40 @@ def destination_state(run_id: str) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(503, f"destination unreachable: {exc}") from exc
     return {"records": stored, "attempts": store.deliveries(run_id)}
+
+
+@app.get("/api/runs/{run_id}/crop")
+def crop_image(
+    run_id: str,
+    file: Annotated[str, Query()],
+    page: Annotated[int, Query()],
+    column: Annotated[str, Query()],
+    row: Annotated[int, Query()],
+) -> Response:
+    """The picture of the thing the agent could not read.
+
+    A confidence score tells a consultant nothing they can act on. The cropped scan
+    region does: they can see the smudge and type what it says.
+    """
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(404, "no such run")
+    path = next(
+        (Path(p) for p in json.loads(run["files_json"]) if Path(p).name == file), None
+    )
+    if path is None or not path.exists():
+        raise HTTPException(404, "no such source file in this run")
+
+    records = read(path)
+    target = next(
+        (r for r in records if r.source.row == row and r.source.page == page), None
+    )
+    cells = confidence_for(target.id) if target else {}
+    cell = cells.get(column)
+    if cell is None or cell.bbox is None:
+        raise HTTPException(404, "no image region recorded for that value")
+    png = crop(path, cell.page, cell.bbox, normalized=True)
+    return Response(content=png, media_type="image/png")
 
 
 @app.get("/api/runs/{run_id}/audit")

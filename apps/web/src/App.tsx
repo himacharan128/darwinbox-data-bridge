@@ -135,6 +135,25 @@ function ReviewQueue({ state, onDone }: { state: RunState; onDone: () => void })
             <dd>{c.sources.slice(0, 3).map((s) => <div key={s}>{s}</div>)}</dd></>
         )}
         {c.rule && (<><dt>Rule it must satisfy</dt><dd className="mono">{c.rule}</dd></>)}
+        {evidence?.crop && (
+          <><dt>What the scan actually shows</dt>
+            <dd>
+              <img
+                src={`/api/runs/${state.run_id}/crop?` + new URLSearchParams(
+                  Object.entries(evidence.crop as Record<string, string>)
+                    .map(([k, v]) => [k, String(v)]),
+                ).toString()}
+                alt={`Scanned region for ${c.field ?? "this value"}`}
+                style={{ maxWidth: "100%", border: "1px solid var(--line)",
+                         borderRadius: 6, background: "#fff", padding: 4 }}
+              />
+              {typeof evidence.read_confidence === "number" && (
+                <div className="change">
+                  read at {Math.round((evidence.read_confidence as number) * 100)}% confidence
+                </div>
+              )}
+            </dd></>
+        )}
         {!!evidence?.candidates?.length && (
           <><dt>What the agent measured</dt>
             <dd>{(evidence.candidates as string[]).map((line) => (

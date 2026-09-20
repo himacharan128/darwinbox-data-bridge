@@ -494,7 +494,9 @@ whole columns, non-deterministic record ids, and a module/attribute shadowing bu
 
 **Still to record the demo and draft the write-up.**
 
-### Phase 2 — Evidence scorer + evaluation harness `[M]` — *the differentiator*
+### Phase 2 — Evidence scorer + evaluation harness `[M]` — *the differentiator* — ✅ COMPLETE
+
+Calibrated 0.70/0.10 against 77 labelled decisions across five naming cultures; 0 wrong, 0 noise mapped, 0 under-escalated at every threshold. docs/calibration.md.
 Full §2.2 scorer. Corpus labelled to A9 targets. Automated precision/recall/error-rate.
 Threshold sweep. `T_auto`, `T_gap` and the matching bands set **from the data**.
 
@@ -504,14 +506,18 @@ zero forbidden actions; zero incorrect automatic merges.
 Deliberately ahead of Phase 3 — this is what distinguishes the submission, while
 durable job processing is table stakes. If momentum dies, this must already be done.
 
-### Phase 3 — Durability and recovery `[L]`
+### Phase 3 — Durability and recovery `[L]` — ✅ COMPLETE
+
+Background processing with progress; seven recovery tests covering restart, mid-delivery restart, uncertain-outcome reconciliation, permanent-failure no-retry, and cross-run isolation.
 SQS + DLQ, dependency job graph, leases, outbox/dispatcher, reconciliation,
 retry classification, rollback with generations, resume.
 
 **Gate:** kill the worker mid-run → resume with no duplicates, no lost decisions,
 no re-delivery of an accepted record.
 
-### Phase 4 — Format breadth `[M]`
+### Phase 4 — Format breadth `[M]` — ✅ COMPLETE
+
+CSV, XLSX, JSON, YAML, pasted text, native PDF and scanned PDF through real docTR OCR. LOW_CONFIDENCE_EXTRACTION fires on genuine misreads and the review card shows the cropped scan region.
 XLSX multi-sheet, JSON/YAML, pasted text, native PDF, OCR + `LOW_CONFIDENCE_EXTRACTION`
 with cropped-region evidence.
 

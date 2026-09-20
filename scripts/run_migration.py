@@ -28,6 +28,8 @@ EMPLOYEE_FILES = [
     "contractors_2024.csv",
     "workday_extract.csv",
     "legacy_hrms_dump.csv",
+    "roster_export.pdf",
+    "scanned_roster.pdf",
 ]
 LOOKUP_FILES = {"department": "departments.csv", "location": "locations.csv"}
 
@@ -63,7 +65,15 @@ def main() -> int:
         provider = build_provider(FIX / "model-cache")
         votes = lambda profile, sch: vote_on_column(provider, profile, sch)[0]
 
-    result = Pipeline(run_id="run-demo", schema=schema, votes=votes).run(sources, lookups)
+    confidence = {
+        record.id: {k: c.confidence for k, c in confidence_for(record.id).items()}
+        for records in sources.values()
+        for record in records
+        if confidence_for(record.id)
+    }
+    result = Pipeline(
+        run_id="run-demo", schema=schema, votes=votes, confidence=confidence
+    ).run(sources, lookups)
 
     print("\n" + "=" * 78)
     print(f"{'AGENT ACTIVITY':^78}")

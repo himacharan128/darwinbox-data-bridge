@@ -27,6 +27,14 @@ def read(path: Path, *, display_name: str | None = None) -> list[ExtractedRecord
         raise UnsupportedInput(detected.note or f"{name}: unsupported file type ({detected.kind})")
     if detected.kind is Kind.CSV:
         return _read_csv(path, name, detected)
+    if detected.kind in (Kind.JSON, Kind.YAML):
+        from .structured import read_structured
+
+        return read_structured(path, display_name=name)
+    if detected.kind is Kind.PDF:
+        from .documents import read_pdf
+
+        return read_pdf(path, display_name=name)
     return _read_xlsx(path, name)
 
 

@@ -14,7 +14,7 @@ from typing import Any
 
 from dbx_agent import build_provider, vote_on_column
 from dbx_contracts import Action, CaseState, MigrationSchema, ReviewCase
-from dbx_extraction import UnsupportedInput, read
+from dbx_extraction import UnsupportedInput, confidence_for, is_sidecar, read
 from dbx_migration_core import Overrides, Pipeline, RunResult, apply_decision
 
 from .store import Store
@@ -43,7 +43,7 @@ def load_lookups(paths: list[str]) -> dict[str, set[str]]:
     for raw in paths:
         path = Path(raw)
         stem = path.stem.rstrip("s")
-        if not path.exists() or path.suffix.lower() != ".csv":
+        if not path.exists() or is_sidecar(path) or path.suffix.lower() != ".csv":
             continue
         with path.open(encoding="utf-8") as fh:
             rows = list(csv.DictReader(fh))
@@ -74,12 +74,19 @@ def replay(
     sources: dict[str, list] = {}
     for raw in paths:
         path = Path(raw)
-        if not path.exists() or _is_lookup(path, lookups):
+        if not path.exists() or is_sidecar(path) or _is_lookup(path, lookups):
             continue
         try:
             sources[path.name] = read(path)
         except UnsupportedInput:
             continue
+
+    confidence: dict[str, dict[str, float]] = {}
+    for records in sources.values():
+        for record in records:
+            cells = confidence_for(record.id)
+            if cells:
+                confidence[record.id] = {k: c.confidence for k, c in cells.items()}
 
     provider = build_provider(Path("tests/fixtures/model-cache"), offline=offline)
     seen = 0
@@ -106,7 +113,9 @@ def replay(
     applied: set[str] = set()
 
     for _ in range(len(decisions) + 1):
-        result = Pipeline(run_id, schema, votes=votes, overrides=overrides).run(sources, lookups)
+        result = Pipeline(
+            run_id, schema, votes=votes, overrides=overrides, confidence=confidence
+        ).run(sources, lookups)
         by_key = {case_key(c): c for c in result.cases}
         progressed = False
         for decision in decisions:
@@ -123,7 +132,9 @@ def replay(
 
     if report:
         report("validating", "Checking records against the target schema")
-    result = Pipeline(run_id, schema, votes=votes, overrides=overrides).run(sources, lookups)
+    result = Pipeline(
+        run_id, schema, votes=votes, overrides=overrides, confidence=confidence
+    ).run(sources, lookups)
     answered = {d["case_key"] for d in decisions}
     for case in result.cases:
         if case_key(case) in answered:

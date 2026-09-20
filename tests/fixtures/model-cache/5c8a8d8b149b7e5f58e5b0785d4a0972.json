@@ -1,0 +1,41 @@
+{
+  "payload": {
+    "source_column": "text",
+    "votes": [
+      {
+        "target_field": "employee_id",
+        "vote": 1.0,
+        "reason": "Sample contains value 'EMP-00007' matching the required EMP-xxxxx pattern."
+      },
+      {
+        "target_field": "work_email",
+        "vote": 1.0,
+        "reason": "Sample includes 'aisha.quroshi@acme-hrexample' which is a valid email address."
+      },
+      {
+        "target_field": "employment_type",
+        "vote": 1.0,
+        "reason": "Values like 'FULL_TIME' and 'FULL_TIM\u00c9' correspond to allowed enum values."
+      },
+      {
+        "target_field": "designation",
+        "vote": 0.7,
+        "reason": "Sample contains titles such as 'Executive' and 'Gaurav' that could represent a job title."
+      },
+      {
+        "target_field": "department_code",
+        "vote": 0.6,
+        "reason": "Values like 'HR' and 'Acme' appear to be department identifiers."
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 1171,
+    "input_tokens": 1305,
+    "output_tokens": 418,
+    "cached": false
+  }
+}

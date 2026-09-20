@@ -41,12 +41,25 @@ class Detected:
 
     @property
     def supported(self) -> bool:
-        return self.kind in {Kind.CSV, Kind.XLSX}
+        return self.kind in {Kind.CSV, Kind.XLSX, Kind.JSON, Kind.YAML, Kind.PDF}
+
+
+#: Files that sit beside an input rather than being one. Recorded OCR output is
+#: stored next to its PDF, and it is JSON, so nothing else would tell them apart.
+SIDECAR_SUFFIXES = (".ocr.json",)
+
+
+def is_sidecar(path: Path) -> bool:
+    return any(path.name.endswith(suffix) for suffix in SIDECAR_SUFFIXES)
 
 
 def sniff(path: Path) -> Detected:
     if not path.exists() or path.stat().st_size == 0:
         return Detected(Kind.EMPTY, note="file is empty")
+    if is_sidecar(path):
+        return Detected(
+            Kind.UNKNOWN, note=f"{path.name} is recorded OCR output, not source data"
+        )
 
     head = path.read_bytes()[:2048]
 
@@ -59,7 +72,7 @@ def sniff(path: Path) -> Detected:
             note="legacy .xls (or an encrypted workbook) — outside the supported set",
         )
     if head.startswith(_PDF_MAGIC):
-        return Detected(Kind.PDF, note="PDF extraction arrives in Phase 4")
+        return Detected(Kind.PDF)
 
     encoding = _encoding_for(path)
     if encoding is None:
@@ -68,9 +81,9 @@ def sniff(path: Path) -> Detected:
     text = path.read_text(encoding=encoding, errors="replace")
     stripped = text.lstrip()
     if stripped.startswith(("{", "[")):
-        return Detected(Kind.JSON, encoding=encoding, note="JSON ingestion arrives in Phase 4")
-    if stripped.startswith("---"):
-        return Detected(Kind.YAML, encoding=encoding, note="YAML ingestion arrives in Phase 4")
+        return Detected(Kind.JSON, encoding=encoding)
+    if stripped.startswith("---") or path.suffix.lower() in (".yaml", ".yml"):
+        return Detected(Kind.YAML, encoding=encoding)
 
     return Detected(Kind.CSV, encoding=encoding, delimiter=_delimiter_for(text))
 

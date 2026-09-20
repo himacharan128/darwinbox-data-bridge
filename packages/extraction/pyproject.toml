@@ -2,7 +2,12 @@
 name = "extraction"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = ["contracts", "openpyxl>=3.1"]
+dependencies = ["contracts", "openpyxl>=3.1", "pyyaml>=6", "pymupdf>=1.24"]
+
+[project.optional-dependencies]
+# Live OCR. Not required: recorded OCR output ships with the scanned fixture, so the
+# demo and the tests run without pulling in torch.
+ocr = ["python-doctr>=1.0", "torch>=2.2", "torchvision>=0.17"]
 
 [build-system]
 requires = ["hatchling"]

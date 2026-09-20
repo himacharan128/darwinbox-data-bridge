@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "source_column": "confidence",
+    "votes": []
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "mapping/v1",
+    "latency_ms": 502,
+    "input_tokens": 1196,
+    "output_tokens": 87,
+    "cached": false
+  }
+}
