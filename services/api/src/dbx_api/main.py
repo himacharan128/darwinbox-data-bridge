@@ -13,13 +13,14 @@ from typing import Annotated, Any
 
 import yaml
 from dbx_contracts import Action, Actor, MigrationSchema
-from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .delivery import DestinationClient, Outcome
+from .jobs import jobs
 from .runtime import case_key, replay
 from .store import Store, now
 
@@ -104,6 +105,7 @@ async def create_run(
                      (json.dumps(saved), run_id))
 
     destination.register_schema(_schema_for_destination(schema))
+    jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
     return {"run_id": run_id}
 
 
@@ -128,6 +130,7 @@ def create_run_from_fixtures(
         conn.execute("UPDATE runs SET files_json = ? WHERE id = ?",
                      (json.dumps(saved), run_id))
     destination.register_schema(_schema_for_destination(schema))
+    jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
     return {"run_id": run_id}
 
 
@@ -144,12 +147,39 @@ def list_runs() -> list[dict[str, Any]]:
     return out
 
 
+def _ensure_processing(run_id: str) -> Any | None:
+    """Return the cached result, or start the work and let the caller poll."""
+    cached = jobs.result(run_id)
+    if cached is not None:
+        return cached
+    if not jobs.running(run_id):
+        jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
+    return None
+
+
 @app.get("/api/runs/{run_id}")
-def get_run(run_id: str) -> dict[str, Any]:
-    try:
-        result, _ = replay(store, run_id)
-    except KeyError as exc:
-        raise HTTPException(404, "no such run") from exc
+def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, Any]:
+    if store.get_run(run_id) is None:
+        raise HTTPException(404, "no such run")
+
+    result = _ensure_processing(run_id)
+    if result is None and wait:
+        jobs.wait(run_id)
+        result = jobs.result(run_id)
+
+    progress = jobs.progress(run_id)
+    if result is None:
+        # Still working. Answer with what is known so the live view has something
+        # to show rather than an empty screen.
+        return {
+            "run_id": run_id, "status": "processing", "progress": progress.as_dict(),
+            "counts": {"records": 0, "ready": 0, "delivered": 0, "blocked": 0,
+                       "excluded": 0, "open_cases": 0},
+            "cases": [], "records": [], "mappings": [],
+            "activity": [{"actor": "agent", "action": progress.stage,
+                          "summary": progress.message, "reason": None,
+                          "before": None, "after": None}],
+        }
 
     store.append_audit(run_id, [e.model_dump(mode="json") for e in result.audit])
     accepted = store.accepted_keys(run_id)
@@ -182,6 +212,7 @@ def get_run(run_id: str) -> dict[str, Any]:
     return {
         "run_id": run_id,
         "status": _status(result, records, accepted),
+        "progress": progress.as_dict(),
         "counts": {
             "records": len(records),
             "ready": len(ready),
@@ -226,7 +257,10 @@ def _status(result: Any, records: list[dict], accepted: dict[str, int]) -> str:
 
 @app.post("/api/runs/{run_id}/cases/{key}/decide")
 def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, Any]:
-    result, _ = replay(store, run_id)
+    jobs.wait(run_id, timeout=180)
+    result = jobs.result(run_id)
+    if result is None:
+        result, _ = replay(store, run_id)
     case = next((c for c in result.cases if case_key(c) == key), None)
     if case is None:
         raise HTTPException(404, "no such case")
@@ -246,7 +280,10 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
         "reason": body.reason, "after": body.value, "at": now(),
     }])
 
+    jobs.invalidate(run_id)
     after, _ = replay(store, run_id)
+    jobs.start(run_id, lambda report: replay(store, run_id, report=report)[0])
+    jobs.wait(run_id, timeout=180)
     remaining = [c for c in after.cases
                  if case_key(c) not in {d["case_key"] for d in store.decisions(run_id)}]
     return {
@@ -259,7 +296,10 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
 
 @app.post("/api/runs/{run_id}/deliver")
 def deliver(run_id: str) -> dict[str, Any]:
-    result, _ = replay(store, run_id)
+    jobs.wait(run_id, timeout=180)
+    result = jobs.result(run_id)
+    if result is None:
+        result, _ = replay(store, run_id)
     run = store.get_run(run_id)
     if run is None:
         raise HTTPException(404, "no such run")
@@ -305,6 +345,7 @@ def deliver(run_id: str) -> dict[str, Any]:
             "at": now(), "after": final.target_record_id,
         }])
 
+    jobs.invalidate(run_id)
     return {"sent": sent, "records": per_record}
 
 
@@ -332,6 +373,7 @@ def rollback(run_id: str) -> dict[str, Any]:
         "summary": f"Rolled back {succeeded} of {len(results)} delivered record(s)",
         "at": now(),
     }])
+    jobs.invalidate(run_id)
     return {
         "attempted": len(results), "succeeded": succeeded,
         "partial": succeeded != len(results), "records": results,

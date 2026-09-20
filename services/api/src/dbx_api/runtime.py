@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -55,7 +56,13 @@ def _is_lookup(path: Path, lookups: dict[str, set[str]]) -> bool:
     return path.stem.rstrip("s") in lookups
 
 
-def replay(store: Store, run_id: str, *, offline: bool = False) -> tuple[RunResult, Overrides]:
+def replay(
+    store: Store,
+    run_id: str,
+    *,
+    offline: bool = False,
+    report: Callable[..., None] | None = None,
+) -> tuple[RunResult, Overrides]:
     run = store.get_run(run_id)
     if run is None:
         raise KeyError(run_id)
@@ -75,8 +82,15 @@ def replay(store: Store, run_id: str, *, offline: bool = False) -> tuple[RunResu
             continue
 
     provider = build_provider(Path("tests/fixtures/model-cache"), offline=offline)
+    seen = 0
+    expected = sum(len(records[0].values) for records in sources.values() if records)
 
     def votes(profile: Any, sch: MigrationSchema) -> dict[str, float]:
+        nonlocal seen
+        seen += 1
+        if report:
+            report("mapping", f"Working out where {profile.raw_name!r} belongs",
+                   min(seen, expected), expected)
         try:
             return vote_on_column(provider, profile, sch)[0]
         except Exception:  # noqa: BLE001 - a model outage must not stop the run
@@ -107,6 +121,8 @@ def replay(store: Store, run_id: str, *, offline: bool = False) -> tuple[RunResu
         if not progressed:
             break
 
+    if report:
+        report("validating", "Checking records against the target schema")
     result = Pipeline(run_id, schema, votes=votes, overrides=overrides).run(sources, lookups)
     answered = {d["case_key"] for d in decisions}
     for case in result.cases:

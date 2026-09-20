@@ -61,7 +61,7 @@ def stack(tmp_path, monkeypatch):
 
 
 def _answer(client, run, needle, value, action="correct"):
-    state = client.get(f"/api/runs/{run}").json()
+    state = client.get(f"/api/runs/{run}?wait=true").json()
     case = next((c for c in state["cases"] if needle in c["headline"]), None)
     assert case is not None, f"no open case matching {needle!r}"
     return client.post(
@@ -78,7 +78,7 @@ def run(stack):
 
 def test_agent_processes_without_asking_about_everything(run):
     client, rid = run
-    state = client.get(f"/api/runs/{rid}").json()
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
     applied = [m for m in state["mappings"] if m["decision"] == "auto_apply"]
     assert len(applied) >= 40, "the agent should map most columns unaided"
     assert state["counts"]["records"] >= 35
@@ -88,7 +88,7 @@ def test_agent_processes_without_asking_about_everything(run):
 
 def test_one_answer_unblocks_many_records(run):
     client, rid = run
-    assert client.get(f"/api/runs/{rid}").json()["counts"]["ready"] == 0
+    assert client.get(f"/api/runs/{rid}?wait=true").json()["counts"]["ready"] == 0
     result = _answer(client, rid, "no column for status", "constant:ACTIVE")
     assert result["ready"] >= 10, "a field-level answer must release every record it blocked"
 
@@ -112,12 +112,12 @@ def test_rollback_returns_records_without_erasing_history(run):
     _answer(client, rid, "no column for status", "constant:ACTIVE")
     client.post(f"/api/runs/{rid}/deliver")
 
-    before = client.get(f"/api/runs/{rid}").json()["counts"]["records"]
+    before = client.get(f"/api/runs/{rid}?wait=true").json()["counts"]["records"]
     result = client.post(f"/api/runs/{rid}/rollback").json()
     assert result["succeeded"] == result["attempted"] > 0
     assert result["partial"] is False
 
-    after = client.get(f"/api/runs/{rid}").json()
+    after = client.get(f"/api/runs/{rid}?wait=true").json()
     assert after["counts"]["delivered"] == 0
     assert after["counts"]["records"] == before, "rollback must not touch source data"
     assert len(client.get(f"/api/runs/{rid}/audit").json()) > 0
@@ -126,23 +126,23 @@ def test_rollback_returns_records_without_erasing_history(run):
 def test_state_is_stable_across_replays(run):
     client, rid = run
     _answer(client, rid, "no column for status", "constant:ACTIVE")
-    snapshots = [client.get(f"/api/runs/{rid}").json()["counts"] for _ in range(3)]
+    snapshots = [client.get(f"/api/runs/{rid}?wait=true").json()["counts"] for _ in range(3)]
     assert snapshots[0] == snapshots[1] == snapshots[2]
 
 
 def test_rejecting_excludes_without_deleting_source(run):
     client, rid = run
     _answer(client, rid, "no column for status", "constant:ACTIVE")
-    before = client.get(f"/api/runs/{rid}").json()["counts"]["records"]
+    before = client.get(f"/api/runs/{rid}?wait=true").json()["counts"]["records"]
     _answer(client, rid, "is not a valid email address", None, action="reject")
-    after = client.get(f"/api/runs/{rid}").json()
+    after = client.get(f"/api/runs/{rid}?wait=true").json()
     assert after["counts"]["records"] == before
     assert after["counts"]["excluded"] >= 1
 
 
 def test_approval_is_not_offered_as_a_way_past_a_failed_check(run):
     client, rid = run
-    state = client.get(f"/api/runs/{rid}").json()
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
     case = next(c for c in state["cases"] if c["class"] == "MISSING_REQUIRED")
     response = client.post(
         f"/api/runs/{rid}/cases/{case['key']}/decide", json={"action": "approve"}

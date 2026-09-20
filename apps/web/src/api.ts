@@ -7,9 +7,15 @@ export type Case = {
   blocks: number; state: string;
 };
 
+export type Progress = {
+  stage: string; message: string; done: number; total: number;
+  percent: number; finished: boolean; failed: boolean; error: string | null;
+};
+
 export type RunState = {
   run_id: string;
   status: string;
+  progress?: Progress;
   counts: { records: number; ready: number; delivered: number; blocked: number; excluded: number; open_cases: number };
   cases: Case[];
   records: {

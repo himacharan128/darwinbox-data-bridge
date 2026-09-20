@@ -22,13 +22,36 @@ function useRun(runId: string | null) {
     void refresh();
   }, [refresh]);
 
+  // Poll only while something is actually moving, then stop. A console that keeps
+  // hammering a settled run is just noise on the network tab.
+  const busy = state?.status === "processing" || state?.progress?.finished === false;
   useEffect(() => {
-    if (!runId || state?.status !== "processing") return;
-    const t = setInterval(() => void refresh(), 2000);
+    if (!runId || !busy) return;
+    const t = setInterval(() => void refresh(), 1200);
     return () => clearInterval(t);
-  }, [runId, state?.status, refresh]);
+  }, [runId, busy, refresh]);
 
   return { state, error, refresh };
+}
+
+function Working({ p }: { p: NonNullable<RunState["progress"]> }) {
+  return (
+    <div className="panel" role="status" aria-live="polite">
+      <h2>The agent is working</h2>
+      <p style={{ fontSize: 17, margin: "0 0 12px" }}>{p.message}</p>
+      <div style={{ height: 8, borderRadius: 999, background: "var(--panel-2)",
+                    overflow: "hidden" }}>
+        <div style={{ width: `${Math.max(4, p.percent)}%`, height: "100%",
+                      background: "var(--accent)", transition: "width .4s ease" }} />
+      </div>
+      {!!p.total && (
+        <p className="change" style={{ marginTop: 8 }}>
+          {p.done} of {p.total} columns examined
+        </p>
+      )}
+      {p.failed && <p style={{ color: "var(--bad)" }}>{p.error}</p>}
+    </div>
+  );
 }
 
 function Stat({ n, label, tone }: { n: number; label: string; tone?: string }) {
@@ -373,7 +396,11 @@ export default function App() {
         </div>
       )}
 
-      {state && counts && (
+      {state?.progress && !state.progress.finished && state.status === "processing" && (
+        <Working p={state.progress} />
+      )}
+
+      {state && counts && state.status !== "processing" && (
         <>
           <div className="stats">
             <Stat n={counts.records} label="employees found" />

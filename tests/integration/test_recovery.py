@@ -1,0 +1,201 @@
+"""Interruption, resumption and the outcomes nobody learns the answer to.
+
+The architecture makes most of this structural: only human decisions and destination
+acceptances are durable, everything else is replayed from them. These tests exist to
+prove that claim rather than assume it — especially the uncertain delivery, where the
+write lands and the caller never finds out.
+"""
+from __future__ import annotations
+
+import socket
+import threading
+import time
+import warnings
+from pathlib import Path
+
+import pytest
+import uvicorn
+from fastapi.testclient import TestClient
+
+warnings.filterwarnings("ignore")
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+@pytest.fixture
+def env(tmp_path, monkeypatch):
+    """The API, plus a handle to rebuild it as a fresh process would after a crash."""
+    monkeypatch.chdir(ROOT)
+    monkeypatch.setenv("DBX_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MOCK_TARGET_DB", str(tmp_path / "target.db"))
+
+    import importlib
+
+    import dbx_mock_target.main as target_main
+
+    importlib.reload(target_main)
+    port = _free_port()
+    server = uvicorn.Server(
+        uvicorn.Config(target_main.app, host="127.0.0.1", port=port, log_level="error")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    for _ in range(100):
+        if server.started:
+            break
+        time.sleep(0.05)
+
+    def boot() -> TestClient:
+        """Rebuild the API from disk — what a restarted process sees."""
+        import dbx_api.main as api_main
+        import dbx_api.store as api_store
+
+        importlib.reload(api_store)
+        importlib.reload(api_main)
+        api_main.destination.base_url = f"http://127.0.0.1:{port}"
+        return TestClient(api_main.app)
+
+    try:
+        yield boot, TestClient(target_main.app)
+    finally:
+        server.should_exit = True
+        thread.join(timeout=5)
+
+
+def _answer(client, run, needle, value, action="correct"):
+    state = client.get(f"/api/runs/{run}?wait=true").json()
+    case = next((c for c in state["cases"] if needle in c["headline"]), None)
+    assert case is not None, f"no open case matching {needle!r}"
+    client.post(
+        f"/api/runs/{run}/cases/{case['key']}/decide",
+        json={"action": action, "value": value},
+    )
+
+
+def test_a_restart_preserves_decisions_and_recomputes_the_same_queue(env):
+    boot, _ = env
+    client = boot()
+    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    _answer(client, run, "no column for status", "constant:ACTIVE")
+    before = client.get(f"/api/runs/{run}?wait=true").json()["counts"]
+
+    restarted = boot()  # nothing in memory survives; only the database does
+    after = restarted.get(f"/api/runs/{run}?wait=true").json()["counts"]
+
+    assert after == before, "reopening a run must recompute exactly the same state"
+
+
+def test_a_restart_mid_delivery_does_not_resend_what_landed(env):
+    boot, target = env
+    client = boot()
+    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    _answer(client, run, "no column for status", "constant:ACTIVE")
+
+    first = client.post(f"/api/runs/{run}/deliver").json()
+    delivered = first["sent"]["accepted"]
+    assert delivered > 0
+
+    restarted = boot()
+    again = restarted.post(f"/api/runs/{run}/deliver").json()
+    assert sum(again["sent"].values()) == 0, "a resumed run must not resend"
+
+    stored = target.get("/records", params={"run_id": run}).json()
+    assert len(stored) == delivered, "the destination must hold each record exactly once"
+
+
+def test_an_uncertain_outcome_is_reconciled_rather_than_blindly_retried(env):
+    """The dangerous failure: the write lands, the response never arrives.
+
+    Retrying blind turns a possible success into a certain duplicate. The client must
+    ask the destination what it holds before deciding.
+    """
+    boot, target = env
+    client = boot()
+    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    _answer(client, run, "no column for status", "constant:ACTIVE")
+
+    target.post("/admin/failure-mode", json={"mode": "uncertain", "remaining": 1})
+    result = client.post(f"/api/runs/{run}/deliver").json()
+
+    stored = target.get("/records", params={"run_id": run}).json()
+    keys = [r["natural_key"] for r in stored]
+    assert len(keys) == len(set(keys)), "reconciliation must prevent a duplicate record"
+
+    attempts = client.get(f"/api/runs/{run}/destination").json()["attempts"]
+    assert any(a["outcome"] == "uncertain" for a in attempts), "the uncertainty is audited"
+    assert result["sent"]["accepted"] + result["sent"]["duplicate"] > 0
+
+
+def test_a_permanent_rejection_is_never_retried(env):
+    boot, _ = env
+    client = boot()
+    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    _answer(client, run, "no column for status", "constant:ACTIVE")
+    client.post(f"/api/runs/{run}/deliver")
+
+    attempts = client.get(f"/api/runs/{run}/destination").json()["attempts"]
+    for key in {a["natural_key"] for a in attempts}:
+        theirs = [a for a in attempts if a["natural_key"] == key]
+        if any(a["outcome"] == "rejected" for a in theirs):
+            assert len(theirs) == 1, "a permanent rejection must not be retried"
+
+
+def test_retry_recovers_from_a_transient_failure_without_duplicating(env):
+    boot, target = env
+    client = boot()
+    run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    _answer(client, run, "no column for status", "constant:ACTIVE")
+
+    target.post("/admin/failure-mode", json={"mode": "transient", "remaining": 2})
+    client.post(f"/api/runs/{run}/deliver")
+
+    stored = target.get("/records", params={"run_id": run}).json()
+    keys = [r["natural_key"] for r in stored]
+    assert len(keys) == len(set(keys))
+
+    attempts = client.get(f"/api/runs/{run}/destination").json()["attempts"]
+    outcomes = {a["outcome"] for a in attempts}
+    assert "transient_failed" in outcomes
+    assert "accepted" in outcomes
+
+
+def test_rolling_back_one_run_leaves_another_untouched(env):
+    """Run isolation: fixing one migration must not disturb a different one."""
+    boot, target = env
+    client = boot()
+    runs = []
+    for _ in range(2):
+        run = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+        _answer(client, run, "no column for status", "constant:ACTIVE")
+        client.post(f"/api/runs/{run}/deliver")
+        runs.append(run)
+
+    held = {r: len(target.get("/records", params={"run_id": r}).json()) for r in runs}
+    assert all(v > 0 for v in held.values())
+
+    client.post(f"/api/runs/{runs[0]}/rollback")
+
+    assert len(target.get("/records", params={"run_id": runs[0]}).json()) == 0
+    assert len(target.get("/records", params={"run_id": runs[1]}).json()) == held[runs[1]]
+    assert client.get(f"/api/runs/{runs[1]}?wait=true").json()["counts"]["delivered"] == held[runs[1]]
+
+
+def test_the_same_employee_in_two_runs_is_processed_independently(env):
+    """Decision 2: runs are independent processing scopes."""
+    boot, target = env
+    client = boot()
+    first = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    _answer(client, first, "no column for status", "constant:ACTIVE")
+    client.post(f"/api/runs/{first}/deliver")
+
+    second = client.post("/api/runs/from-fixtures", json={"folder": "run2"}).json()["run_id"]
+    state = client.get(f"/api/runs/{second}?wait=true").json()
+    assert state["counts"]["records"] > 0, "run 2 must process on its own terms"
+
+    shared = target.get("/records", params={"natural_key": "EMP-00001"}).json()
+    assert len({r["run_id"] for r in shared}) >= 1
