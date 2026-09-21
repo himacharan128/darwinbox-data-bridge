@@ -70,6 +70,13 @@ def _schema_for_destination(schema: MigrationSchema) -> dict[str, Any]:
 
 def _case_payload(case: Any, names: dict[str, str] | None = None) -> dict[str, Any]:
     names = names or {}
+    evidence = case.evidence
+    cross = evidence.get("cross_check") if evidence else None
+    if cross:
+        # The people the column was checked against, by name, not by key.
+        evidence = {**evidence, "cross_check": {**cross, "examples": [
+            {**e, "who": names.get(e.get("key", ""), "")} for e in cross["examples"]
+        ]}}
     return {
         # Who this is about, as a person rather than a key.
         "who": names.get(case.record_key or "", ""),
@@ -82,7 +89,7 @@ def _case_payload(case: Any, names: dict[str, str] | None = None) -> dict[str, A
         "field": case.target_field,
         "sources": [r.label() for r in case.source_refs],
         "values": case.raw_values,
-        "evidence": case.evidence,
+        "evidence": evidence,
         "rule": case.rule,
         "attempts": case.attempts,
         "actions": [a.value for a in case.actions],
@@ -971,6 +978,16 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
         "summary": f"{action.value.title()}d: {case.headline}",
         "reason": body.reason, "after": body.value, "at": now(),
     }])
+    # Choosing against measured evidence is allowed - the person may know something
+    # the files do not - but the record should say it was a choice, not an oversight.
+    against = next((o for o in case.options
+                    if o.caution and body.value is not None and o.value == body.value), None)
+    if against is not None:
+        store.append_audit(run_id, [{
+            "actor": Actor.HUMAN.value, "action": "review.against_evidence",
+            "summary": f"Chose “{against.label}” against the evidence: {against.caution}",
+            "reason": body.reason, "after": body.value, "at": now(),
+        }])
 
     jobs.invalidate(run_id)
     store.clear_snapshot(run_id)

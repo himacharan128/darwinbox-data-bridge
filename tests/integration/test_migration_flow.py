@@ -471,3 +471,24 @@ def test_a_run_can_be_renamed_and_the_rename_is_recorded(stack):
     assert client.patch(f"/api/runs/{rid}", json={"label": "   "}).status_code == 422
     assert client.patch(f"/api/runs/{rid}", json={"label": "x" * 121}).status_code == 422
     assert client.patch("/api/runs/run-nope", json={"label": "x"}).status_code == 404
+
+
+def test_choosing_a_reading_the_other_files_contradict_is_recorded_as_such(run):
+    client, rid = run
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+    case = next((c for c in state["cases"] if c["headline"].startswith("How should dates")), None)
+    if case is None or "cross_check" not in case["evidence"]:
+        pytest.skip("these fixtures have no date column shared with another file")
+
+    recommended = [o for o in case["options"] if o["recommended"]]
+    cautioned = [o for o in case["options"] if o.get("caution")]
+    assert len(recommended) == 1 and cautioned, "the measured reading is suggested, the other flagged"
+
+    client.post(
+        f"/api/runs/{rid}/cases/{case['key']}/decide",
+        json={"action": "correct", "value": cautioned[0]["value"]},
+    )
+    audit = client.get(f"/api/runs/{rid}/audit").json()
+    assert any(e["action"] == "review.against_evidence" for e in audit), (
+        "overriding the evidence is allowed, but the history has to say it happened"
+    )

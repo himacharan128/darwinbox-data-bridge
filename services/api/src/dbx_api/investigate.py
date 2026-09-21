@@ -218,6 +218,11 @@ def enrich(result: Any, schema: MigrationSchema, profiles: dict, provider: Any) 
             continue
         case.found = finding.conclusion
 
+        # A recommendation the data already measured stands. The model may add what
+        # it looked at, but its opinion does not get to outvote a count.
+        if any(option.recommended for option in case.options):
+            continue
+
         # A suggestion only becomes an option if it is one of the answers the case
         # already allows. The model proposes; the case decides what is offerable.
         if finding.settled and finding.suggestion:

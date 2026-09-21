@@ -41,6 +41,9 @@ class Option(BaseModel):
     value: str | None = None
     description: str | None = None
     recommended: bool = False
+    #: Set when measured evidence argues against this choice. It stays choosable -
+    #: the person may know something the files do not - but not in one careless click.
+    caution: str | None = None
 
 
 class Checked(BaseModel):

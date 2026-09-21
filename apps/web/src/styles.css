@@ -710,3 +710,12 @@ body.phone-preview .escape-hatch { display: flex; }
   .shell[data-layout="mobile"] .subject-name { font-size: 14px; }
   .shell[data-layout="mobile"] .callout-value { font-size: 15.5px; }
 
+
+/* ---------------------------------------- measured against the other files */
+
+.crosscheck { background: var(--ok-bg); border-color: #cfe9dc; }
+.crosscheck .callout-label { color: var(--ok); }
+.crosscheck-head { margin: 6px 0 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.notice.caution { margin: 4px 0 12px; }
+.notice.caution b { display: block; margin-bottom: 2px; }
+.caution-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }

@@ -188,6 +188,8 @@ class Pipeline:
         # Per-cell read confidence, for values that came off a scan rather than a file.
         self.confidence = confidence or {}
         self.result = RunResult()
+        self.merged_into: dict[str, str] = {}
+        self.format_rows: dict[str, list[tuple[str, str]]] = defaultdict(list)
 
     # ---------------------------------------------------------------- audit
 
@@ -246,6 +248,7 @@ class Pipeline:
         mappings = self._map(sources)
         records = self._build(sources, mappings)
         records = self._reconcile(records)
+        self._cross_check_formats(records)
         self._validate(records)
         self._finalise()
         return self.result
@@ -264,6 +267,9 @@ class Pipeline:
         #: of a row. A date column nothing can disambiguate is one question about the
         #: column, not one per employee who happens to have joined on the 4th.
         self.format_case: dict[tuple[str, str], str] = {}
+        #: Every row waiting on a column's reading, with the value it holds, so the
+        #: column can be checked against what other files say about the same people.
+        self.format_rows: dict[str, list[tuple[str, str]]] = defaultdict(list)
 
         for name, records in sources.items():
             if not records:
@@ -596,6 +602,7 @@ class Pipeline:
                 existing = self.format_case.get(key)
                 if existing:
                     self._attach_to_case(existing, record, spec.name)
+                    self.format_rows[existing].append((record.id, raw or ""))
                     return
                 case = self._case(
                     EscalationClass.AMBIGUOUS_VALUE,
@@ -618,6 +625,7 @@ class Pipeline:
                     blocks_records=[record.id],
                 )
                 self.format_case[key] = case.id
+                self.format_rows[case.id].append((record.id, raw or ""))
                 record.open_cases.append(case.id)
                 self.value_case[(record.id, spec.name)] = case.id
                 return
@@ -721,6 +729,7 @@ class Pipeline:
                 right.open_cases.append(case.id)
                 left.state = right.state = RecordState.BLOCKED
 
+        self.merged_into = merged_into
         return [r for r in records if r.id not in merged_into]
 
     def _record_key_for(self, record: CanonicalRecord) -> str | None:
@@ -800,6 +809,104 @@ class Pipeline:
             )
             keep.open_cases.append(case.id)
             keep.state = RecordState.BLOCKED
+
+    def _cross_check_formats(self, records: list[CanonicalRecord]) -> None:
+        """Test each undecidable date column against the same people in other files.
+
+        Nothing inside the column settles 05/07/2018. But if that person also appears
+        in another export with an unambiguous 2018-07-05, the two readings are no
+        longer equally likely. That is measured evidence, so it earns a
+        recommendation - never the answer: a reading that holds for everyone checked
+        is suggested, the one nobody matches is cautioned against, and the person
+        still decides. Only another file counts; a file cannot vouch for itself.
+        """
+        survivors = {r.id: r for r in records}
+        for case_id, rows in self.format_rows.items():
+            case = next((c for c in self.result.cases if c.id == case_id), None)
+            spec = self.schema.by_name.get(case.target_field or "") if case else None
+            if case is None or spec is None or not case.source_refs:
+                continue
+            here = case.source_refs[0]
+            target = spec.strftime or "%Y-%m-%d"
+            readings = [o.value for o in case.options if o.value]
+            agree = dict.fromkeys(readings, 0)
+            examples: list[dict] = []
+            others: list[str] = []
+
+            for record_id, raw in rows:
+                record = survivors.get(self._root(record_id, self.merged_into))
+                if record is None:
+                    continue
+                there = record.values.get(spec.name)
+                origin = record.provenance.get(spec.name)
+                if there in (None, "") or origin is None or origin.source.file == here.file:
+                    continue
+                matches = [fmt for fmt in readings if _read_as(raw, fmt, target) == str(there)]
+                for fmt in matches:
+                    agree[fmt] += 1
+                if origin.source.file not in others:
+                    others.append(origin.source.file)
+                examples.append({
+                    "key": self._record_key_for(record) or record.id,
+                    "here": raw, "there": str(there), "file": origin.source.file,
+                    "matches": [_format_lead(fmt) for fmt in matches],
+                })
+
+            checked = len(examples)
+            if not checked:
+                continue
+            files = " and ".join(others)
+            supported = [fmt for fmt, n in agree.items() if n]
+            case.evidence = {**case.evidence, "cross_check": {
+                "file": here.file, "column": here.column, "against": others,
+                "checked": checked,
+                "agree": {_format_lead(fmt): n for fmt, n in agree.items()},
+                "examples": examples[:5],
+            }}
+
+            def matching(n: int) -> str:
+                return f"{n} {'matches' if n == 1 else 'match'}"
+
+            tally = "; ".join(
+                f"{matching(n)} {_format_lead(fmt).lower()}" for fmt, n in agree.items() if n
+            ) or "none match either reading"
+            neither = checked - sum(agree.values())
+            if neither and supported:
+                tally += f"; {matching(neither)} neither"
+
+            if len(supported) == 1:
+                best = supported[0]
+                lead = _format_lead(best).lower()
+                case.detail += (
+                    f" But {checked} of the people waiting on this also appear in {files}, "
+                    f"and {agree[best]} of {checked} match {lead}."
+                )
+                for option in case.options:
+                    if option.value == best:
+                        option.recommended = True
+                        option.description = (
+                            f"{agree[best]} of {checked} people who also appear in "
+                            f"{files} match this reading"
+                        )
+                    elif option.value:
+                        option.caution = (
+                            f"None of the {checked} people who also appear in {files} "
+                            f"match this reading. Choosing it gives them a different "
+                            f"date from the one {files} has."
+                        )
+            else:
+                # A split is a finding too: the column may not be one format at all.
+                case.detail += (
+                    f" Checked against {files}: of {checked} people who appear in both, "
+                    f"{tally}. That does not settle it."
+                )
+
+            self._log(
+                "format.cross_checked",
+                f"Checked {here.column!r} in {here.file} against {files}: "
+                f"of {checked} people in both, {tally}",
+                case_id=case.id, target_field=spec.name, source_refs=[here],
+            )
 
     def _validate(self, records: list[CanonicalRecord]) -> None:
         self.result.records = records
@@ -969,6 +1076,22 @@ class Pipeline:
         )
 
 
+def _format_lead(fmt: str) -> str:
+    """'%d/%m/%Y' is 'Day first' to someone who has never seen a format string."""
+    return "Day first" if fmt.startswith("%d") else "Month first" if fmt.startswith("%m") \
+        else fmt
+
+
+def _read_as(raw: str, fmt: str, target: str) -> str | None:
+    """A value read one particular way, in the field's own format, or None."""
+    import datetime as _dt
+
+    try:
+        return _dt.datetime.strptime(raw.strip(), fmt).strftime(target)  # noqa: DTZ007
+    except (ValueError, TypeError):
+        return None
+
+
 def _format_label(fmt: str, example: str) -> str:
     """'%d/%m/%Y' plus '01/04/2015' reads as 'Day first — 1 April 2015'."""
     import datetime as _dt
@@ -978,9 +1101,7 @@ def _format_label(fmt: str, example: str) -> str:
         shown = _dt.datetime.strptime(example, fmt).date().strftime("%-d %B %Y")  # noqa: DTZ007
     except (ValueError, TypeError):
         shown = fmt
-    lead = "Day first" if fmt.startswith("%d") else "Month first" if fmt.startswith("%m") \
-        else fmt
-    return f"{lead} — {example} is {shown}"
+    return f"{_format_lead(fmt)} — {example} is {shown}"
 
 
 def apply_decision(

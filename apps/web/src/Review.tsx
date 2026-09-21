@@ -18,11 +18,15 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // An answer the data argues against, held for a second look before it is sent.
+  const [cautioned, setCautioned] = useState<Case["options"][number] | null>(null);
 
   const cases = state.cases;
   const c: Case | undefined = cases[Math.min(i, Math.max(0, cases.length - 1))];
 
-  useEffect(() => { setDraft(""); setErr(null); setConfirming(false); }, [c?.key]);
+  useEffect(() => {
+    setDraft(""); setErr(null); setConfirming(false); setCautioned(null);
+  }, [c?.key]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -52,7 +56,7 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
       onDone();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "That didn't go through. Nothing was changed.");
-    } finally { setBusy(false); setConfirming(false); }
+    } finally { setBusy(false); setConfirming(false); setCautioned(null); }
   };
 
   const ev = (c.evidence ?? {}) as Record<string, any>;
@@ -132,6 +136,8 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
         </div>
       )}
 
+      {ev.cross_check && <CrossCheck x={ev.cross_check} />}
+
       {(c.found || !!(c.checked ?? []).length) && (
         <div className="looked">
           <span className="callout-label">Agent investigation</span>
@@ -172,8 +178,27 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
             {c.options.map((o) => (
               <button key={o.label} disabled={busy}
                       className={o.recommended ? "primary" : ""}
-                      onClick={() => void send("correct", o.value)}>{o.label}</button>
+                      aria-pressed={cautioned?.label === o.label || undefined}
+                      onClick={() => (o.caution ? setCautioned(o)
+                                                : void send("correct", o.value))}>
+                {o.label}
+              </button>
             ))}
+          </div>
+        )}
+
+        {cautioned && (
+          <div className="notice caution" role="alert">
+            <b>The data disagrees with this.</b> {cautioned.caution}
+            <div className="caution-actions">
+              <button className="danger" disabled={busy}
+                      onClick={() => void send("correct", cautioned.value)}>
+                Choose it anyway
+              </button>
+              <button className="ghost" disabled={busy} onClick={() => setCautioned(null)}>
+                Go back
+              </button>
+            </div>
           </div>
         )}
 
@@ -226,6 +251,44 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+type CrossCheckEvidence = {
+  against: string[]; checked: number; agree: Record<string, number>;
+  examples: { key: string; who?: string; here: string; there: string; file: string;
+    matches: string[] }[];
+};
+
+/**
+ * What the other files say about the same people. Measured, not the model's view,
+ * so it sits apart from the agent's investigation: a count someone can check
+ * against the rows listed under it.
+ */
+function CrossCheck({ x }: { x: CrossCheckEvidence }) {
+  const tallies = Object.entries(x.agree).filter(([, n]) => n > 0);
+  return (
+    <div className="looked crosscheck">
+      <span className="callout-label">Checked against {x.against.join(" and ")}</span>
+      <p className="crosscheck-head">
+        {tallies.length
+          ? tallies.map(([lead, n]) => `${n} of ${x.checked} match ${lead.toLowerCase()}`)
+              .join(" · ")
+          : `None of the ${x.checked} match either reading`}
+      </p>
+      <ul>
+        {x.examples.map((e) => (
+          <li key={e.key}>
+            <b>{e.who || e.key}</b>
+            <span>
+              <span className="mono">{e.here}</span> here,{" "}
+              <span className="mono">{e.there}</span> in {e.file}
+              {" — "}{e.matches.length ? e.matches.join(", ").toLowerCase() : "neither reading"}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

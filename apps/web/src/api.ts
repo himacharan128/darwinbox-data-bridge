@@ -3,7 +3,8 @@ export type Case = {
   record: string | null; field: string | null; sources: string[]; values: string[];
   evidence: Record<string, unknown>; rule: string | null; attempts: string[];
   actions: string[];
-  options: { label: string; value: string | null; description: string | null; recommended: boolean }[];
+  options: { label: string; value: string | null; description: string | null;
+    recommended: boolean; caution?: string | null }[];
   blocks: number; children: number; state: string;
   /** What the agent went and looked at before deciding it had to ask. */
   checked?: { looked_at: string; found: string }[];
