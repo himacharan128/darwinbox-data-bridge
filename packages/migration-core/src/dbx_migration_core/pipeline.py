@@ -1138,10 +1138,14 @@ def apply_decision(
 
         case EscalationClass.UNCERTAIN_IDENTITY:
             keys = tuple(case.evidence.get("keys", ())) if case.evidence else ()
-            if len(keys) == 2:
-                overrides.merge[(str(keys[0]), str(keys[1]))] = (
-                    action is Action.APPROVE and value != "separate"
-                )
+            # Merging two people is only ever what somebody chose. "Same person"
+            # arrives as the chosen option; approving means taking the recommendation,
+            # which is to keep them apart. The old reading had both backwards.
+            chosen = value
+            if action is Action.APPROVE and chosen is None:
+                chosen = next((o.value for o in case.options if o.recommended), None)
+            if len(keys) == 2 and chosen in ("merge", "separate"):
+                overrides.merge[(str(keys[0]), str(keys[1]))] = chosen == "merge"
 
         case EscalationClass.AMBIGUOUS_VALUE if value and value.startswith("%"):
             # A reading chosen for the column, not for the row that happened to ask.
