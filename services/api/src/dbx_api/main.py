@@ -412,7 +412,11 @@ def recommend(run_id: str) -> dict[str, Any]:
     if kept:
         proposal.fields = kept
 
-    by_raw = {p.raw_name.strip().casefold(): p for p in profiles}
+    # A column name maps to every file that has it, not to whichever file came last.
+    # Collapsing them made a field present in five files look like it covered one.
+    by_raw: dict[str, list[Any]] = {}
+    for profile in profiles:
+        by_raw.setdefault(profile.raw_name.strip().casefold(), []).append(profile)
 
     def _aliases_for(field: Any, known: dict[str, Any]) -> list[str]:
         """The columns the agent says fed this field become the field's aliases.
@@ -438,8 +442,11 @@ def recommend(run_id: str) -> dict[str, Any]:
 
     def feeding(field: Any) -> list[Any]:
         """The profiled columns a proposed field says it came from."""
-        found = [by_raw[c.strip().casefold()] for c in field.sources
-                 if c.strip().casefold() in by_raw]
+        found = [
+            profile
+            for c in field.sources
+            for profile in by_raw.get(c.strip().casefold(), ())
+        ]
         if found:
             return found
         # The model named no column, or named one that is not in the profiles.
@@ -450,12 +457,33 @@ def recommend(run_id: str) -> dict[str, Any]:
                     if column == key or column.endswith(key) or key.endswith(column)), None)
         return [hit] if hit else []
 
+    #: How much of the dataset a field must actually cover to be called required.
+    #: Below this it is a field some files happen to carry, and marking it required
+    #: turns every file without it into a question.
+    REQUIRED_COVERAGE = 0.80
+
+    # Rows across the whole run, counted once per file rather than once per column.
+    rows_by_file: dict[str, int] = {}
+    for profile in profiles:
+        key = f"{profile.source.file}|{profile.source.sheet or ''}"
+        rows_by_file[key] = max(rows_by_file.get(key, 0), profile.total)
+    total_rows = sum(rows_by_file.values()) or 1
+
+    relaxed = 0
     marked = 0
     for field in proposal.fields:
         columns = feeding(field)
         if not columns:
             continue
         source = max(columns, key=lambda p: p.non_null)
+
+        # The model is told to mark `required` only where essentially every record
+        # supplies it, and does not listen: it marked pay_grade required off one
+        # file of four, which asked "this file has no column for pay_grade" of every
+        # other file. The data says how much of the run a field really covers.
+        if field.required and sum(c.non_null for c in columns) / total_rows < REQUIRED_COVERAGE:
+            field.required = False
+            relaxed += 1
 
         # A field whose values all live in an uploaded lookup gets that rule, which is
         # the single strongest signal mapping has.
@@ -536,6 +564,7 @@ def recommend(run_id: str) -> dict[str, Any]:
             + (f"; left out {len(dropped)} system column(s)" if dropped else "")
             + (f"; {marked} field(s) identify a person" if marked else "")
             + (f"; {patterned} got the value shape seen in the data" if patterned else "")
+            + (f"; {relaxed} field(s) only some files carry are optional" if relaxed else "")
         ),
         "at": now(), "provider": call.provider, "model": call.model,
         "prompt_version": call.prompt_version, "latency_ms": call.latency_ms,

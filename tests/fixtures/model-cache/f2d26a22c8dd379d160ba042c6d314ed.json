@@ -1,0 +1,30 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "Lookup shows roster_export.pdf provides phone '+919845011041' while scanned_roster.pdf provides '4919845011041' for employee EMP-00041"
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00041', field='phone'",
+      "found": "the merged record has '+919845011041'; it came from roster_export.pdf \u00b7 page 1 \u00b7 row 2 \u00b7 column 'Mobile' as '+919845011041'. This employee was built from: roster_export.pdf \u00b7 page 1 \u00b7 row 2, scanned_roster.pdf \u00b7 page 1 \u00b7 row 2"
+    },
+    {
+      "looked_at": "values in column: column='phone', file='scanned_roster.pdf'",
+      "found": "no column 'phone' in 'scanned_roster.pdf'"
+    },
+    {
+      "looked_at": "values in column: column='Mobile', file='scanned_roster.pdf'",
+      "found": "3 of 3 rows filled, 3 distinct. Values: '491984501 1040' x1, '4919845011041' x1, '19845011042:' x1"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 2253,
+    "input_tokens": 5496,
+    "output_tokens": 341,
+    "cached": false
+  }
+}

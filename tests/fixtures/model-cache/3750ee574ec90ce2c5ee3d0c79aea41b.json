@@ -1,0 +1,30 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "Lookup shows roster_export.pdf provides phone '+919845011041' while scanned_roster.pdf lists mobile '4919845011041' for employee EMP-00041, indicating a conflict."
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00041', field='phone'",
+      "found": "the merged record has '+919845011041'; it came from roster_export.pdf \u00b7 page 1 \u00b7 row 2 \u00b7 column 'Mobile' as '+919845011041'. This employee was built from: roster_export.pdf \u00b7 page 1 \u00b7 row 2, scanned_roster.pdf \u00b7 page 1 \u00b7 row 2"
+    },
+    {
+      "looked_at": "values in column: column='Phone', file='scanned_roster.pdf'",
+      "found": "no column 'Phone' in 'scanned_roster.pdf'"
+    },
+    {
+      "looked_at": "columns in file: file='scanned_roster.pdf'",
+      "found": "scanned_roster.pdf has 12 columns: Emp ID (e.g. EMP-00040, EMP-00041); First Name. (e.g. Vikram, Aisha.); Last Nam\u00e9 (e.g. Chandra, Qureshi); Email (e.g. vikram. chandra@acme-hr.example, aisha.quroshi@acme-hrexample); Mobile (e.g. 491984501 1040, 4919845011041); DOB (e.g. i989-05-21, 1993-01-08); Date of Joining. (e.g. 2019-08:12, 2021-04-05); Dept Code (e.g. ENG, SALES); Designation (e.g. Staff En"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 2097,
+    "input_tokens": 5609,
+    "output_tokens": 318,
+    "cached": false
+  }
+}

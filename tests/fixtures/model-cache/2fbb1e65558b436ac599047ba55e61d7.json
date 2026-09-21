@@ -1,0 +1,169 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "strEmployeeCode",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match EMP-xxxxx pattern required for employee_id"
+      },
+      {
+        "source_column": "strFirstNm",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column holds first names"
+      },
+      {
+        "source_column": "strLastNm",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column holds last names"
+      },
+      {
+        "source_column": "strEmailAddr",
+        "target_field": "work_email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are valid email addresses for work email"
+      },
+      {
+        "source_column": "strMobileNo",
+        "target_field": "mobile_number",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are Indian mobile numbers with +91 prefix"
+      },
+      {
+        "source_column": "dtDateOfBirth",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "ISO date values correspond to date of birth"
+      },
+      {
+        "source_column": "dtDateOfJoin",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "ISO date values correspond to date of joining"
+      },
+      {
+        "source_column": "strDeptCd",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are department codes (ENG, SALES, etc.)"
+      },
+      {
+        "source_column": "strDesignation",
+        "target_field": "designation",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are job titles"
+      },
+      {
+        "source_column": "strEmpType",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match allowed enum FULL_TIME, INTERN etc."
+      },
+      {
+        "source_column": "strReportingMgr",
+        "target_field": "manager_employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are employee IDs of managers"
+      },
+      {
+        "source_column": "strLocCd",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are location codes (MUM-01, BLR-HQ, etc.)"
+      },
+      {
+        "source_column": "intSeqNo",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Sequence number has no matching field in target schema"
+      },
+      {
+        "source_column": "strRemarks",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Remarks are free text not represented in target schema"
+      },
+      {
+        "source_column": "dtLastSync",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Sync timestamp is audit metadata, not part of target schema"
+      },
+      {
+        "source_column": "strSourceSystem",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Source system identifier is not needed in target schema"
+      },
+      {
+        "source_column": "bIsDeleted",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Deletion flag is internal, not represented in target schema"
+      },
+      {
+        "source_column": "strGradeBand",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Grade band has no corresponding field"
+      },
+      {
+        "source_column": "intVersionNo",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Version number is internal metadata"
+      },
+      {
+        "source_column": "strAuditUser",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Audit user is internal metadata"
+      },
+      {
+        "source_column": "strBankAcctNo",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Bank account number is not part of target schema"
+      },
+      {
+        "source_column": "dtProbationEnd",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Probation end date has no matching field"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 2866,
+    "input_tokens": 6933,
+    "output_tokens": 1398,
+    "cached": false
+  }
+}

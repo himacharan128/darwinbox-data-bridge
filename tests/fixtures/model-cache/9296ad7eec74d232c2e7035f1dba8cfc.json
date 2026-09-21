@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "settled": false,
+    "suggestion": null,
+    "conclusion": "Lookups show roster_export.pdf lists job_title as 'Staff Engineer' and scanned_roster.pdf lists it as 'Staff Engin\u00e9er:' for employee EMP-00040, indicating a conflict."
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00040', field='job_title'",
+      "found": "the merged record has 'Staff Engineer'; it came from roster_export.pdf \u00b7 page 1 \u00b7 row 1 \u00b7 column 'Designation' as 'Staff Engineer'. This employee was built from: roster_export.pdf \u00b7 page 1 \u00b7 row 1, scanned_roster.pdf \u00b7 page 1 \u00b7 row 1"
+    },
+    {
+      "looked_at": "columns in file: file='scanned_roster.pdf'",
+      "found": "scanned_roster.pdf has 12 columns: Emp ID (e.g. EMP-00040, EMP-00041); First Name. (e.g. Vikram, Aisha.); Last Nam\u00e9 (e.g. Chandra, Qureshi); Email (e.g. vikram. chandra@acme-hr.example, aisha.quroshi@acme-hrexample); Mobile (e.g. 491984501 1040, 4919845011041); DOB (e.g. i989-05-21, 1993-01-08); Date of Joining. (e.g. 2019-08:12, 2021-04-05); Dept Code (e.g. ENG, SALES); Designation (e.g. Staff En"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 3376,
+    "input_tokens": 5710,
+    "output_tokens": 407,
+    "cached": false
+  }
+}

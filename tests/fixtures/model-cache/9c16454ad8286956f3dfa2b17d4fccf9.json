@@ -1,0 +1,26 @@
+{
+  "payload": null,
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00004', field='job_title'",
+      "found": "the merged record has 'Regional Sales Head'; it came from hrms_employees_export.csv \u00b7 row 4 \u00b7 column 'Designation' as 'Regional Sales Head'. This employee was built from: hrms_employees_export.csv \u00b7 row 4, payroll_staff.xlsx \u00b7 sheet Staff \u00b7 row 2"
+    },
+    {
+      "looked_at": "values in column: file='payroll_staff.xlsx', column='Job Title'",
+      "found": "no column 'Job Title' in 'payroll_staff.xlsx'"
+    },
+    {
+      "looked_at": "columns in file: file='payroll_staff.xlsx'",
+      "found": "payroll_staff.xlsx has 12 columns: staff_code (e.g. EMP-00001, EMP-00004); fname (e.g. Aarav, Ananya); lname (e.g. Sharma, Iyer); email_id (e.g. aarav.sharma@acme-hr.example, ananya.iyer@acme-hr.example); mobile (e.g. +91 98450 11001, +91 98450 11004); birth_date (e.g. 1985-03-14, 1988-05-30); joining_dt (e.g. 01/04/2015, 05/09/2016); department (e.g. ENG, SALES); grade (e.g. VP Engineering, Direc"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 2721,
+    "input_tokens": 5542,
+    "output_tokens": 228,
+    "cached": false
+  }
+}

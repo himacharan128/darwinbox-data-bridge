@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "settled": true,
+    "suggestion": "%d/%m/%Y",
+    "conclusion": "Checked merged record for EMP-00001; date_of_joining is stored as 2015-04-01, indicating the source '01/04/2015' was interpreted as day/month/year"
+  },
+  "steps": [
+    {
+      "looked_at": "what other sources say: employee='EMP-00001', field='date_of_joining'",
+      "found": "the merged record has '2015-04-01'; it came from hrms_employees_export.csv \u00b7 row 1 \u00b7 column 'Date of Joining' as '01/04/2015'. This employee was built from: hrms_employees_export.csv \u00b7 row 1, payroll_staff.xlsx \u00b7 sheet Staff \u00b7 row 1"
+    }
+  ],
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "investigate/v4",
+    "latency_ms": 2258,
+    "input_tokens": 3837,
+    "output_tokens": 393,
+    "cached": false
+  }
+}

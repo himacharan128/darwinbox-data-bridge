@@ -1,0 +1,169 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "strEmployeeCode",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Matches employee_id pattern ^[A-Z]{3}-[0-9]{5}$"
+      },
+      {
+        "source_column": "strFirstNm",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name indicates first name and values are given names"
+      },
+      {
+        "source_column": "strLastNm",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name indicates last name and values are surnames"
+      },
+      {
+        "source_column": "strEmailAddr",
+        "target_field": "email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and email type values"
+      },
+      {
+        "source_column": "strMobileNo",
+        "target_field": "phone",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and phone type values"
+      },
+      {
+        "source_column": "dtDateOfBirth",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and date format values for birth dates"
+      },
+      {
+        "source_column": "dtDateOfJoin",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and date format values for joining dates"
+      },
+      {
+        "source_column": "strDeptCd",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name suggests department code and values are short codes"
+      },
+      {
+        "source_column": "strDesignation",
+        "target_field": "job_title",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name indicates designation/job title"
+      },
+      {
+        "source_column": "strEmpType",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values match allowed enum FULL_TIME, INTERN etc."
+      },
+      {
+        "source_column": "strReportingMgr",
+        "target_field": "manager_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are employee codes matching manager identifiers"
+      },
+      {
+        "source_column": "strLocCd",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and values are location codes"
+      },
+      {
+        "source_column": "intSeqNo",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Sequence number not represented in target schema"
+      },
+      {
+        "source_column": "strRemarks",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Free\u2011form remarks have no target field"
+      },
+      {
+        "source_column": "dtLastSync",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Sync timestamp is audit metadata, not in target schema"
+      },
+      {
+        "source_column": "strSourceSystem",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Source system identifier is metadata, not in target schema"
+      },
+      {
+        "source_column": "bIsDeleted",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Deletion flag does not map to is_active (inverse semantics) so left null"
+      },
+      {
+        "source_column": "strGradeBand",
+        "target_field": "grade_band",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and values correspond to grade band"
+      },
+      {
+        "source_column": "intVersionNo",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Version number is internal metadata"
+      },
+      {
+        "source_column": "strAuditUser",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Audit user is metadata, not in target schema"
+      },
+      {
+        "source_column": "strBankAcctNo",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Bank account number is not part of target employee schema"
+      },
+      {
+        "source_column": "dtProbationEnd",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Probation end date has no corresponding field"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 5815,
+    "input_tokens": 7010,
+    "output_tokens": 1390,
+    "cached": false
+  }
+}

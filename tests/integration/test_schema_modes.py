@@ -348,3 +348,28 @@ def test_pushing_a_run_with_no_schema_is_refused_clearly(client):
     out = client.post(f"/api/runs/{run_id}/deliver", json={"keep_sending": False})
     assert out.status_code == 409, out.text
     assert "schema" in out.json()["detail"]
+
+
+def test_a_field_only_some_files_carry_is_not_required(client):
+    """Required means the dataset supplies it, not that one export does.
+
+    The model is told this and does not listen. Marked required off a single file,
+    a field turns every other file into a question about a column it never had.
+    """
+    run_id = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    draft = client.post(f"/api/runs/{run_id}/schema/recommend").json()["schema"]
+
+    version = client.get(f"/api/runs/{run_id}/schema").json()["draft_version"]
+    client.post(f"/api/runs/{run_id}/schema/{version}/approve")
+    state = client.get(f"/api/runs/{run_id}?wait=true").json()
+
+    required = [f["name"] for f in draft["fields"] if f.get("required")]
+    assert required, "identifying fields should still be required"
+
+    # The symptom: one case per file per field that file never had.
+    missing = [c for c in state["cases"] if "has no column for" in c["headline"]]
+    assert len(missing) <= len(required), (
+        "more missing-column questions than required fields means `required` is being "
+        f"applied to fields the dataset does not really carry: "
+        f"{[c['headline'] for c in missing]}"
+    )

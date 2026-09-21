@@ -1,0 +1,92 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "code",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Pattern matches employee_id format and column name implies employee code"
+      },
+      {
+        "source_column": "given_name",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and values are given names"
+      },
+      {
+        "source_column": "surname",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and values are surnames"
+      },
+      {
+        "source_column": "contact",
+        "target_field": "email",
+        "confidence": 0.8,
+        "runner_up": null,
+        "reason": "Mixed values include email addresses; email is a required unique field"
+      },
+      {
+        "source_column": "dob",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are dates in YYYY-MM-DD matching birth dates"
+      },
+      {
+        "source_column": "doj",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are dates in YYYY-MM-DD matching joining dates"
+      },
+      {
+        "source_column": "dept",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and short codes correspond to department identifiers"
+      },
+      {
+        "source_column": "role",
+        "target_field": "job_title",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are job titles (e.g., Contract Engineer)"
+      },
+      {
+        "source_column": "type",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "All values are 'CONTRACT', which matches allowed enum"
+      },
+      {
+        "source_column": "mgr",
+        "target_field": "manager_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Pattern matches employee_id and column name indicates manager reference"
+      },
+      {
+        "source_column": "loc",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values are location identifiers (e.g., MUM-01, REMOTE)"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 1995,
+    "input_tokens": 4767,
+    "output_tokens": 805,
+    "cached": false
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "record_no",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Sequential audit identifier, not part of employee schema"
+      },
+      {
+        "source_column": "emp_ref",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Matches employee_id pattern ^[A-Z]{3}-[0-9]{5}$"
+      },
+      {
+        "source_column": "legal_first",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Contains given names of employees"
+      },
+      {
+        "source_column": "legal_last",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Contains family names of employees"
+      },
+      {
+        "source_column": "corp_email",
+        "target_field": "email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column type email with corporate addresses"
+      },
+      {
+        "source_column": "cell",
+        "target_field": "phone",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Phone number format, mobile contact"
+      },
+      {
+        "source_column": "birth_dt",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Date column with birth dates (YYYY-MM-DD)"
+      },
+      {
+        "source_column": "hire_dt",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Date column with hiring dates (YYYY-MM-DD)"
+      },
+      {
+        "source_column": "div_code",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Department identifiers like ENG, SALES"
+      },
+      {
+        "source_column": "job_title",
+        "target_field": "job_title",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Contains employee job titles"
+      },
+      {
+        "source_column": "worker_class",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Enum values FULL_TIME, PART_TIME matching employment_type"
+      },
+      {
+        "source_column": "supervisor_ref",
+        "target_field": "manager_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "References another employee ID in same pattern"
+      },
+      {
+        "source_column": "office",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Office codes like BLR-HQ, MUM-01 representing locations"
+      },
+      {
+        "source_column": "last_modified_ts",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Audit timestamp, not part of employee core schema"
+      },
+      {
+        "source_column": "created_by",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "System user identifier, not part of employee schema"
+      },
+      {
+        "source_column": "internal_notes",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Free\u2011form notes, no target field"
+      },
+      {
+        "source_column": "is_active_flag",
+        "target_field": "is_active",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Flag Y/N indicating active status, maps to boolean is_active"
+      },
+      {
+        "source_column": "cost_centre",
+        "target_field": "cost_centre",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Cost centre codes present"
+      },
+      {
+        "source_column": "row_checksum",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Technical checksum, not part of employee data"
+      },
+      {
+        "source_column": "legacy_sys_id",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Legacy system identifier not represented in target schema"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 3964,
+    "input_tokens": 7112,
+    "output_tokens": 1227,
+    "cached": false
+  }
+}
