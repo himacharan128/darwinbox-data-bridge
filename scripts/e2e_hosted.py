@@ -100,14 +100,19 @@ def main() -> int:
     check("nothing escalated", s["counts"]["open_cases"] == 0)
     check("rows read is reported beside them", s["counts"]["rows_read"] >= s["counts"]["records"])
 
-    print("\n[3] delivery happens on its own, and can be undone")
-    check("everything was sent with no button pressed",
-          s["counts"]["delivered"] == s["counts"]["records"], str(s["counts"]["delivered"]))
+    print("\n[3] pushing to the target, and undoing it")
+    check("nothing is sent until it is asked for",
+          s["counts"]["delivered"] == 0 and s["counts"]["ready"] > 0,
+          f"{s['counts']['delivered']} sent, {s['counts']['ready']} ready")
+    sent = c.http.post(f"/api/runs/{run}/deliver", json={"keep_sending": True}).json()
+    check("the push reports an outcome per record",
+          sum(sent["sent"].values()) == s["counts"]["ready"], str(sent["sent"]))
+    s = c.state(run)
     dest = c.http.get(f"/api/runs/{run}/destination").json()
     check("destination actually holds them",
           len(dest["records"]) == s["counts"]["delivered"])
-    again = c.http.post(f"/api/runs/{run}/deliver").json()
-    check("re-sending sends nothing", sum(again["sent"].values()) == 0, str(again["sent"]))
+    again = c.http.post(f"/api/runs/{run}/deliver", json={"keep_sending": True}).json()
+    check("pushing again sends nothing", sum(again["sent"].values()) == 0, str(again["sent"]))
     rb = c.http.post(f"/api/runs/{run}/rollback").json()
     check("rollback reports honestly",
           rb["succeeded"] == rb["attempted"] > 0 and not rb["partial"])
@@ -134,13 +139,16 @@ def main() -> int:
     classes = {x["class"] for x in s["cases"]}
     check("several escalation kinds, not one", len(classes) >= 6, ", ".join(sorted(classes)))
 
-    print("\n[5] one answer releases many records, which then send themselves")
-    before = c.state(run)["counts"]["delivered"]
+    print("\n[5] one answer releases many records at once")
+    before = c.state(run)["counts"]
     c.answer(run, "no column for status", "constant:ACTIVE")
     state = c.state(run)
-    check("a field-level answer unblocks in bulk",
-          state["counts"]["delivered"] - before >= 8,
-          f"{before} -> {state['counts']['delivered']} delivered")
+    released = (state["counts"]["ready"] + state["counts"]["delivered"]) - (
+        before["ready"] + before["delivered"]
+    )
+    check("a field-level answer unblocks in bulk", released >= 8,
+          f"{before['ready'] + before['delivered']} -> "
+          f"{state['counts']['ready'] + state['counts']['delivered']} sendable")
     check("records waiting on a neighbour ride on its case",
           any(x["children"] for x in state["cases"]))
 
