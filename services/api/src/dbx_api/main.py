@@ -161,7 +161,7 @@ async def create_run(
 
 
 SAMPLE_BLURB = {
-    "01-clean": "Four employees, correct formats. Nothing should need your attention.",
+    "01-clean": "24 employees, correct formats. The control: it should ask almost nothing.",
     "02-messy": "Seven files in five naming conventions, including a scanned page. The real one.",
     "03-conflicts": "The same people in two systems that disagree, plus a namesake.",
     "04-edge-cases": "Empty, malformed, disguised and oversized input. Should not crash.",

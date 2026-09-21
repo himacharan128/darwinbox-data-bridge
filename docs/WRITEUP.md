@@ -1,89 +1,33 @@
-# Data Bridge — approach and autonomy boundary
+# Data Bridge — An AI agent for client data migration, and where I drew the line between what it decides and what it asks
 
-**Hima Charan · [github.com/himacharan128/darwinbox-data-bridge](https://github.com/himacharan128/darwinbox-data-bridge)**
+**Hima Charan** · Live console: http://dbx-console-alb-1789124705.ap-south-1.elb.amazonaws.com · Source: [github.com/himacharan128/darwinbox-data-bridge](https://github.com/himacharan128/darwinbox-data-bridge)
 
-## Approach
+## What I built
 
-The agent reads a client's exports, works out the mapping to the target schema, cleans
-what it can defend, and asks a human only where the evidence runs out. On seven files
-in five naming conventions it maps **85 of 87 mappable columns unaided** — leaving 14
-noise columns alone — reconciles 46 rows into 40 people, and raises **20 cases**.
+An agent that reads a client's HR exports, decides where each column belongs, cleans what it can defend, and writes the result to a target API, stopping only where the data does not answer the question. On the messy sample (seven files in five naming conventions, including a native PDF and a scan of the same roster) it maps 85 of 87 mappable columns unaided, leaves 14 noise columns alone, and turns 46 rows into 40 people with about twenty questions.
 
-The design rule is **the model proposes, deterministic code disposes.** That is not a
-hedge against a weak model. It is the conclusion of two measurements, below.
+## Deciding what it does on its own
 
-## Where the model is used, and what gates it
+I did not want the boundary to rest on a model saying it felt confident, so it is arithmetic: **score = 0.75 × measured evidence + 0.25 × model vote**. The evidence comes from the data: header similarity, how much of the column parses as the target type, fit to the field's pattern or allowed values, uniqueness, value shape, and whether the values exist in an uploaded lookup. With nothing measured behind it, a candidate cannot pass 0.25, so it never reaches the 0.70 auto-apply line however sure the model sounds.
 
-**Reading a whole file at once.** Judged alone, `Manager ID` scored 1.000 for
-`manager_id` on its name and 0.789 for `employee_id` on the shape of its values, and
-went to a human as a tie — a question a person could not answer either, in isolation.
-Beside `Emp ID` it is obvious. The model now sees every header, its samples and the
-schema in one call. *Gate:* its vote is capped, and within a file a field applied to
-one column is taken back from any other.
+The thresholds are calibrated, not chosen: 77 labelled decisions, 18 of them columns that must *not* map. At the chosen line 50 of 57 mappable columns apply unaided, with zero wrong, zero noise mapped and zero genuine ambiguity resolved silently, and those zeros hold at every threshold in the sweep. Two shortcuts were measured and thrown out. Raising the model's cap to 0.30 maps a noise column. Letting the model break near-ties maps `dtProbationEnd` onto `date_of_joining` on a vote of 1.00. The model is exactly as certain when it is wrong.
 
-**Naming a synonym.** `role` scores **0.047** against `designation` — no shared tokens,
-shape or values. The connection is meaning, the one thing the model has that the code
-does not. *Gate:* proposed aliases land in a draft schema a person approves.
+## What it asks, and keeping the queue short
 
-**Investigating before asking.** On a checkable case the agent gets four read-only
-lookups over the run's own data, and must call one before it may answer. Asked why a
-file has no email column, it replies that the file has a `contact` column holding email
-addresses. *Gate:* it can only suggest an answer on a case a person still resolves —
-never map, clean or send.
+Eleven typed escalation classes, each with its own evidence: both candidates' measurements, both readings of a date, the cropped scan of what OCR misread. A boundary that is right but unusable has still failed, so every question is asked at the scope of its fact: one per file for a missing column, one per column for an undecidable date, one per value for a code no option allows. Where a rule exists it offers the rule, and "believe the real document" settles eight of nine disagreements at once. Where another file holds the answer it recommends it and shows why ("3 of 3 people in hr_export.csv match day first"), and asks again before a contradicting answer goes through. Pushing to the target is a button, because it is the only action with a consequence outside the tool. Results come back per record, with retry and rollback, and everything lands in the audit trail.
 
-## Why the model does not decide
+## Things I did differently
 
-Two obvious ways to raise the auto-apply rate were measured and rejected.
+- Clients rarely have a target schema, so the agent drafts one (identifier shapes become patterns, lookup-backed columns become references) for a person to edit and approve. A supplied JSON Schema or YAML works too.
+- Synonyms ("role" means "designation", which no measurement connects) enter only as aliases a person ticks, never as a vote.
+- On a checkable case the agent must use read-only lookups over the run's data before it may suggest anything.
+- Prompt injection is handled in three layers, and one fixture carries a live payload.
+- Every model call is recorded, so it runs offline and reproduces: 124 tests need no credentials. Only human decisions and destination acceptances are durable; everything else is replayed from the files.
 
-**Raising the cap.** At 0.30 the rate reaches 68% — and a noise column gets mapped.
-Mapping a checksum is the worst failure available: it corrupts the dataset silently,
-with no case raised for anyone to catch.
+## Scope
 
-**Letting it break near-ties.** Reaches 73% — and maps `dtProbationEnd` onto
-`date_of_joining` on a model vote of **1.00**, writing probation-end dates into the
-joining-date field.
+The brief suggests four to six hours. I went well past that on purpose: what it grades is where the agent's line sits, and I wanted that line measured rather than asserted. The core (mapping boundary, review queue, push) came first; the rest is built on it.
 
-So `score = 0.75 × deterministic evidence + 0.25 × model vote`, and a candidate with
-no measured support cannot exceed 0.25 — never reaching the 0.70 threshold, however
-certain the model sounds. The same holds for alias suggestions: it votes **1.00** that
-`strAuditUser` means `designation` and **1.00** that `dob` means `date_of_birth`. Its
-confidence separates nothing, so a person ticks the list.
+## What I would build next
 
-## Where the line is
-
-**Calibrated, not chosen.** 77 labelled decisions, 18 of them columns that must *not*
-map. At the chosen thresholds: **50 of 57 mappable columns applied unaided, zero wrong,
-zero noise mapped, zero genuine ambiguity silently resolved** — and those three zeros
-hold at *every* threshold in the sweep, so they are properties of the design, not a
-lucky cutoff.
-
-Auto-apply has two routes: a high score clear of the runner-up, or a winner decisively
-clear of everything else — `site → location_code` scores only 0.68 but leaves the
-runner-up half a scale behind. Both require separation.
-
-For cleanup the line is **reversible and evidence-backed versus inventing data**:
-stripping punctuation to satisfy a pattern is safe, adding a `+91` is not.
-
-## Sizing the queue is part of the boundary
-
-A boundary that is correct but unusable has failed.
-
-- **One question per fact, at the fact's own scope.** A required field with no source
-  is one question about a *file*; an undecidable date column, one about the *column* —
-  it used to be five identical ones, each blocking one employee.
-- **Rules, not answers.** Eight of nine conflicts were `roster_export.pdf` against
-  `scanned_roster.pdf`: the same roster, once native and once OCR'd. Not eight
-  judgements — one rule, *believe the real document*, and nine become one.
-- **Sending is a decision.** Everything else is reversible inside the console; writing
-  to the client's system is not, so it waits for a push.
-
-## What I'd build next
-
-1. **PII.** Salary, date of birth, national identifiers — field-level sensitivity,
-   masked display, audit redaction, and a policy on what reaches a hosted model. The
-   chokepoint exists: profiling is the only place values reach it.
-2. **Effective dating.** An HRMS models people temporally; this flattens to a snapshot.
-3. **Deterministic tie-breaks.** A manager reference is a value drawn from the
-   employee-id column but *not* unique — measurable, and it would settle the near-ties
-   the model is not allowed to.
-4. **Calibrate matching.** Mapping thresholds are measured; matching ones are asserted.
+PII handling: field sensitivity, masking, audit redaction, and a policy on what reaches a hosted model (profiling is the one chokepoint). Effective-dated records. Deterministic tie-breaks for the remaining near-ties. Calibrated record matching, whose thresholds are still asserted. A durable queue that runs on more than one node.

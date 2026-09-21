@@ -148,7 +148,7 @@ nobody will apply twice. Everything is prefixed `dbx-` so teardown is unambiguou
 
 ```bash
 make deploy        # build, push, force a new deployment
-make e2e URL=http://<host>    # 31 end-to-end checks against it
+make e2e URL=http://<host>    # 39 end-to-end checks against it
 ```
 
 ### Cost
@@ -160,18 +160,18 @@ Fargate 0.5 vCPU / 1 GB on ARM is roughly **$9/month**, the load balancer about
 aws ecs update-service --cluster dbx-data-bridge --service dbx-console --desired-count 0
 ```
 
-scales to zero, though the balancer still bills. `make teardown` removes everything.
+scales to zero, though the balancer still bills. `make teardown` removes the rest,
+except the EFS volume that holds run state (see Teardown).
 
 ### Two things worth knowing
 
-- **State is ephemeral and per-task.** Runs live on the task's own disk. A restart
-  loses run history, and — the part that bites — **two tasks do not share it**. During
-  a rolling deploy there are briefly two, so an upload can land on one task and the
-  next request on the other, which answers `404 no such run`. Harmless here because the
-  service runs a single task and settles within a minute, but it is the reason this
-  cannot be scaled out as-is. The fix is shared state, not stickiness: a replaced task
-  takes its disk with it whatever the balancer does. Mount EFS, or point `DATABASE_URL`
-  at RDS.
+- **State survives a restart, but is still one task's.** Both containers keep their
+  SQLite databases on an EFS volume (`/state`, see `infra/taskdef.json`), so a
+  redeploy or a replaced task keeps every run and everything the destination holds.
+  What it does not make safe is **two tasks at once**: SQLite on a network file system
+  is not for concurrent writers, and processing runs in-process. The service runs a
+  single task; scaling out needs `DATABASE_URL` pointed at RDS and the durable queue
+  described in `MASTER_PLAN.md`.
 - **The load balancer is what makes the URL stable.** Without one the task's public IP
   changes on every restart, quietly breaking a link you have already shared.
 
@@ -180,3 +180,6 @@ scales to zero, though the balancer still bills. `make teardown` removes everyth
 ```bash
 make teardown      # service, cluster, ALB, target group, security groups, ECR, roles, logs
 ```
+
+It does not remove the EFS file system that holds run state; delete that from the
+console (or `aws efs delete-file-system`) once nothing needs the history.

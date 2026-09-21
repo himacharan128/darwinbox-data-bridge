@@ -97,6 +97,13 @@ anything in its column has a day above 12, that settles the reading for every va
 it. That is why one date column normalises silently and another escalates — a
 measurable difference, not a judgement call.
 
+**An undecidable column is still checked against the other files.** When the same
+people appear in another export with unambiguous dates, each reading is tested against
+them. If every overlapping person agrees with one reading, the question recommends it
+and shows the count — "3 of 3 people in hr_export.csv match day first" — and the other
+reading carries a caution that asks again before it is sent. It stays a question: the
+evidence recommends, a person decides, and choosing against it is recorded as such.
+
 ---
 
 ## 5. Validation and matching — `validation.py`, `matching.py`
@@ -123,8 +130,11 @@ the same person; they say nothing about which job title is right.
 preamble and truncated JSON; `toolChoice` returns pre-parsed, schema-conformant input.
 It also separates chain-of-thought *structurally*, so dropping it is not a regex.
 
-Three stages: judge one column against the schema, propose a whole schema (Mode B), and
-phrase an escalation a human will read. **The model never decides** — it votes.
+Four jobs: vote on where a whole file's columns belong (every header and its samples
+in one call, so a column is judged beside its siblings), propose a schema (Mode B),
+name synonyms for a person to tick, and investigate an open case with read-only
+lookups before it may suggest an answer. **The model never decides** — it votes, and a
+recommendation the data measured cannot be replaced by its opinion.
 
 **Prompt injection is handled in three layers**: source values never enter the system
 prompt, output is a typed tool call so prose has no channel to become an instruction,
@@ -143,7 +153,9 @@ Extract → map → build → reconcile → validate → escalate.
 **The queue is sized for a person.** A required field with no source is one question
 about a *file*, not one per row. The first end-to-end run raised 98 cases and readied
 nothing; asking once collapsed it to 18. A file supplying almost nothing is one case
-saying so, not one per missing field.
+saying so, not one per missing field — and answering "ignore this file" means it is not
+read at all. A value no option allows is one question per value per column: four
+interns are one question, and the answer reads every row that holds it.
 
 **Human decisions become content-addressed overrides and the run is replayed**, not
 patched. Reprocess-and-revalidate falls out of the design rather than being a second
@@ -179,9 +191,12 @@ confidence score allows.
 
 ## 9. Schema — both modes, versioned
 
-**Mode A**: the client's schema as YAML, JSON or an object, normalised into one internal
-representation while the original text is kept — someone who uploaded YAML should see
-what they uploaded.
+**Mode A**: the client's schema, pasted as the schema language's own YAML or JSON, as a
+**JSON Schema** (properties, required, format, enum and the usual constraints; `x-unique`,
+`x-aliases` and `x-reference` for what JSON Schema cannot say), or as a YAML map of
+fields. All of them normalise into one internal representation while the original text
+is kept — someone who uploaded YAML should see what they uploaded. Anything that cannot
+be read says which field and why.
 
 **Mode B**: the agent proposes a schema from the data. From 101 columns it produced 22
 fields and collapsed `emp_id` / `staff_code` / `code` / `emp_ref` / `strEmployeeCode`
@@ -199,11 +214,18 @@ The destination is a **real service reached over HTTP**, with its own database a
 write path from the migration. A destination you can reach around is not one you have
 integrated with.
 
-Delivery **follows readiness**: a record that passes validation with nothing open
-against it goes on its own, as part of processing. A click before the fact only
-delayed work already judged safe. Rollback is the undo, and it **pauses** automatic
-sending — otherwise the next pass would resend immediately and the undo would mean
-nothing.
+**Pushing is a button**, because writing to the client's system is the one action with a
+consequence outside the tool. It sends every record with nothing open against it and
+reports what the destination said about each. Rollback is the undo: it **pauses**
+sending, so the next pass cannot quietly resend what was just undone, and the next push
+sends each record under a **new generation** — a new write, not the old idempotency key,
+which the destination still holds as a tombstone. A record counts as delivered only if
+it was accepted at its current generation.
+
+Each run's approved schema is registered with the destination **under that run and
+version**, so one migration's approval can never change the rules another is checked
+against. A rehearsed failure ("Fail, then recover" in the push dialog) applies to that
+run's deliveries only.
 
 **Three failure classes, three responses:**
 
@@ -224,7 +246,9 @@ different key, and an uncertain-but-successful first attempt double-delivers.
 
 Live activity beside the escalation queue, one case at a time with Previous/Next and
 "Case 2 of 14". **Navigating never submits anything** — a consultant can read
-everything, answer the easy ones and leave a hard one for a supervisor.
+everything, answer the easy ones and leave a hard one for a supervisor. Each migration
+in the sidebar can be renamed from its ⋯ menu, and its line follows the run as it
+changes.
 
 **Backend state is authoritative.** Nothing reports optimistic success: a record is
 delivered when the destination says it holds it.

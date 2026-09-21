@@ -16,8 +16,8 @@ Built for the Darwinbox Forward Deployed Engineer take-home.
 
 ## In one picture
 
-Seven files in seven shapes go in. One validated dataset comes out. A human is asked
-only about the parts the evidence could not settle.
+Seven files in five naming conventions go in. One validated dataset comes out. A
+human is asked only about the parts the evidence could not settle.
 
 ```mermaid
 flowchart LR
@@ -48,7 +48,7 @@ flowchart TD
     U["1 · Upload the client's files<br/>or pick a bundled sample set"]
     R["2 · See what was read<br/>file by file; anything unreadable is named<br/>nothing mapped yet"]
     Q{"3 · Is there a<br/>target schema?"}
-    P["Paste the client's schema"]
+    P["Paste the client's schema<br/>JSON Schema or YAML"]
     G["Agent proposes one<br/>from the columns it found"]
     E["4 · Edit the draft<br/>types, constraints, uniqueness"]
     OK(["5 · Approve — this starts the migration"])
@@ -210,7 +210,7 @@ Or in containers, the same way a deployment runs it: `make stack`.
 make demo           # run one migration in the terminal
 make eval           # measure the escalation boundary against the labelled corpus
 make sweep          # show how the boundary moves as thresholds change
-make test           # 96 tests, no credentials or network needed
+make test           # 124 tests, no credentials or network needed
 ```
 
 The model runs from **recorded replays** committed under `tests/fixtures/model-cache`,

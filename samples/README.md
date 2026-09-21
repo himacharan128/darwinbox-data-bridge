@@ -10,8 +10,10 @@ What each one should do — if it does something else, that is a bug worth repor
 24 employees across five departments and six locations, correct formats, every
 required field present.
 
-**Expect:** 24 records, 13 of 13 columns mapped unaided, ~4 cases. Press **Push to
-the target** and the rest land in the destination.
+**Expect:** 24 records, 13 of 13 columns mapped unaided, and at most one question. If
+the agent's proposed list of employment types leaves out `INTERN`, it asks once what
+`INTERN` should become — not once per intern. Press **Push to the target** and the rest
+land in the destination.
 
 The point: an agent that escalates on clean data is useless. This is the control.
 
@@ -21,16 +23,17 @@ Seven files in five naming conventions: CSV, Excel, JSON-ish, a native PDF expor
 a scanned roster. Overlapping employees, complementary fields, contradictions.
 
 **Expect:** 46 rows reconciled into 40 people, **85 of 87 mappable columns** applied
-unaided (the other 14 are noise and are left alone), ~20 cases across 7 escalation
-classes.
+unaided (the other 14 are noise and are left alone), about 20 cases across six or
+seven escalation classes.
 
 Worth doing in order:
 1. Open a *"two sources disagree"* case and choose **Always believe
    roster_export.pdf**. Eight of the nine disagreements are the same roster read
    twice — once native, once OCR'd — so one rule settles them all.
 2. Open *"How should dates in `joining_dt` be read?"* → one question about the
-   column, not one per employee. Nothing in that column has a day above 12, so
-   nothing in the data can settle it.
+   column, not one per employee. Nothing in that column has a day above 12, so the
+   column alone cannot settle it; where the same people appear in another export with
+   unambiguous dates, the card shows how many match each reading and recommends one.
 3. Open the scan case → the cropped image of what OCR misread.
 4. Press **Push to the target** → an outcome per record, then **Undo sending**.
 
@@ -85,3 +88,7 @@ look like employee data, not one per missing field. No column from it is ever ma
 ```bash
 make samples     # runs all five sets and prints what each produced
 ```
+
+Each set is run the way the console runs it: the agent proposes a schema and it is
+approved. Offline, a set whose proposal was never recorded falls back to the fixture
+schema, and the report says which schema each set used — the numbers differ.

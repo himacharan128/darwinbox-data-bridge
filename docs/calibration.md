@@ -61,7 +61,7 @@ hand. That is the trade being made, priced.
 ## Chosen: `T_auto = 0.70`, `T_gap = 0.10`, `T_decisive = 0.35`
 
 **50 of 57** mappable columns applied unaided, zero wrong, zero noise mapped, zero
-genuine ambiguity silently resolved. Agreement with the corpus: 0.91.
+genuine ambiguity silently resolved. Agreement with the corpus: 0.90.
 
 Two earlier versions of this boundary escalated far too much, for two separate and
 measurable reasons.
