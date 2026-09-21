@@ -148,18 +148,19 @@ export type AliasOffer = {
 };
 
 export const PHRASE: Record<string, string> = {
-  awaiting_schema: "Waiting for a target schema",
-  awaiting_review: "Needs your decision",
-  ready_to_send: "Sending…",
+  awaiting_schema: "Awaiting target fields",
+  awaiting_review: "Awaiting review",
+  // Not "Sending…": nothing is sent until somebody pushes.
+  ready_to_send: "Ready to push",
   partially_delivered: "Partly sent",
   completed: "All sent",
   completed_with_exclusions: "Sent, some excluded",
-  processing: "Working…",
-  delivery_failed: "Couldn't send",
-  ready: "Ready to send",
-  blocked: "Needs your decision",
-  delivered: "Sent successfully",
-  excluded: "Excluded by you",
+  processing: "Processing…",
+  delivery_failed: "Send failed",
+  ready: "Ready to push",
+  blocked: "Awaiting review",
+  delivered: "Sent",
+  excluded: "Excluded",
   AMBIGUOUS_MAPPING: "Unclear column",
   UNMAPPED_REQUIRED: "Missing column",
   AMBIGUOUS_VALUE: "Unclear value",

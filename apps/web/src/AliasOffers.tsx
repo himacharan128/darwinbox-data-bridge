@@ -40,7 +40,7 @@ export default function AliasOffers({ offers, busy, onApply, onDismiss }: {
 
   return (
     <div className="panel">
-      <h2>Columns that may be other names for your fields</h2>
+      <h2>Suggested field names</h2>
       <p className="lead">
         Your files call some things by a different name than your schema does.
         The agent read the values and suggests these {offers.length} matches —

@@ -100,7 +100,7 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
       {/* The offending value, large enough to read */}
       {value !== undefined && (
         <div className="callout">
-          <span className="callout-label">What the file says</span>
+          <span className="callout-label">Source value</span>
           <span className="callout-value mono">“{value}”</span>
           {where && <span className="callout-where">from {where}</span>}
         </div>
@@ -108,7 +108,7 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
 
       {ev.crop && (
         <div className="callout">
-          <span className="callout-label">What the scan looks like</span>
+          <span className="callout-label">Scanned image</span>
           <img alt={`Scan of ${c.field ? fieldLabel(c.field) : "this value"}`}
                src={`/api/runs/${state.run_id}/crop?` + new URLSearchParams(
                  Object.entries(ev.crop as Record<string, string>)
@@ -125,16 +125,16 @@ export default function Review({ state, onDone }: { state: RunState; onDone: () 
 
       {ev.agree && (
         <div className="compare">
-          <div><span className="callout-label">They match on</span>
+          <div><span className="callout-label">Matching fields</span>
             <p>{(ev.agree as string[]).map(fieldLabel).join(", ") || "nothing"}</p></div>
-          <div><span className="callout-label">They differ on</span>
+          <div><span className="callout-label">Conflicting fields</span>
             <p>{(ev.conflict as string[]).map(fieldLabel).join(", ") || "nothing"}</p></div>
         </div>
       )}
 
       {(c.found || !!(c.checked ?? []).length) && (
         <div className="looked">
-          <span className="callout-label">Before asking you, the agent checked</span>
+          <span className="callout-label">Agent investigation</span>
           <ul>
             {(c.checked ?? []).map((k, i) => (
               <li key={i}>

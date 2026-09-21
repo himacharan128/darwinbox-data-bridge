@@ -114,7 +114,7 @@ function Working({ p }: { p: NonNullable<RunState["progress"]> }) {
   return (
     <div className="panel" role="status" aria-live="polite">
       <div className="progress-head">
-        <h2>Working through your files</h2>
+        <h2>Processing</h2>
         <span className="change">this usually takes under a minute</span>
       </div>
       <p className="progress-now">{p.message}</p>
@@ -161,7 +161,7 @@ function Records({ state }: { state: RunState }) {
              aria-label="Search employees" onChange={(e) => setQ(e.target.value)} />
       <div className="scroll" style={{ marginTop: 14 }}>
         <table className="responsive">
-          <thead><tr><th>Employee</th><th>Name</th><th>Status</th><th>Tidied up</th></tr></thead>
+          <thead><tr><th>Employee</th><th>Name</th><th>Status</th><th>Cleaned</th></tr></thead>
           <tbody>
             {rows.map((r) => {
               const changed = Object.entries(r.provenance).filter(([, p]) => p.changes.length);
@@ -177,7 +177,7 @@ function Records({ state }: { state: RunState }) {
                   <td data-label="Status">
                     <span className={`pill ${tone}`}><i className="dot" />{label}</span>
                   </td>
-                  <td data-label="Tidied up">
+                  <td data-label="Cleaned">
                     {changed.length ? changed.slice(0, 3).map(([name, p]) =>
                       p.changes.map((ch, k) => (
                         <div key={name + k} className="change">
@@ -204,18 +204,18 @@ function Records({ state }: { state: RunState }) {
 function Mappings({ state }: { state: RunState }) {
   return (
     <div className="panel">
-      <h2>Where each column went</h2>
+      <h2>Column mappings</h2>
       <div className="scroll">
         <table className="responsive">
           <thead>
-            <tr><th>Column</th><th>From</th><th>Goes to</th><th>Why</th></tr>
+            <tr><th>Column</th><th>From</th><th>Target field</th><th>Evidence</th></tr>
           </thead>
           <tbody>
             {state.mappings.map((m, i) => (
               <tr key={i}>
                 <td data-label="Column" className="mono">{m.column}</td>
                 <td data-label="From" className="change">{m.file}</td>
-                <td data-label="Goes to">
+                <td data-label="Target field">
                   {m.field ? (
                     <>
                       <b>{fieldLabel(m.field)}</b>{" "}
@@ -226,7 +226,7 @@ function Mappings({ state }: { state: RunState }) {
                     </>
                   ) : <span className="change">left alone</span>}
                 </td>
-                <td data-label="Why">
+                <td data-label="Evidence">
                   {m.evidence.length ? (
                     <ul className="reasons">
                       {m.evidence.slice(0, 2).map((e) => <li key={e}>{e}</li>)}
@@ -246,11 +246,11 @@ function Mappings({ state }: { state: RunState }) {
 function runMeta(r: any): string {
   const open = r.counts?.open_cases ?? 0;
   if (r.status === "awaiting_schema") return "needs a schema";
-  if (r.status === "processing") return "working\u2026";
-  if (open) return `${open} need${open === 1 ? "s" : ""} you`;
+  if (r.status === "processing") return "processing\u2026";
+  if (open) return `${open} to review`;
   if (r.delivered) return `${r.delivered} sent`;
   if (r.counts?.excluded) return `${r.counts.excluded} excluded`;
-  if (r.counts?.records) return `${r.counts.records} ready to send`;
+  if (r.counts?.records) return `${r.counts.records} ready to push`;
   return PHRASE[r.status] ?? "not started";
 }
 
@@ -334,7 +334,7 @@ function Destination({ runId }: { runId: string }) {
 
   return (
     <div className="panel">
-      <h2>What the destination holds</h2>
+      <h2>Destination records</h2>
       <Rehearse />
       <div className="scroll">
         <table className="responsive">
@@ -358,7 +358,7 @@ function Destination({ runId }: { runId: string }) {
                     <td data-label="">
                       <button className="ghost" aria-expanded={open}
                               onClick={() => setShow(open ? null : r.id)}>
-                        {open ? "Hide" : "What was sent"}
+                        {open ? "Hide" : "View values"}
                       </button>
                     </td>
                   </tr>
@@ -404,13 +404,13 @@ function Failures({ state, onRetry, busy }: {
   }
   return (
     <div className="panel">
-      <h2>The destination refused these</h2>
+      <h2>Rejected records</h2>
       <p className="lead">
         Not a question the agent is asking — the receiving system would not take them.
       </p>
       <div className="scroll">
         <table className="responsive">
-          <thead><tr><th>Employee</th><th>What it said</th></tr></thead>
+          <thead><tr><th>Employee</th><th>Response</th></tr></thead>
           <tbody>
             {failures.map((f) => (
               <tr key={f.record}>
@@ -439,7 +439,7 @@ function Schema({ runId }: { runId: string }) {
 
   return (
     <div className="panel">
-      <h2>What the data is being turned into</h2>
+      <h2>Target fields</h2>
       <p className="lead">
         Agreed at the start of this run{data.approved_version
           ? ` (version ${data.approved_version})` : ""}. Employees already sent keep the
@@ -652,26 +652,26 @@ export default function App() {
               <Stat n={counts.rows_read} label="rows read" />
               <Stat n={counts.records} label="employees found" />
               <Stat n={counts.delivered} label="sent" tone="ok" />
-              <Stat n={counts.needs_review} label="need you"
+              <Stat n={counts.needs_review} label="needs review"
                     tone={counts.needs_review ? "warn" : undefined} />
-              {!!counts.excluded && <Stat n={counts.excluded} label="left out" />}
-              {!!counts.failed && <Stat n={counts.failed} label="refused" tone="bad" />}
+              {!!counts.excluded && <Stat n={counts.excluded} label="excluded" />}
+              {!!counts.failed && <Stat n={counts.failed} label="rejected" tone="bad" />}
             </div>
 
             {state.delivery_paused && (
               <div className="notice" role="status">
-                <b>Sending is paused.</b> You undid a delivery, so nothing is going out
-                automatically. Press <b>Resume sending</b> above when you're ready.
+                <b>Sending is paused.</b> You undid a delivery, so nothing will go to
+                the destination until you push again.
               </div>
             )}
 
             <div className="tabs" role="tablist">
-              {[["review", `Needs you${counts.open_cases ? ` (${counts.open_cases})` : ""}`],
+              {[["review", `Review queue${counts.open_cases ? ` (${counts.open_cases})` : ""}`],
                 ["records", "Employees"],
                 ["mappings", "Columns"],
-                ["schema", "Target"],
-                ["destination", "Sent"],
-                ...(counts.failed ? [["failures", `Refused (${counts.failed})`]] : []),
+                ["schema", "Target fields"],
+                ["destination", "Destination"],
+                ...(counts.failed ? [["failures", `Rejected (${counts.failed})`]] : []),
               ].map(([id, l]) => (
                 <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
                   {l}
@@ -692,7 +692,7 @@ export default function App() {
                 )}
               </div>
               <aside className="panel">
-                <h2>What the agent did</h2>
+                <h2>Agent history</h2>
                 <ul className="feed">
                   {[...state.activity].reverse().map((e, i) => (
                     <li key={i}>

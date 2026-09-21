@@ -173,7 +173,7 @@ function ChooseSchema({
 
       {files && (
         <div className="panel" style={{ marginBottom: 14 }}>
-          <h2>What was read</h2>
+          <h2>Files read</h2>
           <p style={{ marginTop: 0 }}>
             <b>{files.files.length}</b> files · <b>{files.total_rows}</b> rows ·
             {" "}<b>{files.total_columns}</b> columns
@@ -250,7 +250,7 @@ function ChooseSchema({
 
       {busy && mode === "propose" && !schema?.active && (
         <div className="panel" role="status">
-          <h2>Reading your columns…</h2>
+          <h2>Analysing columns</h2>
           <p className="change">Working out what the fields should be.</p>
         </div>
       )}
