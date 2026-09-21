@@ -977,7 +977,9 @@ def deliver_ready(run_id: str, result: Any) -> dict[str, int]:
 
 @app.post("/api/runs/{run_id}/deliver")
 def deliver(
-    run_id: str, keep_sending: Annotated[bool, Body(embed=True)] = False
+    run_id: str,
+    keep_sending: Annotated[bool, Body(embed=True)] = False,
+    simulate: Annotated[str | None, Body(embed=True)] = None,
 ) -> dict[str, Any]:
     """Push to the target: the step the consultant takes.
 
@@ -989,6 +991,18 @@ def deliver(
     store.pause_delivery(run_id, False)
     if keep_sending:
         store.set_auto_send(run_id, True)
+
+    # A rehearsed failure belongs to this push and nothing else. The destination's
+    # failure mode is global, so arming it from a panel meant the next few
+    # deliveries of any migration wore it. Armed here and cleared in `finally`, it
+    # cannot outlive the push that asked for it.
+    if simulate and simulate != "none":
+        if simulate not in {"transient", "timeout", "uncertain"}:
+            raise HTTPException(422, f"unknown failure mode {simulate!r}")
+        try:
+            destination.set_failure_mode(simulate, 3)
+        except Exception as exc:
+            raise HTTPException(503, f"destination unreachable: {exc}") from exc
     jobs.wait(run_id, timeout=180)
     result = jobs.result(run_id)
     if result is None:
@@ -999,7 +1013,15 @@ def deliver(
     schema = MigrationSchema.model_validate(json.loads(run["schema_json"]))
     destination.register_schema(_schema_for_destination(schema))
 
-    sent = _push(run_id, result, schema)
+    try:
+        sent = _push(run_id, result, schema)
+    finally:
+        # Whatever happened, the destination goes back to behaving normally.
+        if simulate and simulate != "none":
+            try:
+                destination.set_failure_mode("none", 0)
+            except Exception as exc:  # noqa: BLE001 - reported, never raised over the push
+                log.warning("could not clear the rehearsed failure: %s", exc)
     jobs.invalidate(run_id)
     store.clear_snapshot(run_id)
     return {"sent": sent}

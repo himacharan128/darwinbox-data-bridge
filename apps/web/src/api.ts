@@ -110,10 +110,10 @@ export const api = {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ action, value, reason }),
     }).then(json),
-  deliver: (run: string, keepSending = false) =>
+  deliver: (run: string, keepSending = false, simulate = "none") =>
     fetch(`/api/runs/${run}/deliver`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ keep_sending: keepSending }),
+      body: JSON.stringify({ keep_sending: keepSending, simulate }),
     }).then(json) as Promise<{ sent: Record<string, number> }>,
   rehearse: (mode: string, remaining = 3) =>
     fetch("/api/destination/rehearse", {
