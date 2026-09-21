@@ -1,0 +1,92 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "code",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values like EMP-00015 match employee_id pattern"
+      },
+      {
+        "source_column": "given_name",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains given names"
+      },
+      {
+        "source_column": "surname",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column contains surnames"
+      },
+      {
+        "source_column": "contact",
+        "target_field": null,
+        "confidence": 0.6,
+        "runner_up": null,
+        "reason": "Mixed emails and phone numbers; cannot safely map to a single target field"
+      },
+      {
+        "source_column": "dob",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "ISO dates matching required format"
+      },
+      {
+        "source_column": "doj",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "ISO dates matching required format"
+      },
+      {
+        "source_column": "dept",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Department abbreviations like ENG, HR"
+      },
+      {
+        "source_column": "role",
+        "target_field": "designation",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Job titles such as Contract Engineer"
+      },
+      {
+        "source_column": "type",
+        "target_field": "employment_type",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "All values are 'CONTRACT' matching enum"
+      },
+      {
+        "source_column": "mgr",
+        "target_field": "manager_employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Values like EMP-00002 match manager ID pattern"
+      },
+      {
+        "source_column": "loc",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Location codes such as MUM-01, REMOTE"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 1964,
+    "input_tokens": 4690,
+    "output_tokens": 810,
+    "cached": false
+  }
+}

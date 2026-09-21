@@ -1051,6 +1051,30 @@ def _push(run_id: str, result: Any, schema: MigrationSchema) -> dict[str, int]:
     return sent
 
 
+class Rehearsal(BaseModel):
+    """How the destination should misbehave, and for how many requests."""
+
+    mode: str = "none"          # none | transient | timeout | uncertain
+    remaining: int = 3
+
+
+@app.post("/api/destination/rehearse")
+def rehearse_failure(body: Annotated[Rehearsal, Body()]) -> dict[str, Any]:
+    """Arrange for the next few deliveries to fail, so the recovery can be seen.
+
+    Retry, reconciliation and rollback are the part of delivery that only exists
+    when something goes wrong. A destination that always accepts cannot show any of
+    it, which left a named acceptance criterion working but undemonstrable.
+    """
+    if body.mode not in {"none", "transient", "timeout", "uncertain"}:
+        raise HTTPException(422, f"unknown failure mode {body.mode!r}")
+    try:
+        state = destination.set_failure_mode(body.mode, max(0, body.remaining))
+    except Exception as exc:
+        raise HTTPException(503, f"destination unreachable: {exc}") from exc
+    return {"destination": state}
+
+
 @app.post("/api/runs/{run_id}/rollback")
 def rollback(run_id: str) -> dict[str, Any]:
     rows = [d for d in store.deliveries(run_id)

@@ -76,6 +76,20 @@ class DestinationClient:
         with self._client() as client:
             client.post("/schemas", json=spec).raise_for_status()
 
+    def set_failure_mode(self, mode: str, remaining: int) -> dict[str, Any]:
+        """Make the destination misbehave on purpose.
+
+        The retry and rollback paths are the half of the delivery story that only
+        shows itself when something goes wrong, and a destination that always says
+        yes can never demonstrate them.
+        """
+        with self._client() as client:
+            response = client.post(
+                "/admin/failure-mode", json={"mode": mode, "remaining": remaining}
+            )
+            response.raise_for_status()
+            return response.json()
+
     def reconcile(self, run_id: str, natural_key: str) -> dict[str, Any] | None:
         """Ask the destination whether it already holds this record.
 

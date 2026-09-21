@@ -225,3 +225,40 @@ def test_the_same_employee_in_two_runs_is_processed_independently(env):
 
     shared = target.get("/records", params={"natural_key": "EMP-00001"}).json()
     assert len({r["run_id"] for r in shared}) >= 1
+
+
+def test_a_failure_can_be_arranged_so_the_recovery_can_be_seen(env):
+    """The retry path exists in code and could not be demonstrated.
+
+    A destination that always accepts never shows retry, reconciliation or
+    rollback working, which left half of an acceptance criterion invisible.
+    """
+    boot, _ = env
+    client = boot()
+    run = start_run(client)
+    client.get(f"/api/runs/{run}?wait=true")
+
+    armed = client.post("/api/destination/rehearse",
+                        json={"mode": "transient", "remaining": 2})
+    assert armed.status_code == 200, armed.text
+    assert armed.json()["destination"]["mode"] == "transient"
+
+    _answer(client, run, "no column for status", "constant:ACTIVE")
+    client.get(f"/api/runs/{run}?wait=true")
+    client.post(f"/api/runs/{run}/deliver", json={"keep_sending": False})
+
+    # Whatever the destination dropped is retryable, and pressing it again lands it.
+    client.post("/api/destination/rehearse", json={"mode": "none", "remaining": 0})
+    client.post(f"/api/runs/{run}/deliver", json={"keep_sending": False})
+    stored = client.get(f"/api/runs/{run}/destination").json()["records"]
+    keys = [r["natural_key"] for r in stored]
+
+    assert keys, "a retry after the fault clears must land the records"
+    assert len(keys) == len(set(keys)), "retrying must never duplicate a record"
+
+
+def test_an_unknown_failure_mode_is_refused(env):
+    boot, _ = env
+    client = boot()
+    assert client.post("/api/destination/rehearse",
+                       json={"mode": "explode", "remaining": 1}).status_code == 422

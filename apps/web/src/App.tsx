@@ -254,6 +254,65 @@ function runMeta(r: any): string {
   return PHRASE[r.status] ?? "not started";
 }
 
+/** Make the destination fail on purpose.
+ *
+ *  Retry, reconciliation and rollback only exist when something goes wrong, and a
+ *  destination that always accepts can never show them. This is a rehearsal
+ *  control, not a setting: it affects the next few deliveries and then stops.
+ */
+function Rehearse() {
+  const [mode, setMode] = useState("none");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const arm = async (next: string, label: string) => {
+    setBusy(true);
+    try {
+      await api.rehearse(next, next === "none" ? 0 : 3);
+      setMode(next);
+      setNote(next === "none"
+        ? "The destination is accepting normally again."
+        : `${label} — the next 3 deliveries will do this. Push again to see it.`);
+    } catch (e) {
+      setNote(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const modes: [string, string, string][] = [
+    ["transient", "Fail, then recover", "The destination drops the request. Retry should fix it."],
+    ["uncertain", "Answer unclearly", "It may or may not have stored the record. It gets reconciled by identity, not resent blindly."],
+    ["timeout", "Stop answering", "The request hangs. Nothing is assumed either way."],
+  ];
+
+  return (
+    <details className="collapse rehearse">
+      <summary>Try a delivery failure</summary>
+      <div>
+        <p className="change" style={{ marginTop: 0 }}>
+          The destination accepts everything by default, which means the recovery
+          behaviour never shows itself. Arm one of these, then push again.
+        </p>
+        <div className="actions">
+          {modes.map(([key, label, why]) => (
+            <button key={key} disabled={busy} title={why}
+                    className={mode === key ? "primary" : ""}
+                    onClick={() => void arm(key, label)}>
+              {label}
+            </button>
+          ))}
+          <span className="spacer" />
+          <button disabled={busy || mode === "none"} onClick={() => void arm("none", "")}>
+            Back to normal
+          </button>
+        </div>
+        {note && <p className="change" role="status">{note}</p>}
+      </div>
+    </details>
+  );
+}
+
 /* -------------------------------------------------------------- destination */
 
 function Destination({ runId }: { runId: string }) {
@@ -276,6 +335,7 @@ function Destination({ runId }: { runId: string }) {
   return (
     <div className="panel">
       <h2>What the destination holds</h2>
+      <Rehearse />
       <div className="scroll">
         <table className="responsive">
           <thead><tr><th>Employee</th><th>Status</th><th>Received</th><th /></tr></thead>

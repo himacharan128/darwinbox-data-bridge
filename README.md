@@ -210,7 +210,7 @@ Or in containers, the same way a deployment runs it: `make stack`.
 make demo           # run one migration in the terminal
 make eval           # measure the escalation boundary against the labelled corpus
 make sweep          # show how the boundary moves as thresholds change
-make test           # 84 tests, no credentials or network needed
+make test           # 96 tests, no credentials or network needed
 ```
 
 The model runs from **recorded replays** committed under `tests/fixtures/model-cache`,

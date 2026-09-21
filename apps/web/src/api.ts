@@ -115,6 +115,11 @@ export const api = {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ keep_sending: keepSending }),
     }).then(json) as Promise<{ sent: Record<string, number> }>,
+  rehearse: (mode: string, remaining = 3) =>
+    fetch("/api/destination/rehearse", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode, remaining }),
+    }).then(json),
   rollback: (run: string) => fetch(`/api/runs/${run}/rollback`, { method: "POST" }).then(json),
   destination: (run: string) => fetch(`/api/runs/${run}/destination`).then(json),
   audit: (run: string) => fetch(`/api/runs/${run}/audit`).then(json),
