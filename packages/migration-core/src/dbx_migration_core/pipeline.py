@@ -82,6 +82,11 @@ class Overrides:
     #: settles it - 01/04/2015 in a column where no day exceeds 12. That is one fact
     #: about the column, so it is one question, and the answer applies to every row.
     formats: dict[tuple[str, str], str] = dc_field(default_factory=dict)
+    #: What a value that fits no allowed option should become, per (file, column,
+    #: value). 'INTERN' in a column of four interns is one question, not four.
+    value_map: dict[tuple[str, str, str], str] = dc_field(default_factory=dict)
+    #: Files a reviewer said are not this entity at all. Their rows are not read.
+    ignored_files: set[str] = dc_field(default_factory=set)
     #: Files this client trusts, most authoritative first. When two exports disagree
     #: about the same person, the answer is almost never "it depends which record" -
     #: it is "the HR system is right and payroll is stale". Said once, it settles
@@ -109,6 +114,7 @@ class Overrides:
         return not (
             self.column_map or self.constants or self.values or self.merge
             or self.excluded or self.authority or self.formats
+            or self.value_map or self.ignored_files
         )
 
 
@@ -238,12 +244,17 @@ class Pipeline:
         self, sources: dict[str, list[ExtractedRecord]], lookups: dict[str, set[str]]
     ) -> RunResult:
         self.result.lookups = lookups
+        for name in sorted(self.overrides.ignored_files & set(sources)):
+            self._log("file.ignored", f"Ignored {name}, as you decided", actor=Actor.HUMAN)
+        sources = {k: v for k, v in sources.items() if k not in self.overrides.ignored_files}
         self.result.rows_read = sum(len(records) for records in sources.values())
         self._log(
             "run.started",
             f"Reading {len(sources)} file(s), {self.result.rows_read} rows",
         )
         self.value_case: dict[tuple[str, str], str] = {}
+        #: One question per value that fits no allowed option, per column.
+        self.value_group: dict[tuple[str, str, str], str] = {}
 
         mappings = self._map(sources)
         records = self._build(sources, mappings)
@@ -310,6 +321,17 @@ class Pipeline:
 
                 profile = self.profiles[(name, header)]
                 forced = self.overrides.column_map.get((name, header))
+                if forced and forced not in self.schema.by_name:
+                    # Answered against a field this schema no longer has - renamed or
+                    # removed since. Applying it would name a field that does not
+                    # exist, so the column is judged afresh and the history says why.
+                    self._log(
+                        "mapping.answer_dropped",
+                        f"You mapped {header!r} to {forced}, which this schema no longer "
+                        "has, so it was looked at again",
+                        actor=Actor.HUMAN, source_refs=[profile.source],
+                    )
+                    forced = None
                 if forced:
                     mapping.decision = Decision.AUTO_APPLY
                     mapping.chosen_field = forced
@@ -432,6 +454,8 @@ class Pipeline:
             evidence={
                 "matched": sorted(supplied) or ["nothing"],
                 "missing": missing[:10],
+                # The answer is about this whole file - ignore it or not.
+                "whole_file": origin,
             },
             actions=[Action.CORRECT, Action.REJECT],
             options=[Option(label="Ignore this file", value="exclude", recommended=True)],
@@ -473,6 +497,9 @@ class Pipeline:
             source_refs=[m.best and SourceRef(file=m.source_file, column=m.source_column)
                          for m in near[:1]] if near else [],
             evidence={
+                # Which file the answer is for, or None for every file. The closest
+                # column can sit in another file, so it cannot be the scope.
+                "scope": origin,
                 "closest": [
                     f"{m.source_column!r} in {m.source_file} scored {m.best.score:.2f}"
                     f" ({'; '.join(m.best.evidence.explain()[:2])})"
@@ -568,6 +595,21 @@ class Pipeline:
             )
             return
 
+        chosen = self.overrides.value_map.get((ref.file, ref.column or "", raw or ""))
+        if chosen is not None:
+            # Answered once for this value in this column; every row with it reads so.
+            record.values[spec.name] = chosen
+            record.provenance[spec.name] = FieldProvenance(
+                target_field=spec.name, source=ref, raw_value=raw, value=chosen,
+                transformations=[
+                    Transformation(
+                        rule="human_correction", before=raw, after=chosen,
+                        reason="chosen by a reviewer for every row with this value",
+                    )
+                ],
+            )
+            return
+
         try:
             value, steps = clean(raw, spec, plan)
         except UnsafeValue as unsafe:
@@ -626,6 +668,39 @@ class Pipeline:
                 )
                 self.format_case[key] = case.id
                 self.format_rows[case.id].append((record.id, raw or ""))
+                record.open_cases.append(case.id)
+                self.value_case[(record.id, spec.name)] = case.id
+                return
+
+            # A value that fits none of the allowed options is a fact about that value
+            # in that column, not about each person holding it. Asked per row, four
+            # interns were four identical questions on the clean sample.
+            per_value = bool(
+                klass is EscalationClass.AMBIGUOUS_VALUE and ref.column and raw is not None
+            )
+            group = (ref.file, ref.column or "", raw or "")
+            if per_value and group in self.value_group:
+                self._attach_to_case(self.value_group[group], record, spec.name)
+                return
+            if per_value:
+                case = self._case(
+                    klass,
+                    headline=f"{raw!r} is not one of the allowed {spec.name} values",
+                    detail=(
+                        f"{unsafe.reason}. Choose what it should become and every row "
+                        f"with {raw!r} in {ref.column!r} is read the same way."
+                    ),
+                    record_key=self._record_key_for(record) or record.id,
+                    target_field=spec.name,
+                    source_refs=[ref],
+                    raw_values=[raw or ""],
+                    rule=", ".join(spec.allowed) if spec.allowed else None,
+                    actions=[Action.CORRECT, Action.REJECT],
+                    options=[Option(label=alt, value=alt) for alt in unsafe.alternatives],
+                    blocks_records=[record.id],
+                    evidence={"per_value": True},
+                )
+                self.value_group[group] = case.id
                 record.open_cases.append(case.id)
                 self.value_case[(record.id, spec.name)] = case.id
                 return
@@ -1059,7 +1134,9 @@ class Pipeline:
     def _finalise(self) -> None:
         for record in self.result.records:
             key = self._record_key_for(record)
-            if key and key in self.overrides.excluded:
+            # Left out by employee key, or by row for a record that has no key yet -
+            # which is what a whole-file or whole-column "leave these out" names.
+            if (key and key in self.overrides.excluded) or record.id in self.overrides.excluded:
                 record.state = RecordState.EXCLUDED
                 record.open_cases.clear()
                 continue
@@ -1112,6 +1189,13 @@ def apply_decision(
     Rejection never deletes source data. It marks the affected records excluded so
     they are not delivered, and the decision stays in the audit trail.
     """
+    whole_file = case.evidence.get("whole_file") if case.evidence else None
+    if whole_file and (action is Action.REJECT or value == "exclude"):
+        # "This is not employee data" - so it is not read at all, rather than read and
+        # then every row of it held back.
+        overrides.ignored_files.add(str(whole_file))
+        return overrides
+
     if action is Action.REJECT:
         if case.record_key:
             overrides.excluded.add(case.record_key)
@@ -1133,7 +1217,13 @@ def apply_decision(
                     overrides.column_map[(scope, column)] = case.target_field or ""
             else:
                 constant = value.split(":", 1)[1] if value.startswith("constant:") else value
-                key_scope = scope if "has no column" in case.headline and scope else None
+                # The question says which file it is about, or none for every file.
+                # The closest column's file was used before, which scoped a run-wide
+                # answer to one file and a one-file answer to the whole run.
+                if case.evidence and "scope" in case.evidence:
+                    key_scope = case.evidence["scope"]
+                else:
+                    key_scope = scope if "has no column" in case.headline and scope else None
                 overrides.constants[(key_scope, case.target_field or "")] = constant
 
         case EscalationClass.UNCERTAIN_IDENTITY:
@@ -1146,6 +1236,12 @@ def apply_decision(
                 chosen = next((o.value for o in case.options if o.recommended), None)
             if len(keys) == 2 and chosen in ("merge", "separate"):
                 overrides.merge[(str(keys[0]), str(keys[1]))] = chosen == "merge"
+
+        case EscalationClass.AMBIGUOUS_VALUE if value and case.evidence.get("per_value"):
+            # One answer for the value in its column, for every row that holds it.
+            ref = case.source_refs[0] if case.source_refs else None
+            if ref and ref.column and case.raw_values:
+                overrides.value_map[(ref.file, ref.column, case.raw_values[0])] = value
 
         case EscalationClass.AMBIGUOUS_VALUE if value and value.startswith("%"):
             # A reading chosen for the column, not for the row that happened to ask.

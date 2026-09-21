@@ -605,3 +605,117 @@ def test_a_correction_reads_as_one_in_the_history(run):
     summaries = [e["summary"] for e in client.get(f"/api/runs/{rid}/audit").json()]
     assert any(s.startswith("Corrected: ") for s in summaries)
     assert not any("Correctd" in s for s in summaries)
+
+
+SMALL_SCHEMA = """
+entity: employee
+fields:
+  - {name: employee_id, type: string, required: true, unique: true,
+     pattern: '^EMP-[0-9]{5}$'}
+  - {name: email, type: email, required: true, unique: true}
+  - {name: status, type: enum, required: true, allowed: [ACTIVE, EXITED],
+     aliases: ['Status/State']}
+"""
+
+
+def _upload(client, files: dict[str, str], schema: str = SMALL_SCHEMA) -> str:
+    run = client.post("/api/runs", files=[
+        ("files", (name, body.encode())) for name, body in files.items()
+    ]).json()["run_id"]
+    version = client.post(f"/api/runs/{run}/schema", json={"body": schema}).json()["version"]
+    client.post(f"/api/runs/{run}/schema/{version}/approve")
+    return run
+
+
+def _decide(client, run, case, value, action="correct"):
+    from urllib.parse import quote
+    return client.post(
+        f"/api/runs/{run}/cases/{quote(case['key'], safe='')}/decide",
+        json={"action": action, "value": value},
+    )
+
+
+def test_a_value_no_option_allows_is_one_question_for_the_whole_column(stack):
+    client, _ = stack
+    rows = [(f"EMP-0000{i}", f"p{i}@x.example", "ACTIVE") for i in range(1, 7)]
+    rows += [(f"EMP-0000{i}", f"p{i}@x.example", "RETIRED") for i in range(7, 10)]
+    run = _upload(client, {"people.csv": "employee_id,email,status\n" + "".join(
+        f"{a},{b},{c}\n" for a, b, c in rows)})
+    state = client.get(f"/api/runs/{run}?wait=true").json()
+    asked = [c for c in state["cases"] if "RETIRED" in c["headline"]]
+    assert len(asked) == 1, [c["headline"] for c in state["cases"]]
+    assert asked[0]["blocks"] == 3
+    assert _decide(client, run, asked[0], "EXITED").status_code == 200
+
+    after = client.get(f"/api/runs/{run}?wait=true").json()
+    statuses = sorted(r["values"]["status"] for r in after["records"])
+    assert statuses == ["ACTIVE"] * 6 + ["EXITED"] * 3
+    assert not [c for c in after["cases"] if "RETIRED" in c["headline"]]
+
+
+def test_a_question_about_a_column_with_a_slash_in_its_name_can_be_answered(stack):
+    client, _ = stack
+    rows = [(f"EMP-0000{i}", f"p{i}@x.example", "ACTIVE") for i in range(1, 7)]
+    rows.append(("EMP-00007", "p7@x.example", "RETIRED"))
+    run = _upload(client, {"people.csv": "employee_id,email,Status/State\n" + "".join(
+        f"{a},{b},{c}\n" for a, b, c in rows)})
+    state = client.get(f"/api/runs/{run}?wait=true").json()
+    case = next(c for c in state["cases"] if "/" in c["key"])
+    assert _decide(client, run, case, "EXITED").status_code == 200, (
+        "a slash in the key used to split the URL, so the question could never be answered"
+    )
+    after = client.get(f"/api/runs/{run}?wait=true").json()
+    assert not [c for c in after["cases"] if c["key"] == case["key"]]
+
+
+def test_ignoring_a_file_that_is_not_the_entity_really_ignores_it(stack):
+    client, _ = stack
+    run = _upload(client, {
+        "people.csv": "employee_id,email,status\nEMP-00001,a@x.example,ACTIVE\n",
+        "noise.csv": "checksum,batch_id\nab12,7\ncd34,8\n",
+    })
+    state = client.get(f"/api/runs/{run}?wait=true").json()
+    case = next(c for c in state["cases"] if "does not look like" in c["headline"])
+    assert _decide(client, run, case, "exclude").status_code == 200
+
+    after = client.get(f"/api/runs/{run}?wait=true").json()
+    assert not [c for c in after["cases"] if "noise.csv" in c["headline"]]
+    assert after["counts"]["records"] == 1 and after["counts"]["ready"] == 1
+    assert any("Ignored noise.csv" in a["summary"] for a in after["activity"])
+
+
+def test_an_answer_about_one_file_applies_to_that_file_only(stack):
+    client, _ = stack
+    run = _upload(client, {
+        "a.csv": "employee_id,email,status\nEMP-00001,a@x.example,ACTIVE\n",
+        "b.csv": "employee_id,email\nEMP-00002,b@x.example\n",
+        "c.csv": "employee_id,email\nEMP-00003,c@x.example\n",
+    })
+    state = client.get(f"/api/runs/{run}?wait=true").json()
+    about_b = next(c for c in state["cases"] if c["headline"] == "b.csv has no column for status")
+    _decide(client, run, about_b, "constant:EXITED")
+
+    after = client.get(f"/api/runs/{run}?wait=true").json()
+    status = {r["key"]: r["values"].get("status") for r in after["records"]}
+    assert status["EMP-00002"] == "EXITED"
+    assert status.get("EMP-00003") is None, "c.csv was not asked about"
+    assert any(c["headline"] == "c.csv has no column for status" for c in after["cases"])
+
+
+def test_renaming_a_field_someone_mapped_a_column_to_asks_again_instead_of_breaking(run):
+    client, rid = run
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+    case = next(c for c in state["cases"] if c["class"] == "AMBIGUOUS_MAPPING")
+    target = case["options"][0]["value"]
+    assert _decide(client, rid, case, target).status_code == 200
+
+    renamed = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
+    renamed = renamed.replace(f"name: {target}\n", f"name: {target}_renamed\n")
+    renamed = renamed.replace(f"reference: employee.{target}", f"reference: employee.{target}_renamed")
+    version = client.post(f"/api/runs/{rid}/schema", json={"body": renamed}).json()["version"]
+    assert client.post(f"/api/runs/{rid}/schema/{version}/approve").status_code == 200
+
+    after = client.get(f"/api/runs/{rid}?wait=true")
+    assert after.status_code == 200, "an old answer about a renamed field broke the run"
+    history = [e["summary"] for e in client.get(f"/api/runs/{rid}/audit").json()]
+    assert any("no longer has" in s or "no longer matches" in s for s in history)

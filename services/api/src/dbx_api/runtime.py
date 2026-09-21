@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from dbx_agent import assign_file_columns, build_provider
-from dbx_contracts import Action, CaseState, MigrationSchema, ReviewCase
+from dbx_contracts import Action, Actor, CaseState, MigrationSchema, ReviewCase
 from dbx_extraction import UnsupportedInput, confidence_for, is_sidecar, read
 from dbx_migration_core import Overrides, Pipeline, RunResult, apply_decision
 
@@ -156,6 +156,16 @@ def replay(
         run_id, schema, votes=votes, overrides=overrides, confidence=confidence
     )
     result = pipeline.run(sources, lookups)
+    # An answer whose question never came up is one the schema has moved away from -
+    # a field renamed or removed since. It is not applied, and not silently lost.
+    for decision in decisions:
+        if decision["id"] not in applied:
+            about = (decision.get("payload") or {}).get("headline") or decision["case_key"]
+            pipeline._log(
+                "decision.no_longer_applies",
+                f"An earlier answer no longer matches anything in this schema: {about}",
+                actor=Actor.HUMAN,
+            )
     answered = {d["case_key"] for d in decisions}
     for case in result.cases:
         if case_key(case) in answered:

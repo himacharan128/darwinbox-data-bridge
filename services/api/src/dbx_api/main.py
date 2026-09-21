@@ -983,8 +983,11 @@ def _status(result: Any, records: list[dict], accepted: dict[str, int]) -> str:
 DECIDED = {Action.APPROVE: "Approved", Action.CORRECT: "Corrected", Action.REJECT: "Rejected"}
 
 
-@app.post("/api/runs/{run_id}/cases/{key}/decide")
+@app.post("/api/runs/{run_id}/cases/{key:path}/decide")
 def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, Any]:
+    # `key:path` because a case key carries the column it is about, and a header such
+    # as "Joined (DD/MM/YYYY)" puts a slash in it. As a plain segment that split the
+    # URL, and the question could never be answered.
     jobs.wait(run_id, timeout=180)
     result = jobs.result(run_id)
     if result is None:
