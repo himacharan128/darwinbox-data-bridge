@@ -597,3 +597,11 @@ def test_a_rehearsed_failure_only_touches_the_run_it_was_asked_for(stack):
     outcomes = {a["outcome"] for a in client.get(f"/api/runs/{mine}/destination")
                 .json()["attempts"]}
     assert "transient_failed" in outcomes
+
+
+def test_a_correction_reads_as_one_in_the_history(run):
+    client, rid = run
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    summaries = [e["summary"] for e in client.get(f"/api/runs/{rid}/audit").json()]
+    assert any(s.startswith("Corrected: ") for s in summaries)
+    assert not any("Correctd" in s for s in summaries)

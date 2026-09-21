@@ -979,6 +979,10 @@ def _status(result: Any, records: list[dict], accepted: dict[str, int]) -> str:
     return "processing"
 
 
+#: How each action reads in the history. Built as title() + "d" it said "Correctd".
+DECIDED = {Action.APPROVE: "Approved", Action.CORRECT: "Corrected", Action.REJECT: "Rejected"}
+
+
 @app.post("/api/runs/{run_id}/cases/{key}/decide")
 def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, Any]:
     jobs.wait(run_id, timeout=180)
@@ -1000,7 +1004,7 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
     )
     store.append_audit(run_id, [{
         "actor": Actor.HUMAN.value, "action": f"review.{action.value}",
-        "summary": f"{action.value.title()}d: {case.headline}",
+        "summary": f"{DECIDED[action]}: {case.headline}",
         "reason": body.reason, "after": body.value, "at": now(),
     }])
     # Choosing against measured evidence is allowed - the person may know something
