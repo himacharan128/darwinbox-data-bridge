@@ -918,7 +918,7 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
     jobs.wait(run_id, timeout=180)
     result = jobs.result(run_id)
     if result is None:
-        result, _ = replay(store, run_id)
+        result, _ = replay(store, run_id, investigate=False)
     case = next((c for c in result.cases if case_key(c) == key), None)
     if case is None:
         raise HTTPException(404, "no such case")
@@ -940,7 +940,7 @@ def decide(run_id: str, key: str, body: Annotated[Decide, Body()]) -> dict[str, 
 
     jobs.invalidate(run_id)
     store.clear_snapshot(run_id)
-    after, _ = replay(store, run_id)
+    after, _ = replay(store, run_id, investigate=False)
     jobs.start(run_id, lambda report: _process_run(run_id, report))
     jobs.wait(run_id, timeout=180)
     remaining = [c for c in after.cases
@@ -1006,7 +1006,10 @@ def deliver(
     jobs.wait(run_id, timeout=180)
     result = jobs.result(run_id)
     if result is None:
-        result, _ = replay(store, run_id)
+        # Only the records are needed to send them. Investigating the open cases is
+        # what the review queue is for, and doing it here put half a minute between
+        # pressing Push and anything happening.
+        result, _ = replay(store, run_id, investigate=False)
     run = store.get_run(run_id)
     if run is None:
         raise HTTPException(404, "no such run")

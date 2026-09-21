@@ -79,6 +79,7 @@ def replay(
     *,
     offline: bool = False,
     report: Callable[..., None] | None = None,
+    investigate: bool = True,
 ) -> tuple[RunResult, Overrides]:
     run = store.get_run(run_id)
     if run is None:
@@ -164,7 +165,7 @@ def replay(
     # agent go and look at the data behind the questions it is about to ask - and
     # all it may do with what it finds is suggest an answer on a case that still
     # needs a person.
-    if result.open_cases and not offline:
+    if investigate and result.open_cases and not offline:
         if report:
             report("investigating", "Looking into what it could not settle",
                    0, len(result.open_cases))
