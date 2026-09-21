@@ -494,11 +494,20 @@ def recommend(run_id: str) -> dict[str, Any]:
     #: turns every file without it into a question.
     REQUIRED_COVERAGE = 0.80
 
-    # Rows across the whole run, counted once per file rather than once per column.
+    # Rows across the run, counted once per file rather than once per column - and
+    # only in files that feed some proposed field. A file of checksums supplies
+    # nothing, and counting its rows made every field look partial: on the
+    # adversarial sample nothing came out required, so the noise file was never
+    # recognised as noise and was dropped without a word.
+    feeding_files = {
+        f"{p.source.file}|{p.source.sheet or ''}"
+        for field in proposal.fields for p in feeding(field)
+    }
     rows_by_file: dict[str, int] = {}
     for profile in profiles:
         key = f"{profile.source.file}|{profile.source.sheet or ''}"
-        rows_by_file[key] = max(rows_by_file.get(key, 0), profile.total)
+        if key in feeding_files:
+            rows_by_file[key] = max(rows_by_file.get(key, 0), profile.total)
     total_rows = sum(rows_by_file.values()) or 1
 
     relaxed = 0
