@@ -1,0 +1,113 @@
+{
+  "payload": {
+    "assignments": [
+      {
+        "source_column": "Emp ID",
+        "target_field": "employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Matches employee_id pattern ^EMP-[0-9]{5}$ and column name"
+      },
+      {
+        "source_column": "First Name",
+        "target_field": "first_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and values are first names"
+      },
+      {
+        "source_column": "Last Name",
+        "target_field": "last_name",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and values are last names"
+      },
+      {
+        "source_column": "Email",
+        "target_field": "work_email",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Contains email addresses, matches work_email requirement"
+      },
+      {
+        "source_column": "Mobile",
+        "target_field": "mobile_number",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Phone numbers with +91 prefix, fits mobile_number pattern"
+      },
+      {
+        "source_column": "DOB",
+        "target_field": "date_of_birth",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Date values in DD/MM/YYYY format, matches DOB field"
+      },
+      {
+        "source_column": "Date of Joining",
+        "target_field": "date_of_joining",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Date values in DD/MM/YYYY format, matches joining date"
+      },
+      {
+        "source_column": "Dept Code",
+        "target_field": "department_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Column name and short codes correspond to department references"
+      },
+      {
+        "source_column": "Designation",
+        "target_field": "designation",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Job titles listed, matches designation field"
+      },
+      {
+        "source_column": "Employment Type",
+        "target_field": "employment_type",
+        "confidence": 0.9,
+        "runner_up": null,
+        "reason": "Values like 'Full Time', 'Intern' map to allowed enum values"
+      },
+      {
+        "source_column": "Manager ID",
+        "target_field": "manager_employee_id",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Matches employee_id pattern and indicates manager reference"
+      },
+      {
+        "source_column": "Location",
+        "target_field": "location_code",
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "Location codes like BLR-HQ correspond to location references"
+      },
+      {
+        "source_column": "status",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "No column named status present in source file"
+      },
+      {
+        "source_column": "cost_centre",
+        "target_field": null,
+        "confidence": 1.0,
+        "runner_up": null,
+        "reason": "No column for cost centre in source file"
+      }
+    ]
+  },
+  "call": {
+    "provider": "bedrock",
+    "model": "openai.gpt-oss-120b-1:0",
+    "prompt_version": "assign/v1",
+    "latency_ms": 1861,
+    "input_tokens": 6390,
+    "output_tokens": 915,
+    "cached": false
+  }
+}

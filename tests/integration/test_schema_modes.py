@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 import uvicorn
 import yaml
+from dbx_contracts import MigrationSchema
 from fastapi.testclient import TestClient
 
 warnings.filterwarnings("ignore")
@@ -314,3 +315,36 @@ def test_every_suggestion_carries_the_values_behind_it(client):
     for o in offers:
         assert o["samples"], f"{o['column']} was offered with nothing to judge it by"
         assert o["seen_in"], f"{o['column']} was offered without saying which file"
+
+
+def test_a_proposed_schema_is_always_loadable(client):
+    """The agent's draft has to survive its own validation.
+
+    It proposed `dept_code` as an enum, and the pass that attaches a lookup
+    reference cleared the allowed list - which is the one thing an enum cannot be
+    without. The endpoint returned 500 and the run was left with no schema at all,
+    so every later call failed on an empty string.
+    """
+    run_id = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    out = client.post(f"/api/runs/{run_id}/schema/recommend")
+    assert out.status_code == 200, out.text
+
+    draft = out.json()["schema"]
+    for field in draft["fields"]:
+        if field["type"] == "enum":
+            assert field.get("allowed"), (
+                f"{field['name']} is an enum with nothing allowed, which will not load"
+            )
+        if field.get("reference"):
+            assert field["type"] != "enum", (
+                f"{field['name']} has both a reference and an enum type"
+            )
+    # And it round-trips, which is what the 500 was.
+    MigrationSchema.model_validate(draft)
+
+
+def test_pushing_a_run_with_no_schema_is_refused_clearly(client):
+    run_id = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+    out = client.post(f"/api/runs/{run_id}/deliver", json={"keep_sending": False})
+    assert out.status_code == 409, out.text
+    assert "schema" in out.json()["detail"]

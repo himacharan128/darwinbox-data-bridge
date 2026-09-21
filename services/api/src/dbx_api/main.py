@@ -466,6 +466,11 @@ def recommend(run_id: str) -> dict[str, Any]:
                 # The lookup file is the real universe. Keeping the model's list of
                 # values-it-happened-to-see would reject every code outside this batch.
                 field.allowed = []
+                # An enum is defined by its allowed list, so one with the list taken
+                # away is not a valid field at all. The reference now says what the
+                # values may be, which is what `string` plus a reference means.
+                if field.type == "enum":
+                    field.type = "string"
                 break
 
         if field.unique or field.reference:
@@ -988,6 +993,11 @@ def deliver(
     turns on automatic delivery from here on, for a consultant who has watched one
     push land and does not want to press it again.
     """
+    if store.approved_schema(run_id) is None:
+        # Without one there is nothing to send and nothing to validate against.
+        # Left to fall through it surfaced as a JSON parse error on an empty string.
+        raise HTTPException(409, "this run has no approved schema yet")
+
     store.pause_delivery(run_id, False)
     if keep_sending:
         store.set_auto_send(run_id, True)
