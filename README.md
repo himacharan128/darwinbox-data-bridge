@@ -8,6 +8,14 @@ Built for the Darwinbox Forward Deployed Engineer take-home.
 
 ### → **Live: http://dbx-console-alb-1789124705.ap-south-1.elb.amazonaws.com**
 
+### → **[Demo recording](docs/demo/data-bridge-demo.mp4)** — 3¾ minutes, captioned, no audio
+
+[![The review queue: the date question, checked against the other file](docs/demo/poster.jpg)](docs/demo/data-bridge-demo.mp4)
+
+The recording runs the demo files against the live console: the agent drafts a schema,
+a person edits and approves it, three questions are answered (one by a rule), a push
+loses a record and recovers it, and a rollback is undone and resent.
+
 **[One-page write-up](docs/WRITEUP.md)** · **[Why the line is there](docs/calibration.md)** ·
 **[Deploying](docs/DEPLOY.md)** · **[Test samples](samples/README.md)** ·
 **[How each piece works](docs/FUNCTIONALITY.md)**
