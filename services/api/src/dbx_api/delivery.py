@@ -76,8 +76,10 @@ class DestinationClient:
         with self._client() as client:
             client.post("/schemas", json=spec).raise_for_status()
 
-    def set_failure_mode(self, mode: str, remaining: int) -> dict[str, Any]:
-        """Make the destination misbehave on purpose.
+    def set_failure_mode(
+        self, mode: str, remaining: int, *, run_id: str | None = None
+    ) -> dict[str, Any]:
+        """Make the destination misbehave on purpose, for one run's deliveries.
 
         The retry and rollback paths are the half of the delivery story that only
         shows itself when something goes wrong, and a destination that always says
@@ -85,7 +87,8 @@ class DestinationClient:
         """
         with self._client() as client:
             response = client.post(
-                "/admin/failure-mode", json={"mode": mode, "remaining": remaining}
+                "/admin/failure-mode",
+                json={"mode": mode, "remaining": remaining, "run_id": run_id},
             )
             response.raise_for_status()
             return response.json()

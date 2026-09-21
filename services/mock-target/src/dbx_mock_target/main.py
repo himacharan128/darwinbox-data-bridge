@@ -34,6 +34,7 @@ def _now() -> str:
 
 
 class RegisteredSchema(BaseModel):
+    run_id: str | None = None
     version: int
     required: list[str] = Field(default_factory=list)
     allowed: dict[str, list[str]] = Field(default_factory=dict)
@@ -56,13 +57,19 @@ class DeliveryOutcome(BaseModel):
 
 
 class FailureMode(BaseModel):
-    """Transport trouble on demand, for demonstrating retry and recovery."""
+    """Transport trouble on demand, for demonstrating retry and recovery.
+
+    For one run's deliveries when `run_id` is given, for everyone's when it is not.
+    """
 
     mode: str = "none"                # none | transient | timeout | uncertain
     remaining: int = 0
+    run_id: str | None = None
 
 
-_failure = FailureMode()
+#: Armed failures by run, with None for one that applies to every run. Kept apart so
+#: two people rehearsing at once each get their own, and nobody else gets either.
+_failures: dict[str | None, FailureMode] = {}
 
 
 @app.get("/health")
@@ -72,9 +79,11 @@ def health() -> dict[str, str]:
 
 @app.post("/admin/failure-mode")
 def set_failure(mode: Annotated[FailureMode, Body()]) -> FailureMode:
-    global _failure
-    _failure = mode
-    return _failure
+    if mode.mode == "none" or mode.remaining <= 0:
+        _failures.pop(mode.run_id, None)
+    else:
+        _failures[mode.run_id] = mode
+    return mode
 
 
 @app.post("/admin/reset")
@@ -86,17 +95,27 @@ def reset() -> dict[str, str]:
 @app.post("/schemas")
 def register_schema(spec: Annotated[RegisteredSchema, Body()]) -> dict[str, int]:
     with store.connect() as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO registered_schemas (version, body, registered_at)"
-            " VALUES (?,?,?)",
-            (spec.version, spec.model_dump_json(), _now()),
-        )
+        if spec.run_id:
+            conn.execute(
+                "INSERT OR REPLACE INTO run_schemas (run_id, version, body, registered_at)"
+                " VALUES (?,?,?,?)",
+                (spec.run_id, spec.version, spec.model_dump_json(), _now()),
+            )
+        else:
+            conn.execute(
+                "INSERT OR REPLACE INTO registered_schemas (version, body, registered_at)"
+                " VALUES (?,?,?)",
+                (spec.version, spec.model_dump_json(), _now()),
+            )
     return {"version": spec.version}
 
 
-def _load_schema(version: int) -> RegisteredSchema | None:
+def _load_schema(run_id: str, version: int) -> RegisteredSchema | None:
     with store.connect() as conn:
         row = conn.execute(
+            "SELECT body FROM run_schemas WHERE run_id = ? AND version = ?",
+            (run_id, version),
+        ).fetchone() or conn.execute(
             "SELECT body FROM registered_schemas WHERE version = ?", (version,)
         ).fetchone()
     return RegisteredSchema.model_validate_json(row["body"]) if row else None
@@ -122,10 +141,14 @@ def _validate(payload: dict[str, Any], spec: RegisteredSchema) -> list[str]:
 
 def _maybe_fail(idempotency_key: str, body: DeliveryRequest) -> None:
     """Transport failures, injected before any state change except the uncertain case."""
-    if _failure.mode == "none" or _failure.remaining <= 0:
+    scope = body.run_id if body.run_id in _failures else None
+    failure = _failures.get(scope)
+    if failure is None or failure.mode == "none" or failure.remaining <= 0:
         return
-    _failure.remaining -= 1
-    mode = _failure.mode
+    failure.remaining -= 1
+    if failure.remaining <= 0:
+        _failures.pop(scope, None)
+    mode = failure.mode
 
     if mode == "transient":
         store.log(at=_now(), run_id=body.run_id, natural_key=body.natural_key,
@@ -187,7 +210,7 @@ def create_record(
 
     _maybe_fail(idempotency_key, body)
 
-    spec = _load_schema(body.schema_version)
+    spec = _load_schema(body.run_id, body.schema_version)
     if spec is None:
         raise HTTPException(400, f"schema version {body.schema_version} is not registered")
     errors = _validate(body.payload, spec)

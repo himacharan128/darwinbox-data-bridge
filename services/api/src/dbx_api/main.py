@@ -67,9 +67,18 @@ class Decide(BaseModel):
     reason: str | None = None
 
 
-def _schema_for_destination(schema: MigrationSchema) -> dict[str, Any]:
+def _schema_for_destination(
+    run_id: str, version: int, schema: MigrationSchema
+) -> dict[str, Any]:
+    """The rules a destination checks deliveries against, as the version approved.
+
+    The version is the run's approved schema version, not the schema document's own
+    format number - which is 1 for every schema, so every run and every edit used to
+    register as "version 1" and overwrite each other at the destination.
+    """
     return {
-        "version": schema.schema_version,
+        "run_id": run_id,
+        "version": version,
         "required": [f.name for f in schema.required_fields],
         "allowed": {f.name: f.allowed for f in schema.fields if f.allowed},
         "patterns": {f.name: f.pattern for f in schema.fields if f.pattern},
@@ -694,9 +703,9 @@ def approve_schema(run_id: str, version: int) -> dict[str, Any]:
     with store.connect() as conn:
         conn.execute("UPDATE runs SET schema_json = ?, status = 'processing'"
                      " WHERE id = ?", (body, run_id))
-    destination.register_schema(
-        _schema_for_destination(MigrationSchema.model_validate(json.loads(body)))
-    )
+    destination.register_schema(_schema_for_destination(
+        run_id, version, MigrationSchema.model_validate(json.loads(body))
+    ))
 
     store.append_audit(run_id, [{
         "actor": Actor.HUMAN.value, "action": "schema.approved",
@@ -1028,7 +1037,8 @@ def deliver_ready(run_id: str, result: Any) -> dict[str, int]:
     undo; a gate before the fact is not.
     """
     run = store.get_run(run_id)
-    if run is None or not run["schema_json"]:
+    approved = store.approved_schema(run_id)
+    if run is None or not run["schema_json"] or approved is None:
         return {}
     if store.delivery_paused(run_id):
         # A human undid a delivery. Sending it straight back would make the undo a
@@ -1036,10 +1046,12 @@ def deliver_ready(run_id: str, result: Any) -> dict[str, int]:
         return {}
     schema = MigrationSchema.model_validate(json.loads(run["schema_json"]))
     try:
-        destination.register_schema(_schema_for_destination(schema))
+        destination.register_schema(
+            _schema_for_destination(run_id, approved["version"], schema)
+        )
     except Exception:  # noqa: BLE001 - a destination outage is reported, not fatal
         return {}
-    return _push(run_id, result, schema)
+    return _push(run_id, result, approved["version"])
 
 
 @app.post("/api/runs/{run_id}/deliver")
@@ -1055,46 +1067,49 @@ def deliver(
     turns on automatic delivery from here on, for a consultant who has watched one
     push land and does not want to press it again.
     """
-    if store.approved_schema(run_id) is None:
+    approved = store.approved_schema(run_id)
+    if approved is None:
         # Without one there is nothing to send and nothing to validate against.
         # Left to fall through it surfaced as a JSON parse error on an empty string.
         raise HTTPException(409, "this run has no approved schema yet")
+    rehearsing = bool(simulate and simulate != "none")
+    if rehearsing and simulate not in {"transient", "timeout", "uncertain"}:
+        raise HTTPException(422, f"unknown failure mode {simulate!r}")
 
     store.pause_delivery(run_id, False)
     if keep_sending:
         store.set_auto_send(run_id, True)
 
-    # A rehearsed failure belongs to this push and nothing else. The destination's
-    # failure mode is global, so arming it from a panel meant the next few
-    # deliveries of any migration wore it. Armed here and cleared in `finally`, it
-    # cannot outlive the push that asked for it.
-    if simulate and simulate != "none":
-        if simulate not in {"transient", "timeout", "uncertain"}:
-            raise HTTPException(422, f"unknown failure mode {simulate!r}")
-        try:
-            destination.set_failure_mode(simulate, 3)
-        except Exception as exc:
-            raise HTTPException(503, f"destination unreachable: {exc}") from exc
-    jobs.wait(run_id, timeout=180)
-    result = jobs.result(run_id)
-    if result is None:
-        # Only the records are needed to send them. Investigating the open cases is
-        # what the review queue is for, and doing it here put half a minute between
-        # pressing Push and anything happening.
-        result, _ = replay(store, run_id, investigate=False)
-    run = store.get_run(run_id)
-    if run is None:
-        raise HTTPException(404, "no such run")
-    schema = MigrationSchema.model_validate(json.loads(run["schema_json"]))
-    destination.register_schema(_schema_for_destination(schema))
-
+    # A rehearsed failure belongs to this push and nothing else: the destination
+    # applies it to this run's deliveries only, and it is cleared in `finally` -
+    # which starts before it is armed, so a push that fails half-way cannot leave
+    # it armed for the next one.
     try:
-        sent = _push(run_id, result, schema)
+        if rehearsing:
+            try:
+                destination.set_failure_mode(simulate or "none", 3, run_id=run_id)
+            except Exception as exc:
+                raise HTTPException(503, f"destination unreachable: {exc}") from exc
+        jobs.wait(run_id, timeout=180)
+        result = jobs.result(run_id)
+        if result is None:
+            # Only the records are needed to send them. Investigating the open cases
+            # is what the review queue is for, and doing it here put half a minute
+            # between pressing Push and anything happening.
+            result, _ = replay(store, run_id, investigate=False)
+        run = store.get_run(run_id)
+        if run is None:
+            raise HTTPException(404, "no such run")
+        schema = MigrationSchema.model_validate(json.loads(run["schema_json"]))
+        destination.register_schema(
+            _schema_for_destination(run_id, approved["version"], schema)
+        )
+        sent = _push(run_id, result, approved["version"])
     finally:
         # Whatever happened, the destination goes back to behaving normally.
-        if simulate and simulate != "none":
+        if rehearsing:
             try:
-                destination.set_failure_mode("none", 0)
+                destination.set_failure_mode("none", 0, run_id=run_id)
             except Exception as exc:  # noqa: BLE001 - reported, never raised over the push
                 log.warning("could not clear the rehearsed failure: %s", exc)
     jobs.invalidate(run_id)
@@ -1102,20 +1117,20 @@ def deliver(
     return {"sent": sent}
 
 
-def _push(run_id: str, result: Any, schema: MigrationSchema) -> dict[str, int]:
+def _push(run_id: str, result: Any, version: int) -> dict[str, int]:
     already = store.accepted_keys(run_id)
+    generations = store.generations(run_id)
     sent = {"accepted": 0, "duplicate": 0, "rejected": 0, "failed": 0, "uncertain": 0}
 
     for record in result.ready:
         key = record.natural_key or record.id
         if key in already:
             continue  # resuming a run must not resend what the destination has
-        generation = already.get(key, 1)
+        generation = generations.get(key, 1)
         payload = {k: (v if not hasattr(v, "isoformat") else v.isoformat())
                    for k, v in record.values.items()}
         attempts = destination.deliver(
-            run_id, key, payload, schema_version=schema.schema_version,
-            generation=generation,
+            run_id, key, payload, schema_version=version, generation=generation,
         )
         for attempt in attempts:
             store.record_delivery(
@@ -1149,24 +1164,31 @@ def _push(run_id: str, result: Any, schema: MigrationSchema) -> dict[str, int]:
 
 
 class Rehearsal(BaseModel):
-    """How the destination should misbehave, and for how many requests."""
+    """How the destination should misbehave, for which run, and for how many requests."""
 
+    run_id: str
     mode: str = "none"          # none | transient | timeout | uncertain
     remaining: int = 3
 
 
 @app.post("/api/destination/rehearse")
 def rehearse_failure(body: Annotated[Rehearsal, Body()]) -> dict[str, Any]:
-    """Arrange for the next few deliveries to fail, so the recovery can be seen.
+    """Arrange for one run's next few deliveries to fail, so the recovery can be seen.
 
     Retry, reconciliation and rollback are the part of delivery that only exists
     when something goes wrong. A destination that always accepts cannot show any of
-    it, which left a named acceptance criterion working but undemonstrable.
+    it, which left a named acceptance criterion working but undemonstrable. It is
+    scoped to a run because the console is shared: a failure somebody arranged for
+    their own migration must not drop records from anyone else's.
     """
     if body.mode not in {"none", "transient", "timeout", "uncertain"}:
         raise HTTPException(422, f"unknown failure mode {body.mode!r}")
+    if store.get_run(body.run_id) is None:
+        raise HTTPException(404, "no such run")
     try:
-        state = destination.set_failure_mode(body.mode, max(0, body.remaining))
+        state = destination.set_failure_mode(
+            body.mode, max(0, body.remaining), run_id=body.run_id
+        )
     except Exception as exc:
         raise HTTPException(503, f"destination unreachable: {exc}") from exc
     return {"destination": state}
@@ -1174,22 +1196,30 @@ def rehearse_failure(body: Annotated[Rehearsal, Body()]) -> dict[str, Any]:
 
 @app.post("/api/runs/{run_id}/rollback")
 def rollback(run_id: str) -> dict[str, Any]:
-    rows = [d for d in store.deliveries(run_id)
-            if d["outcome"] in ("accepted", "duplicate") and d["target_record_id"]]
+    # One undo per record the destination currently holds - not one per historical
+    # acceptance, which counted a record twice once it had been sent, undone and
+    # sent again.
     accepted = store.accepted_keys(run_id)
+    latest: dict[str, dict[str, Any]] = {}
+    for row in store.deliveries(run_id):
+        key = row["natural_key"]
+        if (row["outcome"] in ("accepted", "duplicate") and row["target_record_id"]
+                and accepted.get(key) == row["generation"]):
+            latest[key] = row
     results = []
-    for row in rows:
-        if row["natural_key"] not in accepted:
-            continue
+    for key, row in latest.items():
         ok, response = destination.rollback(row["target_record_id"])
         store.record_delivery(
-            run_id, natural_key=row["natural_key"],
-            generation=row["generation"] + 1, attempt=1,
+            run_id, natural_key=key,
+            # An undo moves the record on a generation, so sending it again is a new
+            # write. An undo that failed leaves it where it was: the destination
+            # still holds it, and a new generation would send a second copy.
+            generation=row["generation"] + 1 if ok else row["generation"], attempt=1,
             outcome="rolled_back" if ok else "rollback_failed",
             target_record_id=row["target_record_id"], payload=row["payload"],
             response=response,
         )
-        results.append({"record": row["natural_key"], "ok": ok})
+        results.append({"record": key, "ok": ok})
     succeeded = sum(1 for r in results if r["ok"])
     store.pause_delivery(run_id, True)
     store.append_audit(run_id, [{

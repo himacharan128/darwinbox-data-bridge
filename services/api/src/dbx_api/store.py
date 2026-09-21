@@ -328,14 +328,35 @@ class Store:
             for r in rows
         ]
 
-    def accepted_keys(self, run_id: str) -> dict[str, int]:
-        """Natural keys currently accepted by the destination, with their generation."""
+    def generations(self, run_id: str) -> dict[str, int]:
+        """The generation each record is sent under next.
+
+        A rollback records the generation after the one it undid, so the next send is
+        a new write rather than the old idempotency key - which the destination still
+        holds, tombstoned, and would answer with "already there".
+        """
         out: dict[str, int] = {}
         for row in self.deliveries(run_id):
+            key = row["natural_key"]
+            out[key] = max(out.get(key, 1), row["generation"])
+        return out
+
+    def accepted_keys(self, run_id: str) -> dict[str, int]:
+        """Natural keys currently accepted by the destination, with their generation.
+
+        Only an acceptance at a record's current generation counts. One from before a
+        rollback describes a write that has since been undone.
+        """
+        current = self.generations(run_id)
+        out: dict[str, int] = {}
+        for row in self.deliveries(run_id):
+            key = row["natural_key"]
+            if row["generation"] != current.get(key):
+                continue
             if row["outcome"] in ("accepted", "duplicate"):
-                out[row["natural_key"]] = row["generation"]
+                out[key] = row["generation"]
             elif row["outcome"] == "rolled_back":
-                out.pop(row["natural_key"], None)
+                out.pop(key, None)
         return out
 
     # ------------------------------------------------------------------ audit

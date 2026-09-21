@@ -116,10 +116,10 @@ export const api = {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ keep_sending: keepSending, simulate }),
     }).then(json) as Promise<{ sent: Record<string, number> }>,
-  rehearse: (mode: string, remaining = 3) =>
+  rehearse: (run: string, mode: string, remaining = 3) =>
     fetch("/api/destination/rehearse", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode, remaining }),
+      body: JSON.stringify({ run_id: run, mode, remaining }),
     }).then(json),
   rollback: (run: string) => fetch(`/api/runs/${run}/rollback`, { method: "POST" }).then(json),
   rename: (run: string, label: string): Promise<{ id: string; label: string }> =>

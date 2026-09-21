@@ -239,7 +239,7 @@ def test_a_failure_can_be_arranged_so_the_recovery_can_be_seen(env):
     client.get(f"/api/runs/{run}?wait=true")
 
     armed = client.post("/api/destination/rehearse",
-                        json={"mode": "transient", "remaining": 2})
+                        json={"run_id": run, "mode": "transient", "remaining": 2})
     assert armed.status_code == 200, armed.text
     assert armed.json()["destination"]["mode"] == "transient"
 
@@ -248,7 +248,8 @@ def test_a_failure_can_be_arranged_so_the_recovery_can_be_seen(env):
     client.post(f"/api/runs/{run}/deliver", json={"keep_sending": False})
 
     # Whatever the destination dropped is retryable, and pressing it again lands it.
-    client.post("/api/destination/rehearse", json={"mode": "none", "remaining": 0})
+    client.post("/api/destination/rehearse",
+                json={"run_id": run, "mode": "none", "remaining": 0})
     client.post(f"/api/runs/{run}/deliver", json={"keep_sending": False})
     stored = client.get(f"/api/runs/{run}/destination").json()["records"]
     keys = [r["natural_key"] for r in stored]
@@ -260,5 +261,6 @@ def test_a_failure_can_be_arranged_so_the_recovery_can_be_seen(env):
 def test_an_unknown_failure_mode_is_refused(env):
     boot, _ = env
     client = boot()
+    run = start_run(client)
     assert client.post("/api/destination/rehearse",
-                       json={"mode": "explode", "remaining": 1}).status_code == 422
+                       json={"run_id": run, "mode": "explode", "remaining": 1}).status_code == 422

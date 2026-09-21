@@ -492,3 +492,108 @@ def test_choosing_a_reading_the_other_files_contradict_is_recorded_as_such(run):
     assert any(e["action"] == "review.against_evidence" for e in audit), (
         "overriding the evidence is allowed, but the history has to say it happened"
     )
+
+
+def _held(target, rid):
+    """What the destination actually holds for a run - active records only."""
+    return target.get("/records", params={"run_id": rid}).json()
+
+
+def test_undoing_a_delivery_then_pushing_again_really_sends_it_again(stack, run):
+    client, rid = run
+    _, target = stack
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    client.get(f"/api/runs/{rid}?wait=true")
+    client.post(f"/api/runs/{rid}/deliver")
+    first = {r["natural_key"] for r in _held(target, rid)}
+    assert first
+
+    client.post(f"/api/runs/{rid}/rollback")
+    assert _held(target, rid) == []
+
+    again = client.post(f"/api/runs/{rid}/deliver").json()["sent"]
+    assert again["accepted"] == len(first) and again["duplicate"] == 0, (
+        "after an undo, 'already there' means the tombstone answered, not the record"
+    )
+    held = _held(target, rid)
+    assert {r["natural_key"] for r in held} == first
+    assert all(r["generation"] == 2 for r in held)
+    assert client.get(f"/api/runs/{rid}?wait=true").json()["counts"]["delivered"] == len(first)
+
+    second = client.post(f"/api/runs/{rid}/rollback").json()
+    assert second["attempted"] == second["succeeded"] == len(first), (
+        "one undo per record the destination holds, not one per time it was ever sent"
+    )
+
+
+def test_a_value_changed_after_an_undo_is_the_value_delivered(stack, run):
+    client, rid = run
+    _, target = stack
+    state = client.get(f"/api/runs/{rid}?wait=true").json()
+    case = next(c for c in state["cases"] if "no column for status" in c["headline"])
+    decide = f"/api/runs/{rid}/cases/{case['key']}/decide"
+    client.post(decide, json={"action": "correct", "value": "constant:ACTIVE"})
+    client.get(f"/api/runs/{rid}?wait=true")
+    client.post(f"/api/runs/{rid}/deliver")
+    client.post(f"/api/runs/{rid}/rollback")
+
+    # The reason to undo is usually to fix something and send it again.
+    client.post(decide, json={"action": "correct", "value": "constant:ON_LEAVE"})
+    client.get(f"/api/runs/{rid}?wait=true")
+    client.post(f"/api/runs/{rid}/deliver")
+
+    after = client.get(f"/api/runs/{rid}?wait=true").json()
+    shown = {r["key"]: r["values"].get("status") for r in after["records"]
+             if r["state"] == "delivered"}
+    held = {r["natural_key"]: r["payload"].get("status") for r in _held(target, rid)}
+    assert held == shown, "the destination must hold what the console says was sent"
+    assert "ON_LEAVE" in held.values()
+    assert not after["failures"]
+
+
+def test_deliveries_carry_the_approved_version_and_another_run_cannot_change_its_rules(stack):
+    client, target = stack
+    first = start_run(client)
+    _answer(client, first, "no column for status", "constant:ACTIVE")
+    client.get(f"/api/runs/{first}?wait=true")
+
+    # A second migration approves a schema of its own, whose status allows only
+    # EXITED. Registered as "version 1" at the destination, it used to replace the
+    # first run's rules, and the first run's valid records came back refused.
+    strict = (ROOT / "tests" / "fixtures" / "schemas" / "target_schema.yaml").read_text()
+    strict = strict.replace("allowed: [ACTIVE, ON_LEAVE, EXITED]", "allowed: [EXITED]")
+    start_run(client, schema=strict)
+
+    sent = client.post(f"/api/runs/{first}/deliver").json()["sent"]
+    assert sent["accepted"] > 0 and sent["rejected"] == 0
+    assert {r["schema_version"] for r in _held(target, first)} == {1}
+
+    # Approving an edit is a new version, and what is sent after it says so.
+    v2 = client.post(f"/api/runs/{first}/schema", json={"body": strict.replace(
+        "allowed: [EXITED]", "allowed: [ACTIVE, ON_LEAVE, EXITED]")}).json()["version"]
+    client.post(f"/api/runs/{first}/schema/{v2}/approve")
+    client.get(f"/api/runs/{first}?wait=true")
+    client.post(f"/api/runs/{first}/rollback")
+    client.post(f"/api/runs/{first}/deliver")
+    assert {r["schema_version"] for r in _held(target, first)} == {v2}
+
+
+def test_a_rehearsed_failure_only_touches_the_run_it_was_asked_for(stack):
+    client, _ = stack
+    mine, theirs = start_run(client), start_run(client)
+    for rid in (mine, theirs):
+        _answer(client, rid, "no column for status", "constant:ACTIVE")
+        client.get(f"/api/runs/{rid}?wait=true")
+
+    armed = client.post("/api/destination/rehearse",
+                        json={"run_id": mine, "mode": "transient", "remaining": 3})
+    assert armed.status_code == 200
+    client.post(f"/api/runs/{theirs}/deliver")
+    outcomes = {a["outcome"] for a in client.get(f"/api/runs/{theirs}/destination")
+                .json()["attempts"]}
+    assert "transient_failed" not in outcomes, "someone else's rehearsal dropped this run"
+
+    client.post(f"/api/runs/{mine}/deliver")
+    outcomes = {a["outcome"] for a in client.get(f"/api/runs/{mine}/destination")
+                .json()["attempts"]}
+    assert "transient_failed" in outcomes

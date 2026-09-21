@@ -35,6 +35,17 @@ CREATE TABLE IF NOT EXISTS registered_schemas (
     registered_at TEXT NOT NULL
 );
 
+-- A schema belongs to the run that approved it. Keyed by version alone, every run's
+-- "version 1" overwrote every other's, and a push could be checked against the
+-- rules of a migration it had nothing to do with.
+CREATE TABLE IF NOT EXISTS run_schemas (
+    run_id      TEXT NOT NULL,
+    version     INTEGER NOT NULL,
+    body        TEXT NOT NULL,
+    registered_at TEXT NOT NULL,
+    PRIMARY KEY (run_id, version)
+);
+
 CREATE TABLE IF NOT EXISTS request_log (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     at          TEXT NOT NULL,
@@ -70,6 +81,7 @@ class Store:
             conn.execute("DELETE FROM target_records")
             conn.execute("DELETE FROM request_log")
             conn.execute("DELETE FROM registered_schemas")
+            conn.execute("DELETE FROM run_schemas")
 
     def log(self, **kw: object) -> None:
         with self.connect() as conn:
