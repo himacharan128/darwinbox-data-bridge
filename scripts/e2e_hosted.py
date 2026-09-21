@@ -127,7 +127,13 @@ def main() -> int:
           f"{len(after)} rows, states: {sorted({r['state'] for r in after})}")
     check("source records survive rollback", c.state(run)["counts"]["records"] >= 20)
     resumed = c.http.post(f"/api/runs/{run}/deliver").json()
-    check("resuming sends them again", sum(resumed["sent"].values()) > 0)
+    back = c.http.get(f"/api/runs/{run}/destination").json()["records"]
+    # "Already there" after an undo would be the tombstone answering. Resuming has to
+    # put records back at the destination, not just report that it tried.
+    check("resuming really puts them back",
+          resumed["sent"].get("accepted", 0) > 0
+          and sum(1 for r in back if r["state"] == "accepted") > 0,
+          str(resumed["sent"]))
 
     print("\n[4] messy data — the boundary")
     run = c.start(SAMPLES / "02-messy")
