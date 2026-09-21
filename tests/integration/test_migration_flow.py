@@ -668,6 +668,17 @@ def test_a_question_about_a_column_with_a_slash_in_its_name_can_be_answered(stac
     assert not [c for c in after["cases"] if c["key"] == case["key"]]
 
 
+def test_a_run_with_nothing_to_send_says_so_instead_of_processing_forever(stack):
+    client, _ = stack
+    run = _upload(client, {"noise.csv": "checksum,batch_id\nab12,7\ncd34,8\n"})
+    state = client.get(f"/api/runs/{run}?wait=true").json()
+    assert state["status"] != "processing"
+    assert state["cases"], "the question that explains why must be visible"
+
+    listed = next(r for r in client.get("/api/runs").json() if r["id"] == run)
+    assert listed["status"] == state["status"]
+
+
 def test_ignoring_a_file_that_is_not_the_entity_really_ignores_it(stack):
     client, _ = stack
     run = _upload(client, {
@@ -719,3 +730,15 @@ def test_renaming_a_field_someone_mapped_a_column_to_asks_again_instead_of_break
     assert after.status_code == 200, "an old answer about a renamed field broke the run"
     history = [e["summary"] for e in client.get(f"/api/runs/{rid}/audit").json()]
     assert any("no longer has" in s or "no longer matches" in s for s in history)
+
+
+def test_the_run_list_follows_a_run_after_it_finishes_and_after_a_push(run):
+    client, rid = run
+    _answer(client, rid, "no column for status", "constant:ACTIVE")
+    detail = client.get(f"/api/runs/{rid}?wait=true").json()
+    listed = next(r for r in client.get("/api/runs").json() if r["id"] == rid)
+    assert listed["status"] == detail["status"] != "processing"
+
+    client.post(f"/api/runs/{rid}/deliver")
+    listed = next(r for r in client.get("/api/runs").json() if r["id"] == rid)
+    assert listed["status"] != "processing"

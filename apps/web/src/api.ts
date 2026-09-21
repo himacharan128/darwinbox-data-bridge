@@ -162,6 +162,7 @@ export const PHRASE: Record<string, string> = {
   completed: "All sent",
   completed_with_exclusions: "Sent, some excluded",
   processing: "Processing…",
+  nothing_to_send: "Nothing to send",
   delivery_failed: "Send failed",
   ready: "Ready to push",
   blocked: "Awaiting review",

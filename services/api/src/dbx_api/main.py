@@ -744,6 +744,11 @@ def list_runs() -> list[dict[str, Any]]:
                 status, counts = view.get("status", status), view.get("counts")
             elif jobs.running(run_id):
                 status = "processing"
+            elif jobs.result(run_id) is not None:
+                # Finished, but nobody has opened it since: say where it got to,
+                # from the result already in hand, rather than "processing".
+                view = get_run(run_id)
+                status, counts = view["status"], view["counts"]
         out.append({
             "id": run_id, "created_at": run["created_at"], "label": run["label"],
             "status": status, "files": len(json.loads(run["files_json"])),
@@ -903,7 +908,7 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
 
     payload = {
         "run_id": run_id,
-        "status": _status(result, records, accepted),
+        "status": _status(records, len(review)),
         "progress": progress.as_dict(),
         "delivery_paused": store.delivery_paused(run_id),
         "auto_send": store.auto_send(run_id),
@@ -944,6 +949,10 @@ def get_run(run_id: str, wait: Annotated[bool, Query()] = False) -> dict[str, An
         ],
     }
     store.save_snapshot(run_id, fingerprint, json.dumps(payload))
+    # The run list reads this when there is no current snapshot - after a push or a
+    # decision clears it. Left as "processing" from approval, that is what the
+    # sidebar said about a run that had long finished.
+    store.set_status(run_id, payload["status"])
     return payload
 
 
@@ -960,8 +969,14 @@ def _failed_keys(run_id: str) -> dict[str, str]:
     return out
 
 
-def _status(result: Any, records: list[dict], accepted: dict[str, int]) -> str:
-    """Derived from record state, never chosen. A run cannot be complete by neglect."""
+def _status(records: list[dict], open_cases: int) -> str:
+    """Derived from record state, never chosen. A run cannot be complete by neglect.
+
+    Only called on a finished pass, so it never says "processing". It used to, for a
+    run with nothing to send - a file of noise, a header with no rows, everything
+    left out - and the console then showed a progress screen forever, with the one
+    question that explained why hidden behind it.
+    """
     blocked = [r for r in records if r["state"] == "blocked"]
     delivered = [r for r in records if r["state"] == "delivered"]
     excluded = [r for r in records if r["state"] == "excluded"]
@@ -976,7 +991,7 @@ def _status(result: Any, records: list[dict], accepted: dict[str, int]) -> str:
     if deliverable:
         # Nothing blocked, nothing sent: the agent is finished and waiting on a click.
         return "ready_to_send"
-    return "processing"
+    return "awaiting_review" if open_cases else "nothing_to_send"
 
 
 #: How each action reads in the history. Built as title() + "d" it said "Correctd".

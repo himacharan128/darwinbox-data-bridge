@@ -552,6 +552,13 @@ export default function App() {
 
   const loadRuns = useCallback(() => { api.runs().then(setRuns).catch(() => {}); }, []);
   useEffect(loadRuns, [loadRuns]);
+  // The sidebar says where each run got to, so it follows the open run: finishing
+  // processing, a decision or a push all change what its line should say. It used
+  // to be read once and after a few actions, and said "processing…" of runs that
+  // had long finished.
+  const where = state
+    ? `${state.status}|${state.counts.open_cases}|${state.counts.delivered}` : "";
+  useEffect(() => { if (where) loadRuns(); }, [where, loadRuns]);
 
   const open = (id: string) => {
     setRunId(id); setWizard(false);
