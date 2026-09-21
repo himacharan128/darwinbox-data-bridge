@@ -255,6 +255,120 @@ function runMeta(r: any): string {
   return PHRASE[r.status] ?? "not started";
 }
 
+/**
+ * What a run is called. A name somebody typed is shown exactly as they typed it —
+ * only the names made up here (a bundled sample's folder, a bare id) are tidied.
+ */
+function runName(r: { id: string; label?: string | null }): string {
+  const bundled = r.label?.match(/^(?:sample|fixtures)\/(.+)$/);
+  if (bundled) {
+    return bundled[1].replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return r.label || `Run ${r.id.replace(/^run-/, "")}`;
+}
+
+/**
+ * One migration in the sidebar, renamed the way a chat is: from the ⋯ menu, or by
+ * double-clicking its name. Enter or clicking away saves, Escape puts it back, and
+ * an empty or unchanged name is no change at all.
+ */
+function RunItem({ run, active, disabled, onOpen, onRenamed }: {
+  run: any; active: boolean; disabled: boolean;
+  onOpen: () => void; onRenamed: (label: string) => void;
+}) {
+  const [menu, setMenu] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const row = useRef<HTMLLIElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  // Leaving the field saves, and so does Enter — which also leaves it. Escape
+  // unmounts the field, which can fire a late blur with the abandoned text.
+  const settled = useRef(false);
+  const name = runName(run);
+
+  useEffect(() => {
+    if (!editing) return;
+    input.current?.focus();
+    input.current?.select();   // typing replaces the old name, as it does in a chat list
+  }, [editing]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const away = (e: Event) => {
+      if (!row.current?.contains(e.target as Node)) setMenu(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setMenu(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [menu]);
+
+  const startEdit = () => {
+    setMenu(false); setDraft(name); setProblem(null);
+    settled.current = false; setEditing(true);
+  };
+  const cancel = () => { settled.current = true; setEditing(false); setProblem(null); };
+  const save = async () => {
+    if (settled.current) return;
+    const next = draft.trim();
+    if (!next || next === name) { cancel(); return; }
+    settled.current = true;
+    setSaving(true);
+    try {
+      const saved = await api.rename(run.id, next);
+      setEditing(false);
+      onRenamed(saved.label);
+    } catch (e) {
+      // Keep what they typed and say why, rather than silently reverting it.
+      settled.current = false;
+      setProblem(e instanceof ApiError ? e.message : "Couldn't reach the server.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <li ref={row} className={`runrow${active ? " on" : ""}${menu ? " menu-open" : ""}`}>
+      {editing ? (
+        <div className="runitem editing">
+          <input ref={input} className="runitem-input" value={draft} maxLength={120}
+                 aria-label="Migration name" readOnly={saving}
+                 onChange={(e) => { setDraft(e.target.value); setProblem(null); }}
+                 onKeyDown={(e) => {
+                   if (e.key === "Enter") { e.preventDefault(); void save(); }
+                   if (e.key === "Escape") { e.preventDefault(); cancel(); }
+                 }}
+                 onBlur={() => void save()} />
+          {problem && <span className="runitem-problem" role="alert">{problem}</span>}
+        </div>
+      ) : (
+        <button className={`runitem${active ? " on" : ""}`} title={name}
+                onClick={onOpen} onDoubleClick={() => { if (!disabled) startEdit(); }}>
+          <span className="runitem-name">{name}</span>
+          <span className="runitem-meta">{runMeta(run)}</span>
+        </button>
+      )}
+      {!editing && (
+        <button className="runitem-more" aria-label={`Options for ${name}`}
+                aria-haspopup="menu" aria-expanded={menu} disabled={disabled}
+                onClick={() => setMenu(!menu)}>
+          ⋯
+        </button>
+      )}
+      {menu && (
+        <div className="runmenu" role="menu" aria-label={`Options for ${name}`}>
+          <button role="menuitem" autoFocus onClick={startEdit}>Rename</button>
+        </div>
+      )}
+    </li>
+  );
+}
+
 /* -------------------------------------------------------------- destination */
 
 function Destination({ runId }: { runId: string }) {
@@ -457,8 +571,12 @@ export default function App() {
     state.status.startsWith("completed") ? "ok" :
     state.status === "delivery_failed" ? "bad" : "warn";
 
-  const label = (r: any) =>
-    (r.label ?? r.id).replace(/^(sample|fixtures)\//, "").replace(/[-_]/g, " ");
+  // The server has confirmed the name by the time this runs; the list catches up
+  // on its next load rather than flashing the old one in between.
+  const renamed = (id: string, name: string) => {
+    setRuns((rs) => rs.map((r) => (r.id === id ? { ...r, label: name } : r)));
+    loadRuns();
+  };
 
   return (
     <>
@@ -491,13 +609,10 @@ export default function App() {
           {runs.length ? (
             <ul className="runlist">
               {runs.map((r) => (
-                <li key={r.id}>
-                  <button className={`runitem${r.id === runId && !wizard ? " on" : ""}`}
-                          onClick={() => { open(r.id); setNavOpen(false); }}>
-                    <span className="runitem-name">{label(r)}</span>
-                    <span className="runitem-meta">{runMeta(r)}</span>
-                  </button>
-                </li>
+                <RunItem key={r.id} run={r} active={r.id === runId && !wizard}
+                         disabled={busy}
+                         onOpen={() => { open(r.id); setNavOpen(false); }}
+                         onRenamed={(name) => renamed(r.id, name)} />
               ))}
             </ul>
           ) : (
@@ -523,7 +638,7 @@ export default function App() {
           <button className="ghost menu" aria-label="Menu" onClick={() => setNavOpen(true)}>☰</button>
           <h2 className="work-title">
             {wizard ? "New migration"
-              : state ? label(runs.find((r) => r.id === runId) ?? { id: runId })
+              : state ? runName(runs.find((r) => r.id === runId) ?? { id: runId! })
               : "Data Bridge"}
           </h2>
           {state && !wizard && (

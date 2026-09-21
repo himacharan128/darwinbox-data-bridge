@@ -1226,6 +1226,36 @@ def audit(run_id: str) -> list[dict[str, Any]]:
     return store.audit(run_id)
 
 
+#: Long enough for "Acme payroll — second pass after the FIN fix", short enough that
+#: the sidebar and the audit line stay readable.
+RUN_NAME_MAX = 120
+
+
+@app.patch("/api/runs/{run_id}")
+def rename_run(run_id: str, label: Annotated[str, Body(embed=True)]) -> dict[str, Any]:
+    """Give a migration the name a consultant will recognise it by.
+
+    Only the name changes. The label a sample run started with is recorded in the
+    run's creation event, so overwriting it loses nothing the audit trail needs.
+    """
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(404, "no such run")
+    name = " ".join(label.split())
+    if not name:
+        raise HTTPException(422, "a migration needs a name")
+    if len(name) > RUN_NAME_MAX:
+        raise HTTPException(422, f"keep the name under {RUN_NAME_MAX} characters")
+    if name != run["label"]:
+        store.rename_run(run_id, name)
+        store.append_audit(run_id, [{
+            "actor": Actor.HUMAN.value, "action": "run.renamed",
+            "summary": f"Renamed this migration to “{name}”",
+            "before": run["label"], "after": name, "at": now(),
+        }])
+    return {"id": run_id, "label": name}
+
+
 @app.delete("/api/runs/{run_id}")
 def delete_run(run_id: str) -> dict[str, str]:
     store.delete_run(run_id)

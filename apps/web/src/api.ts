@@ -121,6 +121,11 @@ export const api = {
       body: JSON.stringify({ mode, remaining }),
     }).then(json),
   rollback: (run: string) => fetch(`/api/runs/${run}/rollback`, { method: "POST" }).then(json),
+  rename: (run: string, label: string): Promise<{ id: string; label: string }> =>
+    fetch(`/api/runs/${run}`, {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ label }),
+    }).then(json),
   destination: (run: string) => fetch(`/api/runs/${run}/destination`).then(json),
   audit: (run: string) => fetch(`/api/runs/${run}/audit`).then(json),
   schema: (run: string): Promise<SchemaState> => fetch(`/api/runs/${run}/schema`).then(json),

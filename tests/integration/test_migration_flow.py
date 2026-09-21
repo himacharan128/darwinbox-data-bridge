@@ -446,3 +446,28 @@ def test_an_undecidable_date_column_is_one_question_not_one_per_row(run):
     assert not per_row, (
         f"answering the column produced {len(per_row)} row-level questions about it"
     )
+
+
+def test_a_run_can_be_renamed_and_the_rename_is_recorded(stack):
+    client, _ = stack
+    rid = client.post("/api/runs/from-fixtures", json={"folder": "run1"}).json()["run_id"]
+
+    renamed = client.patch(f"/api/runs/{rid}", json={"label": "  Acme   payroll_v2 "})
+    assert renamed.status_code == 200
+    assert renamed.json()["label"] == "Acme payroll_v2", "spacing tidied, text kept as typed"
+
+    listed = next(r for r in client.get("/api/runs").json() if r["id"] == rid)
+    assert listed["label"] == "Acme payroll_v2"
+
+    renames = [e for e in client.get(f"/api/runs/{rid}/audit").json()
+               if e["action"] == "run.renamed"]
+    assert len(renames) == 1 and "Acme payroll_v2" in renames[0]["summary"]
+
+    # The same name again is no change, so it is not a second entry in the history.
+    client.patch(f"/api/runs/{rid}", json={"label": "Acme payroll_v2"})
+    assert len([e for e in client.get(f"/api/runs/{rid}/audit").json()
+                if e["action"] == "run.renamed"]) == 1
+
+    assert client.patch(f"/api/runs/{rid}", json={"label": "   "}).status_code == 422
+    assert client.patch(f"/api/runs/{rid}", json={"label": "x" * 121}).status_code == 422
+    assert client.patch("/api/runs/run-nope", json={"label": "x"}).status_code == 404

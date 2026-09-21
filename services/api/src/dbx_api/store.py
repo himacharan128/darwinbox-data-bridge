@@ -145,6 +145,10 @@ class Store:
             rows = conn.execute("SELECT * FROM runs ORDER BY created_at DESC").fetchall()
         return [dict(r) for r in rows]
 
+    def rename_run(self, run_id: str, label: str) -> None:
+        with self.connect() as conn:
+            conn.execute("UPDATE runs SET label = ? WHERE id = ?", (label, run_id))
+
     def pause_delivery(self, run_id: str, paused: bool = True) -> None:
         with self.connect() as conn:
             conn.execute("UPDATE runs SET delivery_paused = ? WHERE id = ?",
