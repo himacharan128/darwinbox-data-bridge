@@ -770,6 +770,30 @@ def _norm(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", text.casefold())
 
 
+def _code_version() -> str:
+    """A digest of the code that turns files and decisions into a run's view.
+
+    A stored view is only as current as the code that computed it. Without this in
+    the fingerprint, a deploy that changed how cases are asked kept serving every
+    existing run exactly as the old code had left it.
+    """
+    import dbx_agent
+    import dbx_contracts
+    import dbx_extraction
+    import dbx_migration_core
+
+    digest = hashlib.sha256()
+    for module in (dbx_agent, dbx_contracts, dbx_extraction, dbx_migration_core):
+        for path in sorted(Path(module.__file__).parent.rglob("*.py")):
+            digest.update(path.read_bytes())
+    for path in sorted(Path(__file__).parent.glob("*.py")):
+        digest.update(path.read_bytes())
+    return digest.hexdigest()[:16]
+
+
+CODE_VERSION = _code_version()
+
+
 def _fingerprint(run_id: str, run: Any) -> str:
     """Everything a replay's answer depends on, reduced to one string.
 
@@ -783,6 +807,7 @@ def _fingerprint(run_id: str, run: Any) -> str:
         path = Path(raw)
         files.append(f"{path.name}:{path.stat().st_size if path.exists() else '-'}")
     parts = [
+        CODE_VERSION,
         run_id,
         str(approved["version"] if approved else None),
         *sorted(files),

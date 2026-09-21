@@ -742,3 +742,18 @@ def test_the_run_list_follows_a_run_after_it_finishes_and_after_a_push(run):
     client.post(f"/api/runs/{rid}/deliver")
     listed = next(r for r in client.get("/api/runs").json() if r["id"] == rid)
     assert listed["status"] != "processing"
+
+
+def test_a_stored_view_is_not_served_after_the_code_that_made_it_changes(run, monkeypatch):
+    client, rid = run
+    import dbx_api.main as api_main
+
+    client.get(f"/api/runs/{rid}?wait=true")
+    run_row = api_main.store.get_run(rid)
+    before = api_main._fingerprint(rid, run_row)
+    assert api_main.store.snapshot(rid, before) is not None
+
+    monkeypatch.setattr(api_main, "CODE_VERSION", "a-later-build")
+    after = api_main._fingerprint(rid, run_row)
+    assert after != before
+    assert api_main.store.snapshot(rid, after) is None, "a deploy must recompute old runs"
