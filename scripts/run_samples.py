@@ -20,9 +20,33 @@ warnings.filterwarnings("ignore")
 
 SAMPLES = ROOT / "samples"
 FIXTURES = ROOT / "tests" / "fixtures"
+FALLBACK_SCHEMA = FIXTURES / "schemas" / "target_schema.yaml"
+
+
+def approve_a_schema(client, run_id: str) -> str:
+    """Agree a target the way a consultant would, and say which one it was.
+
+    Nothing is processed until a schema is approved, so a run left without one
+    reports nothing at all. The agent's proposal is what the console offers first;
+    offline, a set whose proposal was never recorded falls back to the fixture
+    schema - and the report says so, because its numbers will differ.
+    """
+    proposal = client.post(f"/api/runs/{run_id}/schema/recommend")
+    if proposal.status_code == 200:
+        version, used = proposal.json()["version"], "agent's proposal"
+    else:
+        version = client.post(
+            f"/api/runs/{run_id}/schema", json={"body": FALLBACK_SCHEMA.read_text()}
+        ).json()["version"]
+        used = "fixture schema"
+    client.post(f"/api/runs/{run_id}/schema/{version}/approve").raise_for_status()
+    return used
 
 
 def main() -> int:
+    # No instance metadata service on a laptop; without this a missing recorded
+    # reply waits on the network before falling back.
+    os.environ.setdefault("AWS_EC2_METADATA_DISABLED", "true")
     os.environ.setdefault("DBX_DATA_DIR", str(ROOT / ".artifacts" / "samples"))
     os.environ.setdefault("MOCK_TARGET_DB", str(ROOT / ".artifacts" / "samples" / "m.db"))
     port = 8079
@@ -43,8 +67,8 @@ def main() -> int:
     client = TestClient(app)
     folders = sorted(d for d in SAMPLES.iterdir() if d.is_dir())
 
-    print(f"\n{'set':18s} {'records':>8} {'ready':>6} {'cases':>6}  status")
-    print("=" * 72)
+    print(f"\n{'set':18s} {'records':>8} {'ready':>6} {'cases':>6}  {'status':20s} schema")
+    print("=" * 84)
     for folder in folders:
         staged = FIXTURES / f"sample-{folder.name}"
         if staged.exists():
@@ -54,6 +78,7 @@ def main() -> int:
             run_id = client.post(
                 "/api/runs/from-fixtures", json={"folder": staged.name}
             ).json()["run_id"]
+            used = approve_a_schema(client, run_id)
             state = client.get(f"/api/runs/{run_id}?wait=true").json()
         except Exception as exc:  # noqa: BLE001 - the report is the point
             print(f"{folder.name:18s}  FAILED: {type(exc).__name__}: {exc}")
@@ -63,7 +88,7 @@ def main() -> int:
 
         counts = state["counts"]
         print(f"{folder.name:18s} {counts['records']:>8} {counts['ready']:>6} "
-              f"{counts['open_cases']:>6}  {state['status']}")
+              f"{counts['open_cases']:>6}  {state['status']:20s} {used}")
         classes: dict[str, int] = {}
         for case in state["cases"]:
             classes[case["class"]] = classes.get(case["class"], 0) + 1

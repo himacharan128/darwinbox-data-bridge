@@ -16,7 +16,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from dbx_agent import build_provider, vote_on_column
+from dbx_agent import assign_file_columns, build_provider
 from dbx_contracts import MigrationSchema
 from dbx_extraction import confidence_for, read
 from dbx_migration_core import Pipeline
@@ -63,7 +63,14 @@ def main() -> int:
     votes = None
     if not args.no_llm:
         provider = build_provider(FIX / "model-cache")
-        votes = lambda profile, sch: vote_on_column(provider, profile, sch)[0]
+
+        def votes(file_name, profiles, sch):
+            # One call per file, as the console makes it. A model that is unreachable
+            # leaves the deterministic evidence to decide, which is what it is for.
+            try:
+                return assign_file_columns(provider, file_name, profiles, sch)[0]
+            except Exception:  # noqa: BLE001
+                return {}
 
     confidence = {
         record.id: {k: c.confidence for k, c in confidence_for(record.id).items()}
