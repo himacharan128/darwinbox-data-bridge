@@ -371,12 +371,16 @@ function RunItem({ run, active, disabled, onOpen, onRenamed }: {
 
 /* -------------------------------------------------------------- destination */
 
-function Destination({ runId }: { runId: string }) {
+function Destination({ runId, stamp }: { runId: string; stamp: string }) {
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [show, setShow] = useState<string | null>(null);
 
-  useEffect(() => { api.destination(runId).then(setData).catch((e) => setErr(String(e))); }, [runId]);
+  // Read again whenever what was sent changes - a push or an undo while this tab is
+  // open used to leave it showing what the destination held before.
+  useEffect(() => {
+    api.destination(runId).then(setData).catch((e) => setErr(String(e)));
+  }, [runId, stamp]);
 
   if (err) return <div className="panel empty"><strong>Can't reach the destination</strong>{err}</div>;
   if (!data) return <Loading label="Checking what the destination holds…" rows={4} />;
@@ -388,6 +392,19 @@ function Destination({ runId }: { runId: string }) {
     </div>;
   }
 
+  // One line per employee: the copy the destination holds now. After an undo and a
+  // second push it holds both - the first undone, the second stored - and listing
+  // every copy oldest-first put "Undone" at the top of a run that had been resent.
+  const copies = new Map<string, any[]>();
+  for (const r of data.records) {
+    copies.set(r.natural_key, [...(copies.get(r.natural_key) ?? []), r]);
+  }
+  const current = [...copies.entries()]
+    .map(([, rows]) => rows.reduce((a, b) =>
+      (b.generation > a.generation
+        || (b.generation === a.generation && b.received_at > a.received_at)) ? b : a))
+    .sort((a, b) => String(a.natural_key).localeCompare(String(b.natural_key)));
+
   return (
     <div className="panel">
       <h2>Destination records</h2>
@@ -395,7 +412,8 @@ function Destination({ runId }: { runId: string }) {
         <table className="responsive">
           <thead><tr><th>Employee</th><th>Status</th><th>Received</th><th /></tr></thead>
           <tbody>
-            {data.records.map((r: any) => {
+            {current.map((r: any) => {
+              const sent = copies.get(r.natural_key)?.length ?? 1;
               const open = show === r.id;
               const payload = (r.payload ?? {}) as Record<string, unknown>;
               return (
@@ -406,6 +424,11 @@ function Destination({ runId }: { runId: string }) {
                       <span className={`pill ${r.state === "accepted" ? "ok" : ""}`}>
                         <i className="dot" />{r.state === "accepted" ? "Stored" : "Undone"}
                       </span>
+                      {sent > 1 && (
+                        <span className="change" style={{ marginLeft: 8 }}>
+                          sent {sent} times, earlier {sent === 2 ? "copy" : "copies"} undone
+                        </span>
+                      )}
                     </td>
                     <td data-label="Received" className="change">
                       {r.received_at?.slice(11, 19) ?? "—"}
@@ -754,7 +777,10 @@ export default function App() {
                 {tab === "records" && <Records state={state} />}
                 {tab === "mappings" && <Mappings state={state} />}
                 {tab === "schema" && <Schema runId={state.run_id} />}
-                {tab === "destination" && <Destination runId={state.run_id} />}
+                {tab === "destination" && (
+                  <Destination runId={state.run_id}
+                               stamp={`${counts.delivered}|${state.delivery_paused ?? ""}`} />
+                )}
                 {tab === "failures" && (
                   <Failures state={state} busy={busy}
                             onRetry={() => void act(() => api.deliver(state.run_id))} />
