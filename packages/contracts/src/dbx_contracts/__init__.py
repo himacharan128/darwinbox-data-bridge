@@ -43,6 +43,7 @@ from .schema import (
     MigrationSchema,
     to_strftime,
 )
+from .schema_import import SchemaShapeError, explain_schema_errors, normalise_schema
 
 __all__ = [
     "DEFAULT_WEIGHTS",
@@ -72,6 +73,7 @@ __all__ = [
     "PatternMask",
     "RecordState",
     "ReviewCase",
+    "SchemaShapeError",
     "Severity",
     "Signal",
     "SourceRef",
@@ -82,5 +84,7 @@ __all__ = [
     "ValidationResult",
     "ValueCount",
     "Veto",
+    "explain_schema_errors",
+    "normalise_schema",
     "to_strftime",
 ]

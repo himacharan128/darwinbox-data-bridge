@@ -16,7 +16,15 @@ from typing import Annotated, Any
 
 import yaml
 from dbx_agent import build_provider, recommend_schema, vote_on_column
-from dbx_contracts import Action, Actor, EscalationClass, MigrationSchema
+from dbx_contracts import (
+    Action,
+    Actor,
+    EscalationClass,
+    MigrationSchema,
+    SchemaShapeError,
+    explain_schema_errors,
+    normalise_schema,
+)
 from dbx_extraction import (
     UnsupportedInput,
     confidence_for,
@@ -31,7 +39,7 @@ from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from .delivery import DestinationClient, Outcome
 from .jobs import jobs
@@ -277,8 +285,10 @@ class SchemaUpload(BaseModel):
 def _parse_schema(upload: SchemaUpload) -> tuple[MigrationSchema, str]:
     """Normalise a form, a JSON upload and a YAML upload into one representation.
 
-    The original text is kept alongside, because a consultant who uploaded YAML
-    should be able to see what they uploaded, not our re-rendering of it.
+    Beyond the schema language's own shape, a JSON Schema and a YAML map of fields
+    are read too - the two ways a client's spec usually arrives. The original text is
+    kept alongside, because a consultant who uploaded YAML should be able to see what
+    they uploaded, not our re-rendering of it.
     """
     if upload.schema_obj is not None:
         raw = upload.schema_obj
@@ -291,9 +301,15 @@ def _parse_schema(upload: SchemaUpload) -> tuple[MigrationSchema, str]:
         raise HTTPException(422, "no schema supplied")
 
     try:
-        return MigrationSchema.model_validate(raw), (upload.body or json.dumps(raw, indent=2))
-    except Exception as exc:
+        shaped = normalise_schema(raw)
+    except SchemaShapeError as exc:
         raise HTTPException(422, f"that is not a usable schema: {exc}") from exc
+    try:
+        return MigrationSchema.model_validate(shaped), (upload.body or json.dumps(raw, indent=2))
+    except ValidationError as exc:
+        raise HTTPException(
+            422, f"that is not a usable schema: {explain_schema_errors(exc, shaped)}"
+        ) from exc
 
 
 @app.get("/api/runs/{run_id}/schema")

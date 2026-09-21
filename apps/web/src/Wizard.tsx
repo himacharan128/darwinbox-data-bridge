@@ -272,10 +272,15 @@ function ChooseSchema({
             {dirty && <span className="pill warn"><i className="dot" />unsaved changes</span>}
             <button type="button" className="icon" aria-pressed={raw}
                     onClick={() => {
-                      if (!raw && working) setDraft(JSON.stringify(working, null, 2));
+                      // Nothing typed yet means an empty box to paste into, not a
+                      // one-field template that has to be selected and deleted first.
+                      const untouched = JSON.stringify(working?.fields) ===
+                        JSON.stringify([blankField(1)]);
+                      const started = !!working?.fields.length && !untouched;
+                      if (!raw) setDraft(started ? JSON.stringify(working, null, 2) : "");
                       setRaw(!raw);
                     }}>
-              {raw ? "Back to the editor" : "Advanced: raw YAML"}
+              {raw ? "Back to the editor" : "Paste a schema instead"}
             </button>
           </div>
 
@@ -285,6 +290,9 @@ function ChooseSchema({
             <textarea value={draft}
               onChange={(e) => { setDraft(e.target.value); setDirty(true); }}
               aria-label="Target schema as YAML or JSON" rows={16}
+              placeholder={"Paste the client's schema: a JSON Schema, or YAML or JSON " +
+                           "listing the fields.\n\nfields:\n  employee_id: {type: string, " +
+                           "required: true, unique: true}\n  joined_on: date"}
               style={{ width: "100%", font: "12.5px ui-monospace, Menlo, monospace",
                        background: "var(--panel-2)", color: "var(--ink)", padding: 10,
                        border: "1px solid var(--line)", borderRadius: 8 }} />

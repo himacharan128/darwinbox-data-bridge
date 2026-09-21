@@ -373,3 +373,90 @@ def test_a_field_only_some_files_carry_is_not_required(client):
         f"applied to fields the dataset does not really carry: "
         f"{[c['headline'] for c in missing]}"
     )
+
+
+def _fields(client, run) -> dict[str, dict]:
+    active = client.get(f"/api/runs/{run}/schema").json()["active"]
+    return {f["name"]: f for f in active["fields"]}
+
+
+def test_a_json_schema_is_read_as_the_client_wrote_it(client, run):
+    spec = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Employee",
+        "type": "object",
+        "required": ["employee_id", "work_email", "joined_on"],
+        "properties": {
+            "employee_id": {"type": "string", "pattern": "^EMP-[0-9]{5}$", "x-unique": True},
+            "work_email": {"type": "string", "format": "email"},
+            "joined_on": {"type": "string", "format": "date"},
+            "grade": {"type": ["integer", "null"], "minimum": 1, "maximum": 9},
+            "contract": {"enum": ["FULL_TIME", "CONTRACT"]},
+            "nickname": {"anyOf": [{"type": "string", "maxLength": 30}, {"type": "null"}]},
+            "address": {"type": "object", "required": ["city"],
+                        "properties": {"city": {"type": "string"}}},
+        },
+    }
+    response = client.post(f"/api/runs/{run}/schema", json={"body": json.dumps(spec)})
+    assert response.status_code == 200, response.text
+
+    fields = _fields(client, run)
+    assert fields["employee_id"]["unique"] and fields["employee_id"]["pattern"]
+    assert fields["work_email"]["type"] == "email"
+    assert fields["joined_on"]["type"] == "date"
+    assert fields["grade"]["type"] == "integer" and fields["grade"]["maximum"] == 9
+    assert fields["contract"]["type"] == "enum"
+    assert fields["contract"]["allowed"] == ["FULL_TIME", "CONTRACT"]
+    assert fields["nickname"]["max_length"] == 30
+    # Nested one level reads as a prefixed field; only as required as its parent.
+    assert fields["address_city"]["required"] is False
+    assert {n for n, f in fields.items() if f["required"]} == {
+        "employee_id", "work_email", "joined_on"
+    }
+    assert client.get(f"/api/runs/{run}/schema").json()["active"]["entity"] == "employee"
+
+
+def test_a_yaml_map_of_fields_is_accepted(client, run):
+    body = (
+        "entity: employee\n"
+        "fields:\n"
+        "  employee_id: {type: text, required: true, unique: true}\n"
+        "  headcount_band: int\n"
+        "  work_email: {type: string, format: email}\n"
+        "  joined_on: {type: date, format: DD/MM/YYYY}\n"
+    )
+    response = client.post(f"/api/runs/{run}/schema", json={"body": body})
+    assert response.status_code == 200, response.text
+
+    fields = _fields(client, run)
+    assert list(fields) == ["employee_id", "headcount_band", "work_email", "joined_on"]
+    assert fields["employee_id"]["type"] == "string" and fields["employee_id"]["unique"]
+    assert fields["headcount_band"]["type"] == "integer"
+    assert fields["work_email"]["type"] == "email"
+    # A date *format* is kept as one; only the words JSON Schema uses become types.
+    assert fields["joined_on"]["format"] == "DD/MM/YYYY"
+
+
+def test_the_apps_own_json_schema_export_reads_back_as_the_same_fields(client, run):
+    original = MigrationSchema.model_validate(yaml.safe_load(SCHEMA_YAML.read_text()))
+    exported = original.to_json_schema()
+    response = client.post(f"/api/runs/{run}/schema", json={"schema_obj": exported})
+    assert response.status_code == 200, response.text
+
+    fields = _fields(client, run)
+    assert [(f.name, f.type.value, f.required) for f in original.fields] == [
+        (n, f["type"], f["required"]) for n, f in fields.items()
+    ]
+
+
+def test_a_shape_that_cannot_be_read_says_which_field_and_why(client, run):
+    listy = {"type": "object", "properties": {"skills": {"type": "array",
+                                                         "items": {"type": "string"}}}}
+    response = client.post(f"/api/runs/{run}/schema", json={"schema_obj": listy})
+    assert response.status_code == 422
+    assert "'skills'" in response.json()["detail"]
+
+    wrong_type = "entity: employee\nfields:\n  - name: joined_on\n    type: calendar\n"
+    detail = client.post(f"/api/runs/{run}/schema", json={"body": wrong_type}).json()["detail"]
+    assert "'joined_on'" in detail
+    assert "errors.pydantic.dev" not in detail, "a consultant should not be sent to pydantic's docs"
