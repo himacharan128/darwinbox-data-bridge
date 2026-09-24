@@ -101,7 +101,7 @@
     {
       "name": "state",
       "efsVolumeConfiguration": {
-        "fileSystemId": "fs-09e1ca77fbd507806",
+        "fileSystemId": "EFS_ID",
         "transitEncryption": "ENABLED",
         "authorizationConfig": {
           "accessPointId": "fsap-0028000750938fb49",

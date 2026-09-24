@@ -1,8 +1,20 @@
 # Running and deploying
 
-## The live one
+## The hosted one
 
-**http://dbx-console-alb-1789124705.ap-south-1.elb.amazonaws.com**
+**Switched off.** It was torn down once the assignment was done, so it costs
+nothing while nobody is using it. There is a
+[notice page](https://himacharan128.github.io/darwinbox-data-bridge/) where the
+console used to be linked from.
+
+```bash
+./scripts/bringup.sh     # rebuild the whole deployment, about 5 minutes
+./scripts/teardown.sh    # take it down again
+```
+
+`bringup.sh` creates the network, roles, volume, cluster, balancer and service from
+nothing, so the shape below is what it builds. The address changes each time, since
+it belongs to a new load balancer.
 
 Amazon ECS Fargate in ap-south-1, ARM64, behind an application load balancer. Two
 containers in one task sharing localhost: the console and the destination, so the
@@ -160,8 +172,9 @@ Fargate 0.5 vCPU / 1 GB on ARM is roughly **$9/month**, the load balancer about
 aws ecs update-service --cluster dbx-data-bridge --service dbx-console --desired-count 0
 ```
 
-scales to zero, though the balancer still bills. `make teardown` removes the rest,
-except the EFS volume that holds run state (see Teardown).
+scales to zero, though the balancer still bills, which is why shutting down properly
+means `./scripts/teardown.sh`. Run state on EFS does not survive that, so export
+anything worth keeping from `/api/runs` first.
 
 ### Two things worth knowing
 

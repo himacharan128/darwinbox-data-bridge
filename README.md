@@ -6,7 +6,11 @@ and stops to ask a human only where the evidence genuinely runs out.
 
 Built for the Darwinbox Forward Deployed Engineer take-home.
 
-### → **Live: http://dbx-console-alb-1789124705.ap-south-1.elb.amazonaws.com**
+### → **The hosted console is switched off.** [Why, and how to get it back](https://himacharan128.github.io/darwinbox-data-bridge/)
+
+It ran on AWS for the assignment and was taken down so it stops costing money while
+nobody is using it. `./scripts/bringup.sh` rebuilds the whole deployment in one
+command, and `make run` runs the same thing locally with no cloud account at all.
 
 ### → **[Demo recording](docs/demo/data-bridge-demo.mp4)** — 3¾ minutes, captioned, no audio
 

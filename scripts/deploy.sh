@@ -5,6 +5,10 @@ cd "$(dirname "$0")/.."
 
 REGION=${AWS_REGION:-ap-south-1}
 ACCT=$(aws sts get-caller-identity --query Account --output text)
+# The state volume is created by bringup.sh and gets a fresh id each time, so the
+# checked-in task definition carries a placeholder rather than a dead reference.
+EFS_ID=$(aws efs describe-file-systems --query \
+         "FileSystems[?Name=='dbx-data-bridge'].FileSystemId | [0]" --output text 2>/dev/null)
 REPO=dbx-data-bridge
 IMAGE="$ACCT.dkr.ecr.$REGION.amazonaws.com/$REPO"
 TAG=${1:-v$(date +%Y%m%d%H%M)}
@@ -19,12 +23,13 @@ docker push "$IMAGE:$TAG"
 docker push "$IMAGE:latest"
 
 echo "==> registering task definition"
-python3 - "$IMAGE:$TAG" "$ACCT" <<'PY'
+python3 - "$IMAGE:$TAG" "$ACCT" "$EFS_ID" <<'PY'
 import json, subprocess, sys, pathlib
-image, account = sys.argv[1], sys.argv[2]
+image, account, efs = sys.argv[1], sys.argv[2], sys.argv[3]
 # The checked-in task definition carries a placeholder, so no account id is
 # published in the repo. The real one comes from whoever is deploying.
-raw = pathlib.Path("infra/taskdef.json").read_text().replace("ACCOUNT_ID", account)
+raw = (pathlib.Path("infra/taskdef.json").read_text()
+       .replace("ACCOUNT_ID", account).replace("EFS_ID", efs))
 spec = json.loads(raw)
 for container in spec["containerDefinitions"]:
     container["image"] = image

@@ -1,6 +1,6 @@
 # Data Bridge — An AI agent for client data migration, and where I drew the line between what it decides and what it asks
 
-**Hima Charan** · Live console: http://dbx-console-alb-1789124705.ap-south-1.elb.amazonaws.com · Source and demo recording: [github.com/himacharan128/darwinbox-data-bridge](https://github.com/himacharan128/darwinbox-data-bridge)
+**Hima Charan** · Hosted console: [switched off](https://himacharan128.github.io/darwinbox-data-bridge/), rebuilt with one command · Source and demo recording: [github.com/himacharan128/darwinbox-data-bridge](https://github.com/himacharan128/darwinbox-data-bridge)
 
 ## What I built
 
